@@ -4,7 +4,6 @@ import { supabase } from './lib/supabase'
 import { useStore } from './store/useStore'
 import { Sidebar, Toast } from './components/layout'
 
-// Pages
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import ProcedureList from './pages/ProcedureList'
@@ -18,9 +17,9 @@ import Admin from './pages/Admin'
 
 function AppLayout({ children }) {
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bg)' }}>
       <Sidebar />
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
         {children}
       </main>
     </div>
@@ -30,7 +29,7 @@ function AppLayout({ children }) {
 function ProtectedRoute({ children }) {
   const { user, loading } = useStore()
   if (loading) return (
-    <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
       <div className="spinner" />
     </div>
   )
@@ -43,7 +42,6 @@ export default function App() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    // Controlla sessione iniziale
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         setUser(session.user)
@@ -53,7 +51,6 @@ export default function App() {
       }
     })
 
-    // Ascolta cambi auth
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
         setUser(session.user)
