@@ -1,1 +1,166 @@
-export { Impostazioni as default } from './placeholder.jsx'
+import { useEffect, useState } from 'react'
+import { useStore } from '../store/useStore'
+import { Topbar } from '../components/layout'
+import { supabase } from '../lib/supabase'
+import { Eye, EyeOff, Save, Key, Building, User } from 'lucide-react'
+
+export default function Impostazioni() {
+  const { profile, notify, fetchProfile } = useStore()
+  const [tab, setTab] = useState('profilo')
+  const [profilo, setProfilo] = useState({})
+  const [apiKey, setApiKey] = useState('')
+  const [showKey, setShowKey] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [testingKey, setTestingKey] = useState(false)
+
+  useEffect(() => {
+    if (profile) {
+      setProfilo({ ...profile })
+      setApiKey(localStorage.getItem('ip_apikey') || '')
+    }
+  }, [profile])
+
+  const set = (k, v) => setProfilo(p => ({ ...p, [k]: v }))
+  const inp = (k, type = 'text') => ({ value: profilo[k] || '', type, onChange: e => set(k, e.target.value), className: 'form-input' })
+
+  const saveProfilo = async () => {
+    setSaving(true)
+    try {
+      const { error } = await supabase.from('profiles').update(profilo).eq('id', profile.id)
+      if (error) throw error
+      await fetchProfile(profile.id)
+      notify('Profilo aggiornato', 'ok')
+    } catch (e) { notify('Errore: ' + e.message, 'err') }
+    finally { setSaving(false) }
+  }
+
+  const saveApiKey = () => {
+    if (!apiKey.trim()) { notify('Inserisci la chiave API', 'warn'); return }
+    localStorage.setItem('ip_apikey', apiKey.trim())
+    notify('Chiave API salvata', 'ok')
+  }
+
+  const testApiKey = async () => {
+    if (!apiKey.trim()) { notify('Inserisci prima la chiave', 'warn'); return }
+    setTestingKey(true)
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey.trim(),
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({ model: 'claude-sonnet-4-5-20250929', max_tokens: 10, messages: [{ role: 'user', content: 'test' }] })
+      })
+      const data = await res.json()
+      if (data.error) throw new Error(data.error.message)
+      notify('✅ Chiave API valida e funzionante!', 'ok', 4000)
+    } catch (e) { notify('❌ Chiave non valida: ' + e.message, 'err', 5000) }
+    finally { setTestingKey(false) }
+  }
+
+  const TABS = [
+    { id: 'profilo', label: 'Profilo utente', icon: User },
+    { id: 'api',     label: 'Chiave API AI',  icon: Key },
+  ]
+
+  return (
+    <>
+      <Topbar title="Impostazioni" subtitle="Configura il tuo profilo e le integrazioni" />
+      <div style={{ flex: 1, overflowY: 'auto', padding: 24, maxWidth: 720 }}>
+
+        <div className="tabs" style={{ marginBottom: 24 }}>
+          {TABS.map(t => (
+            <div key={t.id} className={`tab ${tab === t.id ? 'active' : ''}`} onClick={() => setTab(t.id)}>
+              <t.icon size={13} style={{ marginRight: 6, verticalAlign: 'middle' }} />{t.label}
+            </div>
+          ))}
+        </div>
+
+        {/* Profilo utente */}
+        {tab === 'profilo' && (
+          <div className="card">
+            <div className="card-header"><div className="card-title">Dati profilo</div></div>
+            <div className="card-body">
+              <div className="form-grid">
+                <div className="form-section">Dati personali</div>
+                <div className="form-group"><label className="form-label">Titolo (es. Dott., Avv.)</label><input {...inp('titolo')} placeholder="Dott." /></div>
+                <div className="form-group"><label className="form-label">Ruolo</label><input {...inp('ruolo')} placeholder="Curatore fallimentare" /></div>
+                <div className="form-group"><label className="form-label">Nome *</label><input {...inp('nome')} /></div>
+                <div className="form-group"><label className="form-label">Cognome *</label><input {...inp('cognome')} /></div>
+                <div className="form-group"><label className="form-label">Codice Fiscale</label><input {...inp('cf')} placeholder="LLLNNN00A00A000A" style={{ textTransform: 'uppercase' }} /></div>
+                <div className="form-group"><label className="form-label">Telefono</label><input {...inp('tel', 'tel')} /></div>
+                <div className="form-col-full form-group"><label className="form-label">PEC</label><input {...inp('pec', 'email')} /></div>
+
+                <div className="form-section">Studio professionale</div>
+                <div className="form-group"><label className="form-label">Indirizzo studio</label><input {...inp('stu_indirizzo')} /></div>
+                <div className="form-group"><label className="form-label">N. civico</label><input {...inp('stu_civico')} /></div>
+                <div className="form-group"><label className="form-label">CAP</label><input {...inp('stu_cap')} /></div>
+                <div className="form-group"><label className="form-label">Città</label><input {...inp('stu_citta')} /></div>
+                <div className="form-group"><label className="form-label">Provincia</label><input {...inp('stu_provincia')} maxLength={2} /></div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+                <button className="btn btn-primary" onClick={saveProfilo} disabled={saving}>
+                  <Save size={13} /> {saving ? 'Salvataggio…' : 'Salva profilo'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Chiave API */}
+        {tab === 'api' && (
+          <div className="card">
+            <div className="card-header"><div className="card-title">Chiave API Anthropic</div></div>
+            <div className="card-body">
+              <div className="alert alert-info" style={{ marginBottom: 20 }}>
+                <div>
+                  <strong>Come ottenere la chiave API:</strong><br />
+                  1. Vai su <strong>console.anthropic.com</strong><br />
+                  2. Accedi con il tuo account<br />
+                  3. Vai su <strong>API Keys</strong> → <strong>Create Key</strong><br />
+                  4. Copia la chiave e incollala qui sotto<br />
+                  <span style={{ fontSize: 12, marginTop: 6, display: 'block', opacity: 0.8 }}>La chiave viene salvata localmente nel browser e non viene inviata ai nostri server.</span>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">API Key Anthropic</label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showKey ? 'text' : 'password'}
+                    className="form-input"
+                    value={apiKey}
+                    onChange={e => setApiKey(e.target.value)}
+                    placeholder="sk-ant-api03-..."
+                    style={{ paddingRight: 40, fontFamily: 'DM Mono, monospace', fontSize: 13 }}
+                  />
+                  <button onClick={() => setShowKey(s => !s)} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer' }}>
+                    {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+                <button className="btn btn-ghost" onClick={testApiKey} disabled={testingKey}>
+                  {testingKey ? 'Test in corso…' : '🔍 Testa chiave'}
+                </button>
+                <button className="btn btn-primary" onClick={saveApiKey}>
+                  <Save size={13} /> Salva chiave
+                </button>
+              </div>
+
+              {apiKey && (
+                <div style={{ marginTop: 20, padding: '10px 14px', background: 'rgba(0,200,150,0.06)', border: '1px solid rgba(0,200,150,0.15)', borderRadius: 8, fontSize: 12, color: 'var(--accent-g)' }}>
+                  ✅ Chiave configurata — la generazione AI è attiva in Documenti e Contratti
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </>
+  )
+}
