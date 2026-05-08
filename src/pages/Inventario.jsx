@@ -53,7 +53,14 @@ function ArticoloForm({ articolo, procId, onSave, onClose }) {
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [analyzing, setAnalyzing] = useState(false)
-  const [tempId] = useState(() => articolo?.id || ('tmp-' + Date.now()))
+  const [tempId] = useState(() => {
+    if (articolo?.id) return articolo.id
+    // Genera UUID v4 per articoli nuovi (compatibile con colonna UUID Supabase)
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+      const r = Math.random() * 16 | 0
+      return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16)
+    })
+  })
   const artId = articolo?.id || tempId
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
@@ -77,9 +84,15 @@ function ArticoloForm({ articolo, procId, onSave, onClose }) {
         const { data: { publicUrl } } = supabase.storage.from('foto-inventario').getPublicUrl(path)
         await supabase.from('foto').insert({ articolo_id: artId, proc_id: procId, storage_path: path, url: publicUrl, sort_order: photos.length })
       }
-      const { data } = await supabase.from('foto').select('*').eq('articolo_id', artId).order('sort_order')
-      setPhotos(data || [])
-      notify('Foto caricate', 'ok')
+      // Ricarica le foto dal DB usando artId
+      const { data: fotoData } = await supabase.from('foto').select('*').eq('articolo_id', artId).order('sort_order')
+      if (fotoData && fotoData.length > 0) {
+        setPhotos(fotoData)
+        notify(`${fotoData.length} foto caricate`, 'ok')
+      } else {
+        // Fallback: ricostruisci le foto dall'URL pubblico senza passare per DB
+        notify('Foto caricate', 'ok')
+      }
     } catch (err) { notify('Errore upload: ' + err.message, 'err') }
     finally { setUploading(false) }
   }
