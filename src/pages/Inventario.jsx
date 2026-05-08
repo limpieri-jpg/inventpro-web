@@ -3,9 +3,29 @@ import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore'
 import { Topbar, Spinner, Modal, Empty } from '../components/layout'
 import { supabase } from '../lib/supabase'
-import { Plus, Search, Upload, X, Edit, Trash2, Camera } from 'lucide-react'
+import { Plus, Search, X, Trash2, Camera, Download } from 'lucide-react'
 
 function fmtEur(n) { return n ? '€ ' + Number(n).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—' }
+
+function exportXLSX(articoli, procNome) {
+  const rows = [['N.', 'Descrizione', 'Marca', 'Modello', 'Categoria', 'U.M.', 'Quantità', 'Val. Unitario (€)', 'Val. Totale (€)', 'Stato', 'Note']]
+  articoli.forEach((a, i) => {
+    const vu = Number(a.val_giud || 0)
+    const qt = Number(a.qta || 1)
+    rows.push([i+1, a.desc_breve||'', a.marca||'', a.modello||'', a.categoria||'', a.unita_misura||'UN', qt, vu, vu*qt, a.stato||'', a.note||''])
+  })
+  const tot = articoli.reduce((s,a) => s + Number(a.val_giud||0)*Number(a.qta||1), 0)
+  rows.push(['', 'TOTALE', '', '', '', '', '', '', tot, '', ''])
+
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n')
+  const blob = new Blob(['\uFEFF'+csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'Inventario_' + (procNome||'').replace(/[^a-zA-Z0-9]/g,'_') + '.csv'
+  a.click()
+  setTimeout(() => URL.revokeObjectURL(url), 3000)
+}
 
 const CATEGORIE = [
   'Macchinari e impianti', 'Attrezzature', 'Arredi e ufficio', 'Veicoli e mezzi',
@@ -228,9 +248,14 @@ export default function Inventario() {
         title="Inventario"
         subtitle={currentProc.nome}
         actions={
-          <button className="btn btn-primary btn-sm" onClick={() => { setEditArticolo(null); setShowForm(true) }}>
-            <Plus size={14} /> Nuovo articolo
-          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn btn-ghost btn-sm" onClick={() => exportXLSX(articoli, currentProc?.nome)} disabled={articoli.length===0}>
+              <Download size={14} /> Esporta CSV
+            </button>
+            <button className="btn btn-primary btn-sm" onClick={() => { setEditArticolo(null); setShowForm(true) }}>
+              <Plus size={14} /> Nuovo articolo
+            </button>
+          </div>
         }
       />
       <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
