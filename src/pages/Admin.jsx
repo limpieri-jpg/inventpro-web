@@ -36,21 +36,29 @@ function UserForm({ user, onSave, onClose }) {
         if (error) throw error
         notify('Utente aggiornato', 'ok')
       } else {
-        // Crea nuovo utente via Supabase Auth Admin
-        const { data, error } = await supabase.auth.admin.createUser({
-          email: form.email,
-          password: password,
-          email_confirm: true,
-          user_metadata: { nome: form.nome, cognome: form.cognome }
+        // Crea nuovo utente via Edge Function (server-side con service role key)
+        const { data: { session } } = await supabase.auth.getSession()
+        const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session?.access_token}`
+          },
+          body: JSON.stringify({
+            email: form.email,
+            password: password,
+            nome: form.nome,
+            cognome: form.cognome,
+            titolo: form.titolo,
+            ruolo: form.ruolo,
+            cf: form.cf,
+            tel: form.tel,
+            pec: form.pec
+          })
         })
-        if (error) throw error
-        // Aggiorna profilo con dati aggiuntivi
-        await supabase.from('profiles').update({
-          nome: form.nome, cognome: form.cognome, titolo: form.titolo,
-          ruolo: form.ruolo, cf: form.cf, tel: form.tel, pec: form.pec,
-          is_admin: form.is_admin
-        }).eq('id', data.user.id)
-        notify('Utente creato', 'ok')
+        const result = await res.json()
+        if (result.error) throw new Error(result.error)
+        notify('Utente creato con successo', 'ok')
       }
       onSave()
     } catch (e) { notify('Errore: ' + e.message, 'err') }
