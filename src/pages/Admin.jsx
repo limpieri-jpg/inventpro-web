@@ -80,15 +80,38 @@ function UserForm({ user, onSave, onClose }) {
         <div className="form-group"><label className="form-label">Codice Fiscale</label><input {...inp('cf')} /></div>
         <div className="form-group"><label className="form-label">Telefono</label><input {...inp('tel', 'tel')} /></div>
 
-        {!user && (
+        {user ? (
+          // Modifica utente esistente — mostra email in sola lettura
+          <div className="form-col-full form-group">
+            <label className="form-label">Email (non modificabile)</label>
+            <input className="form-input" value={form.email || ''} readOnly style={{ opacity: 0.5, cursor: 'not-allowed' }} />
+          </div>
+        ) : (
           <>
             <div className="form-section">Credenziali accesso</div>
-            <div className="form-group"><label className="form-label">Email *</label><input {...inp('email', 'email')} /></div>
+            <div className="form-group">
+              <label className="form-label">Email *</label>
+              <input
+                className="form-input"
+                type="text"
+                autoComplete="off"
+                value={form.email || ''}
+                onChange={e => set('email', e.target.value)}
+                placeholder="email@esempio.it"
+              />
+            </div>
             <div className="form-group">
               <label className="form-label">Password *</label>
               <div style={{ position: 'relative' }}>
-                <input type={showPwd ? 'text' : 'password'} className="form-input" value={password} onChange={e => setPassword(e.target.value)} style={{ paddingRight: 36 }} />
-                <button onClick={() => setShowPwd(s => !s)} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer' }}>
+                <input
+                  type={showPwd ? 'text' : 'password'}
+                  className="form-input"
+                  autoComplete="new-password"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  style={{ paddingRight: 36 }}
+                />
+                <button type="button" onClick={() => setShowPwd(s => !s)} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer' }}>
                   {showPwd ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
               </div>
