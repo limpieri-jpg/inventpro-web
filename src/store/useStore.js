@@ -50,6 +50,12 @@ export const useStore = create((set, get) => ({
       .eq('id', userId)
       .maybeSingle()
     if (data) {
+      // Blocca accesso se utente disattivato
+      if (data.is_active === false) {
+        await supabase.auth.signOut()
+        set({ user: null, profile: null })
+        return null
+      }
       set({ profile: data })
     } else {
       // Profilo non esiste — lo crea automaticamente
