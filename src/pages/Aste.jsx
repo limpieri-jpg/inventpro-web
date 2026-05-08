@@ -6,7 +6,10 @@ import { supabase } from '../lib/supabase'
 import { Plus, Edit, Trash2, ChevronRight, Calendar, Clock } from 'lucide-react'
 
 function fmtDate(d) { if (!d) return '—'; return new Date(d).toLocaleDateString('it-IT') }
-function fmtEur(n) { return n ? '€ ' + Number(n).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—' }
+function fmtEur(n) {
+  if (!n && n !== 0) return '—'
+  return '€\u00a0' + Number(n).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
 
 const MODALITA = [
   { id: 'sincrona_mista',    label: 'Sincrona mista',     desc: 'Offerte telematiche + presenza fisica' },

@@ -5,7 +5,10 @@ import { Topbar, Spinner, Modal, Empty } from '../components/layout'
 import { supabase } from '../lib/supabase'
 import { Plus, Trash2, Edit, Package, ChevronDown, ChevronUp } from 'lucide-react'
 
-function fmtEur(n) { return n ? '€ ' + Number(n).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—' }
+function fmtEur(n) {
+  if (!n && n !== 0) return '—'
+  return '€\u00a0' + Number(n).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
 
 // ── Form lotto ───────────────────────────────────────────────────────
 function LottoForm({ lotto, procId, articoliDisponibili, onSave, onClose }) {

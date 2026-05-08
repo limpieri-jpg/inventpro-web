@@ -5,7 +5,14 @@ import { Topbar, Spinner, Modal, Empty } from '../components/layout'
 import { supabase } from '../lib/supabase'
 import { Plus, Search, X, Trash2, Camera, Download, Sparkles, AlertTriangle } from 'lucide-react'
 
-function fmtEur(n) { return n ? '€ ' + Number(n).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—' }
+function fmtNum(n) {
+  if (!n && n !== 0) return ''
+  return Number(n).toLocaleString('it-IT')
+}
+function fmtEur(n) {
+  if (!n && n !== 0) return '—'
+  return '€\u00a0' + Number(n).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
 
 // ── Costanti SIECIC ────────────────────────────────────────────────────────
 const SIECIC_TIPOLOGIE = ['BENE MOBILE','BENE MOBILE REGISTRATO','BENE IMMOBILE','CREDITO','PARTECIPAZIONE','BENE IMMATERIALE','AZIENDA/RAMO D\'AZIENDA','ALTRO']
@@ -294,8 +301,9 @@ Rispondi SOLO con JSON valido:
         debitore: f.debitore || json.debitore || '',
         societa: f.societa || json.societa || '',
       }))
-      if (json.danni) setTab('danni')
+      // Non cambia tab — rimane su Foto, AI & Dati
       notify('Analisi AI completata — verifica i valori generati', 'ok', 5000)
+      if (json.danni) notify('⚠️ Danni rilevati — controlla il tab Danni', 'warn', 5000)
     } catch (e) { notify('Errore AI: ' + e.message, 'err') }
     finally { setAnalyzing(false) }
   }
@@ -327,6 +335,9 @@ Rispondi SOLO con JSON valido:
             URL.revokeObjectURL(foto.url)
           } catch (fErr) { console.error('Errore upload foto:', fErr) }
         }
+        // Ricarica le foto dal DB con gli URL reali di Supabase Storage
+        const { data: foteSalvate } = await supabase.from('foto').select('*').eq('articolo_id', saved.id).order('sort_order')
+        if (foteSalvate) setPhotos(foteSalvate)
       }
       notify('Articolo salvato', 'ok')
       onSave(saved)
