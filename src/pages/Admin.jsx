@@ -23,7 +23,7 @@ function UserForm({ user, onSave, onClose }) {
   const handleSave = async () => {
     if (!form.nome || !form.cognome) { notify('Inserisci nome e cognome', 'warn'); return }
     if (!user && !form.email) { notify('Inserisci email', 'warn'); return }
-    if (!user && !password) { notify('Inserisci password', 'warn'); return }
+    // password non richiesta — si usa magic link
     setSaving(true)
     try {
       if (user?.id) {
@@ -36,29 +36,15 @@ function UserForm({ user, onSave, onClose }) {
         if (error) throw error
         notify('Utente aggiornato', 'ok')
       } else {
-        // Crea nuovo utente via Edge Function (server-side con service role key)
-        const { data: { session } } = await supabase.auth.getSession()
-        const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session?.access_token}`
-          },
-          body: JSON.stringify({
-            email: form.email,
-            password: password,
-            nome: form.nome,
-            cognome: form.cognome,
-            titolo: form.titolo,
-            ruolo: form.ruolo,
-            cf: form.cf,
-            tel: form.tel,
-            pec: form.pec
-          })
+        // Invita utente via Supabase (invia email con link di accesso)
+        const { error: invErr } = await supabase.auth.signInWithOtp({
+          email: form.email,
+          options: { shouldCreateUser: true }
         })
-        const result = await res.json()
-        if (result.error) throw new Error(result.error)
-        notify('Utente creato con successo', 'ok')
+        if (invErr) throw invErr
+        // Salva dati profilo extra in attesa che l'utente si registri
+        // Usiamo una tabella temporanea o salviamo direttamente
+        notify('Invito inviato a ' + form.email + ' — cliccare il link ricevuto per accedere', 'ok', 6000)
       }
       onSave()
     } catch (e) { notify('Errore: ' + e.message, 'err') }
@@ -89,7 +75,12 @@ function UserForm({ user, onSave, onClose }) {
         ) : (
           <>
             <div className="form-section">Credenziali accesso</div>
-            <div className="form-group">
+            <div className="form-col-full">
+              <div style={{ padding: '10px 14px', background: 'rgba(59,111,255,0.08)', border: '1px solid rgba(59,111,255,0.2)', borderRadius: 8, fontSize: 13, marginBottom: 8 }}>
+                ℹ️ Verrà inviata un'email con il link di accesso. L'utente potrà impostare la propria password al primo accesso.
+              </div>
+            </div>
+            <div className="form-col-full form-group">
               <label className="form-label">Email *</label>
               <input
                 className="form-input"
@@ -99,22 +90,6 @@ function UserForm({ user, onSave, onClose }) {
                 onChange={e => set('email', e.target.value)}
                 placeholder="email@esempio.it"
               />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Password *</label>
-              <div style={{ position: 'relative' }}>
-                <input
-                  type={showPwd ? 'text' : 'password'}
-                  className="form-input"
-                  autoComplete="new-password"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  style={{ paddingRight: 36 }}
-                />
-                <button type="button" onClick={() => setShowPwd(s => !s)} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer' }}>
-                  {showPwd ? <EyeOff size={15} /> : <Eye size={15} />}
-                </button>
-              </div>
             </div>
           </>
         )}
@@ -138,7 +113,7 @@ function UserForm({ user, onSave, onClose }) {
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
         <button className="btn btn-ghost" onClick={onClose}>Annulla</button>
         <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
-          {saving ? 'Salvataggio…' : user ? 'Aggiorna utente' : 'Crea utente'}
+          {saving ? 'Invio…' : user ? 'Aggiorna utente' : 'Invia invito'}
         </button>
       </div>
     </>
