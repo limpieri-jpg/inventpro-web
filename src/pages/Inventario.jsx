@@ -109,58 +109,68 @@ function ArticoloForm({ articolo, procId, onSave, onClose }) {
     val_mercato: 0, val_giud: 0, stato: 'buono', danni: '', note: '',
     ...articolo
   })
+  // photos: array di {id, url, file?, storage_path?}
+  // Per articoli nuovi: file è il File object, url è URL.createObjectURL
+  // Per articoli esistenti: url è l'URL Supabase, storage_path è il path
   const [photos, setPhotos] = useState([])
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [analyzing, setAnalyzing] = useState(false)
-  const [tempId] = useState(() => {
-    if (articolo?.id) return articolo.id
-    // Genera UUID v4 per articoli nuovi (compatibile con colonna UUID Supabase)
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-      const r = Math.random() * 16 | 0
-      return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16)
-    })
-  })
-  const artId = articolo?.id || tempId
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
   const inp = (k, type='text') => ({ value: form[k]??'', type, onChange: e => set(k, e.target.value), className: 'form-input' })
   const sottocategorie = Object.keys(SIECIC_CODICI[form.tipologia_siecic] || {})
 
   useEffect(() => {
-    supabase.from('foto').select('*').eq('articolo_id', artId).order('sort_order')
-      .then(({ data }) => { if (data) setPhotos(data) })
-  }, [artId])
+    // Carica foto solo per articoli già salvati
+    if (articolo?.id) {
+      supabase.from('foto').select('*').eq('articolo_id', articolo.id).order('sort_order')
+        .then(({ data }) => { if (data) setPhotos(data) })
+    }
+  }, [articolo?.id])
 
   const handlePhotoUpload = async (e) => {
     const files = Array.from(e.target.files)
     if (!files.length) return
     setUploading(true)
     try {
-      for (const file of files) {
-        const ext = file.name.split('.').pop()
-        const path = `${procId}/${artId}/${Date.now()}.${ext}`
-        await supabase.storage.from('foto-inventario').upload(path, file)
-        const { data: { publicUrl } } = supabase.storage.from('foto-inventario').getPublicUrl(path)
-        await supabase.from('foto').insert({ articolo_id: artId, proc_id: procId, storage_path: path, url: publicUrl, sort_order: photos.length })
-      }
-      // Ricarica le foto dal DB usando artId
-      const { data: fotoData } = await supabase.from('foto').select('*').eq('articolo_id', artId).order('sort_order')
-      if (fotoData && fotoData.length > 0) {
-        setPhotos(fotoData)
-        notify(`${fotoData.length} foto caricate`, 'ok')
+      if (articolo?.id) {
+        // Articolo esistente: carica subito su Storage e salva in DB
+        for (const file of files) {
+          const ext = file.name.split('.').pop()
+          const path = `${procId}/${articolo.id}/${Date.now()}.${ext}`
+          const { error: upErr } = await supabase.storage.from('foto-inventario').upload(path, file)
+          if (upErr) throw upErr
+          const { data: { publicUrl } } = supabase.storage.from('foto-inventario').getPublicUrl(path)
+          await supabase.from('foto').insert({ articolo_id: articolo.id, proc_id: procId, storage_path: path, url: publicUrl, sort_order: photos.length })
+        }
+        const { data } = await supabase.from('foto').select('*').eq('articolo_id', articolo.id).order('sort_order')
+        setPhotos(data || [])
       } else {
-        // Fallback: ricostruisci le foto dall'URL pubblico senza passare per DB
-        notify('Foto caricate', 'ok')
+        // Nuovo articolo: tieni le foto solo in memoria come oggetti locali
+        const nuove = Array.from(files).map(file => ({
+          id: 'local-' + Date.now() + '-' + Math.random().toString(36).slice(2),
+          url: URL.createObjectURL(file),
+          file,
+          local: true
+        }))
+        setPhotos(prev => [...prev, ...nuove])
       }
-    } catch (err) { notify('Errore upload: ' + err.message, 'err') }
+      notify('Foto aggiunte', 'ok')
+    } catch (err) { notify('Errore: ' + err.message, 'err') }
     finally { setUploading(false) }
   }
 
   const deletePhoto = async (foto) => {
-    await supabase.storage.from('foto-inventario').remove([foto.storage_path])
-    await supabase.from('foto').delete().eq('id', foto.id)
-    setPhotos(p => p.filter(f => f.id !== foto.id))
+    if (foto.local) {
+      // Foto locale non ancora salvata — rimuovi solo dallo state
+      URL.revokeObjectURL(foto.url)
+      setPhotos(p => p.filter(f => f.id !== foto.id))
+    } else {
+      await supabase.storage.from('foto-inventario').remove([foto.storage_path])
+      await supabase.from('foto').delete().eq('id', foto.id)
+      setPhotos(p => p.filter(f => f.id !== foto.id))
+    }
   }
 
   const analizzaConAI = async () => {
@@ -261,7 +271,7 @@ Rispondi SOLO con JSON valido:
     if (!form.desc_breve) { notify('Inserisci la descrizione', 'warn'); return }
     setSaving(true)
     try {
-      const { id: _id, created_at, updated_at, prima_foto_path, prima_foto_url, n_foto, ...payload } = form
+      const { id: _id, created_at, updated_at, prima_foto_path, prima_foto_url, n_foto, local: _l, file: _f, ...payload } = form
       let saved
       if (articolo?.id) {
         const { data, error } = await supabase.from('articoli').update(payload).eq('id', articolo.id).select().single()
@@ -272,16 +282,17 @@ Rispondi SOLO con JSON valido:
         const { data, error } = await supabase.from('articoli').insert({ ...payload, proc_id: procId, owner_id: user.id }).select().single()
         if (error) throw error
         saved = data
-        // Aggiorna foto temporanee con ID reale
-        if (photos.length > 0) {
-          await supabase.from('foto').update({ articolo_id: saved.id }).eq('articolo_id', artId)
-          for (const foto of photos) {
-            const newPath = foto.storage_path.replace(artId, saved.id)
-            try {
-              await supabase.storage.from('foto-inventario').move(foto.storage_path, newPath)
-              await supabase.from('foto').update({ storage_path: newPath }).eq('id', foto.id)
-            } catch (_) {}
-          }
+        // Carica le foto locali su Storage ora che l'articolo esiste
+        const fotoLocali = photos.filter(f => f.local)
+        for (const foto of fotoLocali) {
+          try {
+            const ext = foto.file.name.split('.').pop()
+            const path = `${procId}/${saved.id}/${Date.now()}.${ext}`
+            await supabase.storage.from('foto-inventario').upload(path, foto.file)
+            const { data: { publicUrl } } = supabase.storage.from('foto-inventario').getPublicUrl(path)
+            await supabase.from('foto').insert({ articolo_id: saved.id, proc_id: procId, storage_path: path, url: publicUrl, sort_order: photos.indexOf(foto) })
+            URL.revokeObjectURL(foto.url)
+          } catch (fErr) { console.error('Errore upload foto:', fErr) }
         }
       }
       notify('Articolo salvato', 'ok')
