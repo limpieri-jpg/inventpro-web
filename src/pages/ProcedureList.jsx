@@ -5,7 +5,7 @@ import { Topbar, Spinner, Empty, Modal } from '../components/layout'
 import { Plus, Search, Filter } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
-const TIPI = ['Liquidazione Giudiziale', 'Fallimento', 'Concordato Preventivo', 'Liquidazione Coatta', 'Altro']
+const TIPI = ['Liquidazione Giudiziale', 'Liquidazione Controllata', 'Fallimento', 'Concordato Preventivo', 'Concordato in Continuità', 'Liquidazione Coatta', 'Amministrazione Straordinaria', 'Altro']
 const STATUS_BADGE = {
   attiva:  { cls: 'badge-green',  label: 'Attiva' },
   chiusa:  { cls: 'badge-gray',   label: 'Chiusa' },
@@ -15,6 +15,137 @@ const STATUS_BADGE = {
 function fmtDate(d) {
   if (!d) return '—'
   return new Date(d).toLocaleDateString('it-IT')
+}
+
+
+// ── Componente selettore professionista ─────────────────────────────
+function ProfessionistaSelect({ value, onChange }) {
+  const { notify } = useStore()
+  const [query, setQuery] = useState(value || '')
+  const [utenti, setUtenti] = useState([])
+  const [showDrop, setShowDrop] = useState(false)
+  const [showCrea, setShowCrea] = useState(false)
+  const [formNuovo, setFormNuovo] = useState({ titolo: 'Dott.', nome: '', cognome: '', email: '', cf: '', tel: '', pec: '', ruolo: 'Curatore fallimentare' })
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    supabase.from('profiles').select('id,nome,cognome,titolo,ruolo,email,cf')
+      .order('cognome').then(({ data }) => setUtenti(data || []))
+  }, [])
+
+  useEffect(() => { setQuery(value || '') }, [value])
+
+  const filtered = utenti.filter(u => {
+    const full = `${u.titolo||''} ${u.nome} ${u.cognome}`.toLowerCase()
+    return full.includes(query.toLowerCase())
+  })
+
+  const selectUser = (u) => {
+    const nome = [u.titolo, u.nome, u.cognome].filter(Boolean).join(' ')
+    setQuery(nome)
+    onChange(nome)
+    setShowDrop(false)
+  }
+
+  const creaProfessionista = async () => {
+    if (!formNuovo.nome || !formNuovo.cognome || !formNuovo.email) {
+      notify('Inserisci nome, cognome e email', 'warn'); return
+    }
+    setSaving(true)
+    try {
+      // Crea utente in Auth
+      const { data: authData, error: authErr } = await supabase.auth.admin.createUser({
+        email: formNuovo.email,
+        password: Math.random().toString(36).slice(-10) + 'Aa1!',
+        email_confirm: true,
+        user_metadata: { nome: formNuovo.nome, cognome: formNuovo.cognome }
+      })
+      if (authErr) throw authErr
+      // Aggiorna profilo
+      await supabase.from('profiles').upsert({
+        id: authData.user.id,
+        nome: formNuovo.nome, cognome: formNuovo.cognome,
+        email: formNuovo.email, titolo: formNuovo.titolo,
+        ruolo: formNuovo.ruolo, cf: formNuovo.cf,
+        tel: formNuovo.tel, pec: formNuovo.pec,
+        is_admin: false, is_active: true
+      })
+      const nome = [formNuovo.titolo, formNuovo.nome, formNuovo.cognome].filter(Boolean).join(' ')
+      setQuery(nome); onChange(nome)
+      setShowCrea(false)
+      notify('Professionista creato e selezionato', 'ok')
+      // Aggiorna lista
+      const { data } = await supabase.from('profiles').select('id,nome,cognome,titolo,ruolo,email,cf').order('cognome')
+      setUtenti(data || [])
+    } catch (e) { notify('Errore: ' + e.message, 'err') }
+    finally { setSaving(false) }
+  }
+
+  const sInp = (k) => ({ value: formNuovo[k]||'', onChange: e => setFormNuovo(f=>({...f,[k]:e.target.value})), className: 'form-input' })
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ flex: 1, position: 'relative' }}>
+          <input
+            className="form-input"
+            value={query}
+            onChange={e => { setQuery(e.target.value); onChange(e.target.value); setShowDrop(true) }}
+            onFocus={() => setShowDrop(true)}
+            onBlur={() => setTimeout(() => setShowDrop(false), 200)}
+            placeholder="Cerca o digita il nome del professionista…"
+          />
+          {showDrop && (
+            <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50, background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 8, maxHeight: 200, overflowY: 'auto', marginTop: 4, boxShadow: 'var(--shadow)' }}>
+              {filtered.length === 0 ? (
+                <div style={{ padding: '10px 14px', fontSize: 13, color: 'var(--text3)' }}>Nessun utente trovato</div>
+              ) : filtered.map(u => (
+                <div key={u.id} onMouseDown={() => selectUser(u)} style={{ padding: '10px 14px', cursor: 'pointer', fontSize: 13, borderBottom: '1px solid var(--border)' }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--bg3)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                  <div style={{ fontWeight: 500 }}>{[u.titolo, u.nome, u.cognome].filter(Boolean).join(' ')}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text3)' }}>{u.ruolo} · {u.email}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <button type="button" className="btn btn-ghost btn-sm" style={{ flexShrink: 0, whiteSpace: 'nowrap' }} onClick={() => setShowCrea(true)}>
+          + Nuovo
+        </button>
+      </div>
+
+      {/* Modal crea nuovo professionista */}
+      <Modal open={showCrea} onClose={() => setShowCrea(false)} title="Nuovo professionista">
+        <div className="form-grid">
+          <div className="form-group">
+            <label className="form-label">Titolo</label>
+            <select className="form-input" value={formNuovo.titolo} onChange={e => setFormNuovo(f=>({...f,titolo:e.target.value}))}>
+              {['Dott.','Dott.ssa','Avv.','Rag.','Prof.',''].map(t => <option key={t} value={t}>{t||'(nessuno)'}</option>)}
+            </select>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Ruolo</label>
+            <select className="form-input" value={formNuovo.ruolo} onChange={e => setFormNuovo(f=>({...f,ruolo:e.target.value}))}>
+              {['Curatore fallimentare','Commissario giudiziale','Liquidatore giudiziale','Commissario straordinario','Altro'].map(r => <option key={r}>{r}</option>)}
+            </select>
+          </div>
+          <div className="form-group"><label className="form-label">Nome *</label><input {...sInp('nome')} /></div>
+          <div className="form-group"><label className="form-label">Cognome *</label><input {...sInp('cognome')} /></div>
+          <div className="form-col-full form-group"><label className="form-label">Email * (credenziali accesso)</label><input type="email" {...sInp('email')} /></div>
+          <div className="form-group"><label className="form-label">Codice Fiscale</label><input {...sInp('cf')} /></div>
+          <div className="form-group"><label className="form-label">Telefono</label><input type="tel" {...sInp('tel')} /></div>
+          <div className="form-col-full form-group"><label className="form-label">PEC</label><input type="email" {...sInp('pec')} /></div>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
+          <button className="btn btn-ghost" onClick={() => setShowCrea(false)}>Annulla</button>
+          <button className="btn btn-primary" onClick={creaProfessionista} disabled={saving}>
+            {saving ? 'Creazione…' : 'Crea e seleziona'}
+          </button>
+        </div>
+      </Modal>
+    </div>
+  )
 }
 
 function ProcForm({ proc, onSave, onClose }) {
@@ -85,8 +216,8 @@ function ProcForm({ proc, onSave, onClose }) {
           <input {...inp('giudice')} placeholder="Dott. / Dott.ssa..." />
         </div>
         <div className="form-group">
-          <label className="form-label">Curatore</label>
-          <input {...inp('curatore')} placeholder="Dott. / Dott.ssa..." />
+          <label className="form-label">Professionista (Curatore / Commissario / Liquidatore)</label>
+          <ProfessionistaSelect value={form.curatore} onChange={v => setForm(f => ({...f, curatore: v}))} />
         </div>
         <div className="form-group">
           <label className="form-label">Data apertura</label>
