@@ -35,6 +35,7 @@ const CAMPI_IDENTIFICAZIONE = {
     { k: 'anno_prod', label: 'Anno di immatricolazione' },
     { k: 'targa',     label: 'Targa' },
     { k: 'matricola', label: 'N. Telaio / VIN' },
+    { k: 'km',        label: 'Chilometraggio (km)' },
   ],
   'BENE IMMOBILE': [
     { k: 'foglio',    label: 'Foglio catastale' },
@@ -207,6 +208,7 @@ Rispondi SOLO con JSON valido:
   "anno_prod": "anno stimato altrimenti stringa vuota",
   "matricola": "matricola numero seriale telaio VIN o codice identificativo se visibile",
   "targa": "targa del veicolo se visibile altrimenti stringa vuota",
+  "km": numero intero chilometraggio se visibile dal cruscotto o documenti altrimenti null,
   "foglio": "foglio catastale se bene immobile altrimenti stringa vuota",
   "mappale": "mappale o particella se bene immobile altrimenti stringa vuota",
   "comune_cat": "comune catastale se bene immobile altrimenti stringa vuota",
@@ -267,6 +269,7 @@ Rispondi SOLO con JSON valido:
         note: f.note || json.note || '',
         // Campi specifici per tipologia
         targa: f.targa || json.targa || '',
+        km: f.km || json.km || '',
         foglio: f.foglio || json.foglio || '',
         mappale: f.mappale || json.mappale || '',
         comune_cat: f.comune_cat || json.comune_cat || '',
