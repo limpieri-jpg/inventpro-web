@@ -43,12 +43,31 @@ export const useStore = create((set, get) => ({
 
   // ── Profilo ──────────────────────────────────
   fetchProfile: async (userId) => {
-    const { data } = await supabase
+    if (!userId) return null
+    const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
-      .single()
-    if (data) set({ profile: data })
+      .maybeSingle()
+    if (data) {
+      set({ profile: data })
+    } else {
+      // Profilo non esiste — lo crea automaticamente
+      const { data: userData } = await supabase.auth.getUser()
+      if (userData?.user) {
+        const newProfile = {
+          id: userId,
+          nome: userData.user.user_metadata?.nome || '',
+          cognome: userData.user.user_metadata?.cognome || '',
+          email: userData.user.email || '',
+          is_admin: false,
+          is_active: true
+        }
+        await supabase.from('profiles').upsert(newProfile)
+        set({ profile: newProfile })
+        return newProfile
+      }
+    }
     return data
   },
 

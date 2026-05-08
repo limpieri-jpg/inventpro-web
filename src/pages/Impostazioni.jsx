@@ -24,9 +24,10 @@ export default function Impostazioni() {
   const inp = (k, type = 'text') => ({ value: profilo[k] || '', type, onChange: e => set(k, e.target.value), className: 'form-input' })
 
   const saveProfilo = async () => {
+    if (!profile?.id) { notify('Profilo non trovato — ricarica la pagina', 'err'); return }
     setSaving(true)
     try {
-      const { error } = await supabase.from('profiles').update(profilo).eq('id', profile.id)
+      const { error } = await supabase.from('profiles').upsert({ ...profilo, id: profile.id }).eq('id', profile.id)
       if (error) throw error
       await fetchProfile(profile.id)
       notify('Profilo aggiornato', 'ok')
@@ -92,7 +93,8 @@ export default function Impostazioni() {
                 <div className="form-group"><label className="form-label">Cognome *</label><input {...inp('cognome')} /></div>
                 <div className="form-group"><label className="form-label">Codice Fiscale</label><input {...inp('cf')} placeholder="LLLNNN00A00A000A" style={{ textTransform: 'uppercase' }} /></div>
                 <div className="form-group"><label className="form-label">Telefono</label><input {...inp('tel', 'tel')} /></div>
-                <div className="form-col-full form-group"><label className="form-label">PEC</label><input {...inp('pec', 'email')} /></div>
+                <div className="form-group"><label className="form-label">Email di studio</label><input type="email" className="form-input" value={profilo.email||''} disabled style={{opacity:0.5}} /></div>
+                <div className="form-group"><label className="form-label">PEC</label><input {...inp('pec', 'email')} placeholder="nome@pec.it" /></div>
 
                 <div className="form-section">Studio professionale</div>
                 <div className="form-group"><label className="form-label">Indirizzo studio</label><input {...inp('stu_indirizzo')} /></div>
