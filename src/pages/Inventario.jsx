@@ -236,7 +236,20 @@ Rispondi SOLO con JSON valido:
       })
       const data = await res.json()
       const text = data.content?.[0]?.text || ''
-      const json = JSON.parse(text.replace(/```json|```/g, '').trim())
+      if (!text) throw new Error('Risposta AI vuota')
+      if (data.error) throw new Error(data.error.message || 'Errore API')
+      // Estrai il JSON in modo robusto
+      let json
+      try {
+        // Prova prima a trovare il blocco JSON tra { e }
+        const match = text.match(/\{[\s\S]*\}/)
+        if (!match) throw new Error('Nessun JSON trovato nella risposta')
+        json = JSON.parse(match[0])
+      } catch (_) {
+        // Fallback: pulisci e riprova
+        const clean = text.replace(/```json|```/g, '').trim()
+        json = JSON.parse(clean)
+      }
       setForm(f => ({
         ...f,
         tipologia_siecic: json.tipologia_siecic || f.tipologia_siecic,
