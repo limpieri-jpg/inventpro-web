@@ -20,6 +20,66 @@ const SIECIC_CODICI = {
   'ALTRO': {'Altro':'709.999'}
 }
 const UM_LIST = ['UN','KG','Q','T','MT','MQ','MC','L','SET','LOTTO']
+
+// Campi di identificazione per tipologia SIECIC
+const CAMPI_IDENTIFICAZIONE = {
+  'BENE MOBILE': [
+    { k: 'marca',     label: 'Marca / Produttore' },
+    { k: 'modello',   label: 'Modello' },
+    { k: 'anno_prod', label: 'Anno di produzione' },
+    { k: 'matricola', label: 'Matricola / N. Seriale' },
+  ],
+  'BENE MOBILE REGISTRATO': [
+    { k: 'marca',     label: 'Marca' },
+    { k: 'modello',   label: 'Modello / Tipo' },
+    { k: 'anno_prod', label: 'Anno di immatricolazione' },
+    { k: 'targa',     label: 'Targa' },
+    { k: 'matricola', label: 'N. Telaio / VIN' },
+  ],
+  'BENE IMMOBILE': [
+    { k: 'foglio',    label: 'Foglio catastale' },
+    { k: 'mappale',   label: 'Mappale / Particella' },
+    { k: 'subalterno',label: 'Subalterno' },
+    { k: 'comune_cat',label: 'Comune catastale' },
+    { k: 'sezione',   label: 'Sezione / Zona' },
+    { k: 'classe',    label: 'Categoria catastale' },
+    { k: 'vani',      label: 'Vani / Superficie (mq)' },
+  ],
+  'CREDITO': [
+    { k: 'debitore',  label: 'Debitore' },
+    { k: 'cf_debitore',label: 'CF / P.IVA debitore' },
+    { k: 'titolo',    label: 'Titolo del credito' },
+    { k: 'scadenza',  label: 'Data scadenza' },
+    { k: 'rif_contratto', label: 'Riferimento contratto / sentenza' },
+  ],
+  'PARTECIPAZIONE': [
+    { k: 'societa',   label: 'Denominazione società' },
+    { k: 'cf_societa',label: 'CF / P.IVA società' },
+    { k: 'quota_pct', label: 'Quota (%)' },
+    { k: 'quota_val', label: 'Valore nominale quota (€)' },
+    { k: 'registro',  label: 'N. REA / Registro imprese' },
+  ],
+  'BENE IMMATERIALE': [
+    { k: 'titolare',  label: 'Titolare' },
+    { k: 'n_registrazione', label: 'N. registrazione / brevetto' },
+    { k: 'data_deposito',   label: 'Data deposito' },
+    { k: 'scadenza',        label: 'Data scadenza' },
+    { k: 'territorio',      label: 'Territorio di protezione' },
+  ],
+  "AZIENDA/RAMO D'AZIENDA": [
+    { k: 'societa',   label: 'Denominazione azienda' },
+    { k: 'cf_societa',label: 'CF / P.IVA' },
+    { k: 'sede',      label: 'Sede operativa' },
+    { k: 'attivita',  label: 'Attività / Codice ATECO' },
+    { k: 'dipendenti',label: 'N. dipendenti' },
+    { k: 'registro',  label: 'N. REA' },
+  ],
+  'ALTRO': [
+    { k: 'marca',     label: 'Riferimento / Identificativo' },
+    { k: 'matricola', label: 'N. Seriale / Codice' },
+    { k: 'anno_prod', label: 'Anno / Data' },
+  ],
+}
 const STATI = ['ottimo','buono','discreto','da revisionare','non funzionante']
 
 function exportCSV(articoli, procNome) {
@@ -135,7 +195,14 @@ Rispondi SOLO con JSON valido:
   "marca": "marca se identificabile altrimenti stringa vuota",
   "modello": "modello se identificabile altrimenti stringa vuota",
   "anno_prod": "anno stimato altrimenti stringa vuota",
-  "matricola": "matricola o seriale se visibile altrimenti stringa vuota",
+  "matricola": "matricola numero seriale telaio VIN o codice identificativo se visibile",
+  "targa": "targa del veicolo se visibile altrimenti stringa vuota",
+  "foglio": "foglio catastale se bene immobile altrimenti stringa vuota",
+  "mappale": "mappale o particella se bene immobile altrimenti stringa vuota",
+  "comune_cat": "comune catastale se bene immobile altrimenti stringa vuota",
+  "classe": "categoria catastale es A2 C1 se bene immobile altrimenti stringa vuota",
+  "debitore": "nome debitore se credito altrimenti stringa vuota",
+  "societa": "denominazione societa se partecipazione o azienda altrimenti stringa vuota",
   "stato": "uno tra: ottimo, buono, discreto, da revisionare, non funzionante",
   "danni": "descrizione danni usura anomalie visibili - vuoto se assenti",
   "val_mercato": valore mercato intero in euro,
@@ -175,6 +242,14 @@ Rispondi SOLO con JSON valido:
         val_mercato: json.val_mercato || f.val_mercato,
         val_giud: json.val_giud || f.val_giud,
         note: f.note || json.note || '',
+        // Campi specifici per tipologia
+        targa: f.targa || json.targa || '',
+        foglio: f.foglio || json.foglio || '',
+        mappale: f.mappale || json.mappale || '',
+        comune_cat: f.comune_cat || json.comune_cat || '',
+        classe: f.classe || json.classe || '',
+        debitore: f.debitore || json.debitore || '',
+        societa: f.societa || json.societa || '',
       }))
       if (json.danni) setTab('danni')
       notify('Analisi AI completata — verifica i valori generati', 'ok', 5000)
@@ -289,13 +364,14 @@ Rispondi SOLO con JSON valido:
               <textarea className="form-input" value={form.desc_estesa||''} onChange={e => set('desc_estesa', e.target.value)} rows={4} placeholder="Descrizione tecnica dettagliata per la perizia…" />
             </div>
             <div className="form-section">Identificazione</div>
-            <div className="form-group"><label className="form-label">Marca</label><input {...inp('marca')} /></div>
-            <div className="form-group"><label className="form-label">Modello</label><input {...inp('modello')} /></div>
-            <div className="form-group"><label className="form-label">Anno produzione</label><input {...inp('anno_prod')} /></div>
-            <div className="form-group"><label className="form-label">Matricola / N. Seriale</label><input {...inp('matricola')} /></div>
-            <div className="form-group"><label className="form-label">Targa</label><input {...inp('targa')} /></div>
+            {(CAMPI_IDENTIFICAZIONE[form.tipologia_siecic] || CAMPI_IDENTIFICAZIONE['BENE MOBILE']).map(campo => (
+              <div key={campo.k} className="form-group">
+                <label className="form-label">{campo.label}</label>
+                <input className="form-input" value={form[campo.k]||''} onChange={e => set(campo.k, e.target.value)} />
+              </div>
+            ))}
             <div className="form-group">
-              <label className="form-label">Stato</label>
+              <label className="form-label">Stato / Condizione</label>
               <select className="form-input" value={form.stato||'buono'} onChange={e => set('stato', e.target.value)}>
                 {STATI.map(s => <option key={s}>{s}</option>)}
               </select>
