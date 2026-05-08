@@ -180,7 +180,24 @@ function ArticoloForm({ articolo, procId, onSave, onClose }) {
     if (photos.length === 0 && !form.desc_breve) { notify('Carica almeno una foto o inserisci una descrizione', 'warn'); return }
     setAnalyzing(true)
     try {
-      const imgs = photos.slice(0, 5).map(f => ({ type: 'image', source: { type: 'url', url: f.url } }))
+      // Converte le foto in base64 (per foto locali blob://) o usa URL pubblici
+      const toBase64 = (foto) => new Promise((resolve, reject) => {
+        if (!foto.local) {
+          // Foto già su Supabase Storage — usa URL diretto
+          resolve({ type: 'image', source: { type: 'url', url: foto.url } })
+          return
+        }
+        // Foto locale — converti in base64
+        const reader = new FileReader()
+        reader.onload = () => {
+          const base64 = reader.result.split(',')[1]
+          const mediaType = foto.file.type || 'image/jpeg'
+          resolve({ type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } })
+        }
+        reader.onerror = reject
+        reader.readAsDataURL(foto.file)
+      })
+      const imgs = await Promise.all(photos.slice(0, 5).map(toBase64))
       const dati = [
         form.desc_breve && `Descrizione: ${form.desc_breve}`,
         form.marca && `Marca: ${form.marca}`,
