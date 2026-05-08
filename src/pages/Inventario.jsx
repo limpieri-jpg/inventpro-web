@@ -44,6 +44,7 @@ function ArticoloForm({ articolo, procId, onSave, onClose }) {
   const [photos, setPhotos] = useState([])
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [generatingAI, setGeneratingAI] = useState(false)
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
   const inp = (k, type = 'text') => ({ value: form[k] ?? '', type, onChange: e => set(k, e.target.value), className: 'form-input' })
@@ -55,6 +56,63 @@ function ArticoloForm({ articolo, procId, onSave, onClose }) {
         .then(({ data }) => { if (data) setPhotos(data) })
     }
   }, [articolo?.id])
+
+  const generaDescrizioneAI = async () => {
+    const apiKey = localStorage.getItem('ip_apikey') || ''
+    if (!apiKey) { notify('Configura la chiave API in Impostazioni', 'warn'); return }
+    if (photos.length === 0) { notify('Carica almeno una foto prima di generare la descrizione', 'warn'); return }
+    setGeneratingAI(true)
+    try {
+      // Prepara le immagini per l'API
+      const imageContents = photos.slice(0, 4).map(foto => ({
+        type: 'image',
+        source: { type: 'url', url: foto.url }
+      }))
+      const prompt = `Analizza queste foto di un bene da inventariare in una procedura concorsuale italiana.
+Rispondi SOLO con un JSON valido (nessun testo prima o dopo) con questi campi:
+{
+  "desc_breve": "descrizione sintetica del bene (max 60 caratteri)",
+  "desc_estesa": "descrizione tecnica dettagliata del bene, caratteristiche, condizioni visibili (150-300 caratteri)",
+  "marca": "marca/produttore se visibile, altrimenti stringa vuota",
+  "modello": "modello se visibile, altrimenti stringa vuota",
+  "categoria": "una di: Macchinari e impianti, Attrezzature, Arredi e ufficio, Veicoli e mezzi, Informatica ed elettronica, Materie prime e scorte, Altro",
+  "stato": "una di: ottimo, buono, discreto, da revisionare, non funzionante",
+  "note": "eventuali note su danni visibili, certificazioni CE visibili, targhe, numeri di serie visibili"
+}`
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+          model: 'claude-opus-4-5',
+          max_tokens: 800,
+          messages: [{ role: 'user', content: [...imageContents, { type: 'text', text: prompt }] }]
+        })
+      })
+      const data = await res.json()
+      const text = data.content?.[0]?.text || ''
+      const json = JSON.parse(text.replace(/```json|```/g, '').trim())
+      setForm(f => ({
+        ...f,
+        desc_breve: json.desc_breve || f.desc_breve,
+        desc_estesa: json.desc_estesa || f.desc_estesa,
+        marca: json.marca || f.marca,
+        modello: json.modello || f.modello,
+        categoria: json.categoria || f.categoria,
+        stato: json.stato || f.stato,
+        note: json.note || f.note,
+      }))
+      notify('Descrizione generata dall\'AI — verifica e correggi i campi', 'ok', 4000)
+    } catch (e) {
+      notify('Errore AI: ' + e.message, 'err')
+    } finally {
+      setGeneratingAI(false)
+    }
+  }
 
   const handlePhotoUpload = async (e) => {
     const files = Array.from(e.target.files)
@@ -114,7 +172,39 @@ function ArticoloForm({ articolo, procId, onSave, onClose }) {
   return (
     <>
       <div className="form-grid">
-        <div className="form-section">Descrizione</div>
+        <div className="form-section">Foto articolo</div>
+        <div className="form-col-full">
+          {articolo?.id ? (
+            <div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
+                {photos.map(f => (
+                  <div key={f.id} style={{ position: 'relative', width: 90, height: 75 }}>
+                    <img src={f.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 6, border: '1px solid var(--border)' }} />
+                    <button onClick={() => deletePhoto(f)} style={{ position: 'absolute', top: 2, right: 2, background: 'rgba(255,77,106,0.9)', border: 'none', borderRadius: '50%', width: 18, height: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <X size={10} color="#fff" />
+                    </button>
+                  </div>
+                ))}
+                <label style={{ width: 90, height: 75, border: '2px dashed var(--border)', borderRadius: 6, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text3)', gap: 3 }}>
+                  <Camera size={18} />
+                  <span style={{ fontSize: 10 }}>{uploading ? 'Carico…' : '+ Foto'}</span>
+                  <input type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={handlePhotoUpload} disabled={uploading} />
+                </label>
+              </div>
+              {photos.length > 0 && (
+                <button type="button" className="btn btn-primary btn-sm" onClick={generaDescrizioneAI} disabled={generatingAI}
+                  style={{ marginBottom: 8 }}>
+                  ✨ {generatingAI ? 'Analisi AI in corso…' : 'Genera descrizione con AI dalle foto'}
+                </button>
+              )}
+            </div>
+          ) : (
+            <div style={{ fontSize: 12, color: 'var(--text3)', fontStyle: 'italic', padding: '8px 0' }}>
+              Salva prima l'articolo per poter caricare le foto e usare l'AI
+            </div>
+          )}
+        </div>
+      <div className="form-section">Descrizione</div>
         <div className="form-col-full form-group">
           <label className="form-label">Descrizione breve *</label>
           <input {...inp('desc_breve')} placeholder="Es. Tornio parallelo CNC" />
@@ -165,29 +255,7 @@ function ArticoloForm({ articolo, procId, onSave, onClose }) {
           <textarea className="form-input" value={form.note || ''} onChange={e => set('note', e.target.value)} rows={2} />
         </div>
 
-        {/* Foto — solo per articoli esistenti */}
-        {articolo?.id && (
-          <>
-            <div className="form-section">Fotografie</div>
-            <div className="form-col-full">
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
-                {photos.map(f => (
-                  <div key={f.id} style={{ position: 'relative', width: 100, height: 80 }}>
-                    <img src={f.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 6, border: '1px solid var(--border)' }} />
-                    <button onClick={() => deletePhoto(f)} style={{ position: 'absolute', top: 2, right: 2, background: 'rgba(255,77,106,0.9)', border: 'none', borderRadius: '50%', width: 20, height: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <X size={11} color="#fff" />
-                    </button>
-                  </div>
-                ))}
-                <label style={{ width: 100, height: 80, border: '2px dashed var(--border)', borderRadius: 6, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text3)', gap: 4 }}>
-                  <Camera size={20} />
-                  <span style={{ fontSize: 11 }}>{uploading ? 'Carico…' : 'Aggiungi'}</span>
-                  <input type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={handlePhotoUpload} disabled={uploading} />
-                </label>
-              </div>
-            </div>
-          </>
-        )}
+
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
