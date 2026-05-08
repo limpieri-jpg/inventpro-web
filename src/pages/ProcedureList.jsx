@@ -47,49 +47,15 @@ function ProfessionistaSelect({ value, onChange }) {
     setShowDrop(false)
   }
 
-  const creaProfessionista = async () => {
+  const creaProfessionista = () => {
     if (!formNuovo.nome || !formNuovo.cognome) {
       notify('Inserisci almeno nome e cognome', 'warn'); return
     }
-    setSaving(true)
-    try {
-      // Salva nella tabella profiles usando signup (crea account con email)
-      // oppure, se email non fornita, salva solo il nome nel campo
-      if (formNuovo.email) {
-        // Crea account via signup normale — l'utente riceverà email di conferma
-        const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
-          email: formNuovo.email,
-          password: 'Inventpro2025!',  // password temporanea
-          options: {
-            data: { nome: formNuovo.nome, cognome: formNuovo.cognome }
-          }
-        })
-        if (!signUpErr && signUpData?.user) {
-          await supabase.from('profiles').upsert({
-            id: signUpData.user.id,
-            nome: formNuovo.nome, cognome: formNuovo.cognome,
-            email: formNuovo.email, titolo: formNuovo.titolo,
-            ruolo: formNuovo.ruolo, cf: formNuovo.cf,
-            tel: formNuovo.tel, pec: formNuovo.pec,
-            is_admin: false, is_active: true
-          })
-          notify('Account creato — l'utente riceverà email di conferma con password temporanea: Inventpro2025!', 'ok', 6000)
-        }
-      }
-      const nome = [formNuovo.titolo, formNuovo.nome, formNuovo.cognome].filter(Boolean).join(' ')
-      setQuery(nome)
-      onChange(nome)
-      setShowCrea(false)
-      // Ricarica lista
-      const { data } = await supabase.from('profiles').select('id,nome,cognome,titolo,ruolo,email,cf').order('cognome')
-      setUtenti(data || [])
-    } catch (e) {
-      // Fallback: usa solo il nome come testo libero
-      const nome = [formNuovo.titolo, formNuovo.nome, formNuovo.cognome].filter(Boolean).join(' ')
-      setQuery(nome); onChange(nome); setShowCrea(false)
-      notify('Professionista selezionato', 'ok')
-    }
-    setSaving(false)
+    const nome = [formNuovo.titolo, formNuovo.nome, formNuovo.cognome].filter(Boolean).join(' ')
+    setQuery(nome)
+    onChange(nome)
+    setShowCrea(false)
+    notify('Professionista selezionato', 'ok')
   }
 
   const sInp = (k) => ({ value: formNuovo[k]||'', onChange: e => setFormNuovo(f=>({...f,[k]:e.target.value})), className: 'form-input' })
@@ -127,7 +93,10 @@ function ProfessionistaSelect({ value, onChange }) {
       </div>
 
       {/* Modal crea nuovo professionista */}
-      <Modal open={showCrea} onClose={() => setShowCrea(false)} title="Nuovo professionista">
+      <Modal open={showCrea} onClose={() => setShowCrea(false)} title="Aggiungi professionista">
+        <div style={{ fontSize: 12, color: 'var(--text2)', padding: '8px 12px', background: 'var(--bg3)', borderRadius: 8, marginBottom: 14 }}>
+          ℹ️ Il professionista verrà aggiunto al campo della procedura. Per creare un account di accesso vai nel pannello <strong>Utenti</strong>.
+        </div>
         <div className="form-grid">
           <div className="form-group">
             <label className="form-label">Titolo</label>
@@ -143,7 +112,7 @@ function ProfessionistaSelect({ value, onChange }) {
           </div>
           <div className="form-group"><label className="form-label">Nome *</label><input {...sInp('nome')} /></div>
           <div className="form-group"><label className="form-label">Cognome *</label><input {...sInp('cognome')} /></div>
-          <div className="form-col-full form-group"><label className="form-label">Email * (credenziali accesso)</label><input type="email" {...sInp('email')} /></div>
+          <div className="form-col-full form-group"><label className="form-label">Email</label><input type="email" {...sInp('email')} placeholder="Facoltativa" /></div>
           <div className="form-group"><label className="form-label">Codice Fiscale</label><input {...sInp('cf')} /></div>
           <div className="form-group"><label className="form-label">Telefono</label><input type="tel" {...sInp('tel')} /></div>
           <div className="form-col-full form-group"><label className="form-label">PEC</label><input type="email" {...sInp('pec')} /></div>
@@ -151,7 +120,7 @@ function ProfessionistaSelect({ value, onChange }) {
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
           <button className="btn btn-ghost" onClick={() => setShowCrea(false)}>Annulla</button>
           <button className="btn btn-primary" onClick={creaProfessionista} disabled={saving}>
-            {saving ? 'Creazione…' : 'Crea e seleziona'}
+            {'Seleziona'}
           </button>
         </div>
       </Modal>
