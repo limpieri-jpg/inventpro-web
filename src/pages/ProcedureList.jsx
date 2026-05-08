@@ -146,7 +146,8 @@ function ProcForm({ proc, onSave, onClose }) {
     setLoading(true)
     try {
       const { data: { user } } = await supabase.auth.getUser()
-      const payload = { ...form, owner_id: user.id }
+      const { sedi: _, assigned_to: __, ...formClean } = form
+      const payload = { ...formClean, owner_id: user.id }
       let res
       if (proc?.id) {
         res = await supabase.from('procedure').update(payload).eq('id', proc.id).select().single()

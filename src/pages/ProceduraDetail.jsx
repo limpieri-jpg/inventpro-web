@@ -8,7 +8,7 @@ import { ArrowLeft, Edit, MapPin, Package, Layers, FileText, Plus, Trash2 } from
 function fmtDate(d) { if (!d) return '—'; return new Date(d).toLocaleDateString('it-IT') }
 function fmtEur(n) { if (!n) return '—'; return '€ ' + Number(n).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }
 
-const TIPI = ['Liquidazione Giudiziale', 'Fallimento', 'Concordato Preventivo', 'Liquidazione Coatta', 'Altro']
+const TIPI = ['Liquidazione Giudiziale', 'Liquidazione Controllata', 'Fallimento', 'Concordato Preventivo', 'Concordato in Continuità', 'Liquidazione Coatta', 'Amministrazione Straordinaria', 'Altro']
 const STATUS_OPTIONS = ['attiva', 'chiusa', 'sospesa']
 const TIPI_SEDE = ['legale', 'operativa', 'magazzino', 'altra']
 const STATUS_BADGE = { attiva: { cls: 'badge-green', label: 'Attiva' }, chiusa: { cls: 'badge-gray', label: 'Chiusa' }, sospesa: { cls: 'badge-yellow', label: 'Sospesa' } }
@@ -23,7 +23,9 @@ function ProcForm({ proc, onSave, onClose }) {
     if (!form.nome) { notify('Inserisci il nome', 'warn'); return }
     setLoading(true)
     try {
-      const { data, error } = await supabase.from('procedure').update(form).eq('id', proc.id).select().single()
+      // Rimuove campi relazionali non colonne della tabella
+      const { sedi: _, lotti_articoli: __, ...formClean } = form
+      const { data, error } = await supabase.from('procedure').update(formClean).eq('id', proc.id).select().single()
       if (error) throw error
       notify('Procedura aggiornata', 'ok')
       onSave(data)
@@ -41,7 +43,7 @@ function ProcForm({ proc, onSave, onClose }) {
         <div className="form-group"><label className="form-label">Anno</label><input {...inp('anno')} /></div>
         <div className="form-group"><label className="form-label">Tribunale</label><input {...inp('tribunale')} /></div>
         <div className="form-group"><label className="form-label">Giudice Delegato</label><input {...inp('giudice')} /></div>
-        <div className="form-group"><label className="form-label">Curatore</label><input {...inp('curatore')} /></div>
+        <div className="form-group"><label className="form-label">Professionista</label><input {...inp('curatore')} placeholder="Es. Dott. Mario Rossi" /></div>
         <div className="form-group"><label className="form-label">Commissionario</label><input {...inp('commissionario')} /></div>
         <div className="form-section">Date e sentenza</div>
         <div className="form-group"><label className="form-label">Data apertura</label><input {...inp('data_apertura', 'date')} /></div>
