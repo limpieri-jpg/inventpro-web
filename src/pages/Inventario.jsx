@@ -38,6 +38,7 @@ function exportCSV(articoli, procNome) {
 }
 
 // ── Form articolo ─────────────────────────────────────────────────────────
+// ── Form articolo ─────────────────────────────────────────────────────────
 function ArticoloForm({ articolo, procId, onSave, onClose }) {
   const { notify } = useStore()
   const [tab, setTab] = useState('dati')
@@ -52,32 +53,31 @@ function ArticoloForm({ articolo, procId, onSave, onClose }) {
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [analyzing, setAnalyzing] = useState(false)
+  const [tempId] = useState(() => articolo?.id || ('tmp-' + Date.now()))
+  const artId = articolo?.id || tempId
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
   const inp = (k, type='text') => ({ value: form[k]??'', type, onChange: e => set(k, e.target.value), className: 'form-input' })
-
   const sottocategorie = Object.keys(SIECIC_CODICI[form.tipologia_siecic] || {})
 
   useEffect(() => {
-    if (articolo?.id) {
-      supabase.from('foto').select('*').eq('articolo_id', articolo.id).order('sort_order')
-        .then(({ data }) => { if (data) setPhotos(data) })
-    }
-  }, [articolo?.id])
+    supabase.from('foto').select('*').eq('articolo_id', artId).order('sort_order')
+      .then(({ data }) => { if (data) setPhotos(data) })
+  }, [artId])
 
   const handlePhotoUpload = async (e) => {
     const files = Array.from(e.target.files)
-    if (!files.length || !articolo?.id) return
+    if (!files.length) return
     setUploading(true)
     try {
       for (const file of files) {
         const ext = file.name.split('.').pop()
-        const path = `${procId}/${articolo.id}/${Date.now()}.${ext}`
+        const path = `${procId}/${artId}/${Date.now()}.${ext}`
         await supabase.storage.from('foto-inventario').upload(path, file)
         const { data: { publicUrl } } = supabase.storage.from('foto-inventario').getPublicUrl(path)
-        await supabase.from('foto').insert({ articolo_id: articolo.id, proc_id: procId, storage_path: path, url: publicUrl, sort_order: photos.length })
+        await supabase.from('foto').insert({ articolo_id: artId, proc_id: procId, storage_path: path, url: publicUrl, sort_order: photos.length })
       }
-      const { data } = await supabase.from('foto').select('*').eq('articolo_id', articolo.id).order('sort_order')
+      const { data } = await supabase.from('foto').select('*').eq('articolo_id', artId).order('sort_order')
       setPhotos(data || [])
       notify('Foto caricate', 'ok')
     } catch (err) { notify('Errore upload: ' + err.message, 'err') }
@@ -90,50 +90,44 @@ function ArticoloForm({ articolo, procId, onSave, onClose }) {
     setPhotos(p => p.filter(f => f.id !== foto.id))
   }
 
-  // ── Analisi AI ────────────────────────────────────────────────────────────
   const analizzaConAI = async () => {
     const apiKey = localStorage.getItem('ip_apikey') || ''
     if (!apiKey) { notify('Configura la chiave API in Impostazioni', 'warn'); return }
     if (photos.length === 0 && !form.desc_breve) { notify('Carica almeno una foto o inserisci una descrizione', 'warn'); return }
     setAnalyzing(true)
     try {
-      const contenutiImmagini = photos.slice(0, 5).map(f => ({
-        type: 'image',
-        source: { type: 'url', url: f.url }
-      }))
-
-      const datiGiaInseriti = [
+      const imgs = photos.slice(0, 5).map(f => ({ type: 'image', source: { type: 'url', url: f.url } }))
+      const dati = [
         form.desc_breve && `Descrizione: ${form.desc_breve}`,
         form.marca && `Marca: ${form.marca}`,
         form.modello && `Modello: ${form.modello}`,
         form.anno_prod && `Anno: ${form.anno_prod}`,
-        form.matricola && `Matricola/Seriale: ${form.matricola}`,
+        form.matricola && `Matricola: ${form.matricola}`,
         form.targa && `Targa: ${form.targa}`,
       ].filter(Boolean).join('\n')
 
       const prompt = `Sei un perito esperto in valutazioni per procedure concorsuali italiane.
 Analizza ${photos.length > 0 ? 'le foto e ' : ''}i dati forniti e restituisci una valutazione professionale.
-
-${datiGiaInseriti ? `DATI GIÀ INSERITI (priorità assoluta, non modificare se corretti):\n${datiGiaInseriti}` : ''}
+${dati ? `\nDATI GIÀ INSERITI (usali come priorità):\n${dati}` : ''}
 
 CATEGORIE SIECIC DISPONIBILI:
-${Object.entries(SIECIC_CODICI).map(([tip, cats]) => `${tip}: ${Object.keys(cats).join(', ')}`).join('\n')}
+${Object.entries(SIECIC_CODICI).map(([t, cats]) => `${t}: ${Object.keys(cats).join(', ')}`).join('\n')}
 
-Rispondi SOLO con JSON valido (nessun testo prima o dopo):
+Rispondi SOLO con JSON valido:
 {
-  "tipologia_siecic": "una delle tipologie SIECIC",
-  "sottocategoria": "una delle sottocategorie della tipologia scelta",
-  "desc_breve": "descrizione sintetica professionale (max 80 car.)",
-  "desc_estesa": "descrizione tecnica dettagliata per perizia giudiziaria (200-400 car.)",
-  "marca": "marca/produttore (vuoto se non identificabile)",
-  "modello": "modello specifico (vuoto se non identificabile)",
-  "anno_prod": "anno di produzione stimato (vuoto se non determinabile)",
-  "matricola": "matricola/numero seriale se visibile nelle foto",
+  "tipologia_siecic": "tipologia SIECIC",
+  "sottocategoria": "sottocategoria della tipologia",
+  "desc_breve": "descrizione sintetica professionale max 80 caratteri",
+  "desc_estesa": "descrizione tecnica dettagliata per perizia 200-400 caratteri",
+  "marca": "marca se identificabile altrimenti stringa vuota",
+  "modello": "modello se identificabile altrimenti stringa vuota",
+  "anno_prod": "anno stimato altrimenti stringa vuota",
+  "matricola": "matricola o seriale se visibile altrimenti stringa vuota",
   "stato": "uno tra: ottimo, buono, discreto, da revisionare, non funzionante",
-  "danni": "descrizione dettagliata di danni, usura, anomalie visibili — vuoto se non presenti",
-  "val_mercato": numero intero in euro del valore di mercato stimato per bene usato in normali condizioni,
-  "val_giud": numero intero in euro del valore giudiziario (tipicamente 20-40% in meno del mercato per vendita forzata),
-  "note": "note tecniche aggiuntive: presenza/assenza targa CE, accessori inclusi, stato documentazione"
+  "danni": "descrizione danni usura anomalie visibili - vuoto se assenti",
+  "val_mercato": valore mercato intero in euro,
+  "val_giud": valore giudiziario intero in euro tipicamente 20-40 percento meno del mercato,
+  "note": "note tecniche accessori certificazioni"
 }`
 
       const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -147,14 +141,12 @@ Rispondi SOLO con JSON valido (nessun testo prima o dopo):
         body: JSON.stringify({
           model: 'claude-opus-4-5',
           max_tokens: 1000,
-          messages: [{ role: 'user', content: [...contenutiImmagini, { type: 'text', text: prompt }] }]
+          messages: [{ role: 'user', content: [...imgs, { type: 'text', text: prompt }] }]
         })
       })
       const data = await res.json()
       const text = data.content?.[0]?.text || ''
       const json = JSON.parse(text.replace(/```json|```/g, '').trim())
-
-      // Aggiorna solo i campi vuoti o tutti se l'utente non ha inserito nulla
       setForm(f => ({
         ...f,
         tipologia_siecic: json.tipologia_siecic || f.tipologia_siecic,
@@ -171,31 +163,38 @@ Rispondi SOLO con JSON valido (nessun testo prima o dopo):
         val_giud: json.val_giud || f.val_giud,
         note: f.note || json.note || '',
       }))
-
       if (json.danni) setTab('danni')
-      notify('✅ Analisi AI completata — verifica i valori generati', 'ok', 5000)
-    } catch (e) {
-      notify('Errore AI: ' + e.message, 'err')
-    } finally {
-      setAnalyzing(false)
-    }
+      notify('Analisi AI completata — verifica i valori generati', 'ok', 5000)
+    } catch (e) { notify('Errore AI: ' + e.message, 'err') }
+    finally { setAnalyzing(false) }
   }
 
   const handleSave = async () => {
     if (!form.desc_breve) { notify('Inserisci la descrizione', 'warn'); return }
     setSaving(true)
     try {
+      const { id: _id, created_at, updated_at, prima_foto_path, prima_foto_url, n_foto, ...payload } = form
       let saved
-      const payload = { ...form }
-      delete payload.id; delete payload.created_at; delete payload.updated_at
-      delete payload.prima_foto_path; delete payload.prima_foto_url; delete payload.n_foto
       if (articolo?.id) {
         const { data, error } = await supabase.from('articoli').update(payload).eq('id', articolo.id).select().single()
-        if (error) throw error; saved = data
+        if (error) throw error
+        saved = data
       } else {
         const { data: { user } } = await supabase.auth.getUser()
         const { data, error } = await supabase.from('articoli').insert({ ...payload, proc_id: procId, owner_id: user.id }).select().single()
-        if (error) throw error; saved = data
+        if (error) throw error
+        saved = data
+        // Aggiorna foto temporanee con ID reale
+        if (photos.length > 0) {
+          await supabase.from('foto').update({ articolo_id: saved.id }).eq('articolo_id', artId)
+          for (const foto of photos) {
+            const newPath = foto.storage_path.replace(artId, saved.id)
+            try {
+              await supabase.storage.from('foto-inventario').move(foto.storage_path, newPath)
+              await supabase.from('foto').update({ storage_path: newPath }).eq('id', foto.id)
+            } catch (_) {}
+          }
+        }
       }
       notify('Articolo salvato', 'ok')
       onSave(saved)
@@ -204,141 +203,114 @@ Rispondi SOLO con JSON valido (nessun testo prima o dopo):
   }
 
   const TABS = [
-    { id: 'foto', label: '📷 Foto & AI' },
-    { id: 'dati', label: '📋 Dati' },
+    { id: 'dati', label: '📷 Foto, AI & Dati' },
     { id: 'valori', label: '💶 Valori' },
     { id: 'danni', label: `⚠️ Danni${form.danni ? ' ●' : ''}` },
   ]
 
   return (
     <div>
-      {/* Tab bar */}
       <div className="tabs" style={{ marginBottom: 20 }}>
         {TABS.map(t => <div key={t.id} className={`tab ${tab===t.id?'active':''}`} onClick={() => setTab(t.id)}>{t.label}</div>)}
       </div>
 
-      {/* Tab Foto & AI */}
-      {tab === 'foto' && (
+      {tab === 'dati' && (
         <div>
-          {/* Bottone AI principale */}
-          <div style={{ marginBottom: 16, padding: '14px 18px', background: 'rgba(59,111,255,0.06)', border: '1px solid rgba(59,111,255,0.15)', borderRadius: 10 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>✨ Analisi automatica con AI</div>
-            <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 12 }}>
-              Carica le foto del bene. L'AI analizzerà le immagini e i dati già inseriti per compilare automaticamente: categoria SIECIC, descrizione tecnica, marca/modello, stato, danni, valore di mercato e valore giudiziario.
+          {/* Sezione foto */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 10 }}>
+              {photos.map(f => (
+                <div key={f.id} style={{ position: 'relative', width: 110, height: 85 }}>
+                  <img src={f.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)' }} />
+                  <button onClick={() => deletePhoto(f)} style={{ position: 'absolute', top: 3, right: 3, background: 'rgba(255,77,106,0.85)', border: 'none', borderRadius: '50%', width: 20, height: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <X size={11} color="#fff" />
+                  </button>
+                </div>
+              ))}
+              <label style={{ width: 110, height: 85, border: '2px dashed var(--border)', borderRadius: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text3)', gap: 5 }}
+                onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--accent)'}
+                onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}>
+                <Camera size={22} />
+                <span style={{ fontSize: 11 }}>{uploading ? 'Carico…' : '+ Foto'}</span>
+                <input type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={handlePhotoUpload} disabled={uploading} />
+              </label>
             </div>
-            <button className="btn btn-primary" onClick={analizzaConAI} disabled={analyzing || (photos.length === 0 && !form.desc_breve)}>
-              <Sparkles size={14} />
+            <button className="btn btn-primary btn-sm" onClick={analizzaConAI} disabled={analyzing}>
+              <Sparkles size={13} />
               {analyzing ? 'Analisi in corso…' : 'Analizza con AI'}
             </button>
-            {photos.length === 0 && !form.desc_breve && (
-              <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 8 }}>
-                Carica almeno una foto o inserisci una descrizione nel tab Dati per avviare l'analisi
+            <span style={{ fontSize: 11, color: 'var(--text3)', marginLeft: 10 }}>
+              {photos.length > 0 ? `${photos.length} foto · ` : ''}Carica foto e/o inserisci dati poi clicca Analizza
+            </span>
+          </div>
+
+          <div style={{ height: 1, background: 'var(--border)', margin: '16px 0' }} />
+
+          {/* Campi dati */}
+          <div className="form-grid">
+            <div className="form-section">Classificazione SIECIC</div>
+            <div className="form-group">
+              <label className="form-label">Tipologia SIECIC</label>
+              <select className="form-input" value={form.tipologia_siecic} onChange={e => { set('tipologia_siecic', e.target.value); set('sottocategoria', Object.keys(SIECIC_CODICI[e.target.value]||{})[0]||'') }}>
+                {SIECIC_TIPOLOGIE.map(t => <option key={t}>{t}</option>)}
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Sottocategoria</label>
+              <select className="form-input" value={form.sottocategoria} onChange={e => set('sottocategoria', e.target.value)}>
+                {sottocategorie.map(s => <option key={s}>{s}</option>)}
+              </select>
+            </div>
+            {form.tipologia_siecic && form.sottocategoria && SIECIC_CODICI[form.tipologia_siecic]?.[form.sottocategoria] && (
+              <div className="form-col-full" style={{ marginTop: -8, marginBottom: 4 }}>
+                <span className="badge badge-blue">Codice SIECIC: {SIECIC_CODICI[form.tipologia_siecic][form.sottocategoria]}</span>
               </div>
             )}
-          </div>
-
-          {/* Foto */}
-          {articolo?.id ? (
-            <div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
-                {photos.map(f => (
-                  <div key={f.id} style={{ position: 'relative', width: 120, height: 95 }}>
-                    <img src={f.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)' }} />
-                    <button onClick={() => deletePhoto(f)} style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(255,77,106,0.85)', border: 'none', borderRadius: '50%', width: 20, height: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <X size={11} color="#fff" />
-                    </button>
-                  </div>
-                ))}
-                <label style={{ width: 120, height: 95, border: '2px dashed var(--border)', borderRadius: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text3)', gap: 6, transition: 'border-color 0.2s' }}
-                  onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--accent)'}
-                  onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}>
-                  <Camera size={24} />
-                  <span style={{ fontSize: 12 }}>{uploading ? 'Carico…' : 'Aggiungi foto'}</span>
-                  <input type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={handlePhotoUpload} disabled={uploading} />
-                </label>
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--text3)' }}>{photos.length} foto caricate · max 5 usate per l'AI</div>
+            <div className="form-section">Descrizione</div>
+            <div className="form-col-full form-group">
+              <label className="form-label">Descrizione breve *</label>
+              <input {...inp('desc_breve')} placeholder="Es. Tornio parallelo CNC marca Morando" />
             </div>
-          ) : (
-            <div style={{ padding: '20px', background: 'var(--bg3)', borderRadius: 10, textAlign: 'center', color: 'var(--text2)', fontSize: 13 }}>
-              <Camera size={28} style={{ marginBottom: 8, opacity: 0.4 }} />
-              <div>Salva prima l'articolo (tab Dati) per poter caricare le foto</div>
-              <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>Puoi comunque avviare l'AI con i dati testuali già inseriti</div>
+            <div className="form-col-full form-group">
+              <label className="form-label">Descrizione estesa</label>
+              <textarea className="form-input" value={form.desc_estesa||''} onChange={e => set('desc_estesa', e.target.value)} rows={4} placeholder="Descrizione tecnica dettagliata per la perizia…" />
             </div>
-          )}
-        </div>
-      )}
-
-      {/* Tab Dati */}
-      {tab === 'dati' && (
-        <div className="form-grid">
-          <div className="form-section">Classificazione SIECIC</div>
-          <div className="form-group">
-            <label className="form-label">Tipologia SIECIC</label>
-            <select className="form-input" value={form.tipologia_siecic} onChange={e => { set('tipologia_siecic', e.target.value); set('sottocategoria', Object.keys(SIECIC_CODICI[e.target.value]||{})[0]||'') }}>
-              {SIECIC_TIPOLOGIE.map(t => <option key={t}>{t}</option>)}
-            </select>
-          </div>
-          <div className="form-group">
-            <label className="form-label">Sottocategoria</label>
-            <select className="form-input" value={form.sottocategoria} onChange={e => set('sottocategoria', e.target.value)}>
-              {sottocategorie.map(s => <option key={s}>{s}</option>)}
-            </select>
-          </div>
-          {form.tipologia_siecic && form.sottocategoria && SIECIC_CODICI[form.tipologia_siecic]?.[form.sottocategoria] && (
-            <div className="form-col-full" style={{ marginTop: -8, marginBottom: 4 }}>
-              <span className="badge badge-blue">Codice SIECIC: {SIECIC_CODICI[form.tipologia_siecic][form.sottocategoria]}</span>
+            <div className="form-section">Identificazione</div>
+            <div className="form-group"><label className="form-label">Marca</label><input {...inp('marca')} /></div>
+            <div className="form-group"><label className="form-label">Modello</label><input {...inp('modello')} /></div>
+            <div className="form-group"><label className="form-label">Anno produzione</label><input {...inp('anno_prod')} /></div>
+            <div className="form-group"><label className="form-label">Matricola / N. Seriale</label><input {...inp('matricola')} /></div>
+            <div className="form-group"><label className="form-label">Targa</label><input {...inp('targa')} /></div>
+            <div className="form-group">
+              <label className="form-label">Stato</label>
+              <select className="form-input" value={form.stato||'buono'} onChange={e => set('stato', e.target.value)}>
+                {STATI.map(s => <option key={s}>{s}</option>)}
+              </select>
             </div>
-          )}
-
-          <div className="form-section">Descrizione</div>
-          <div className="form-col-full form-group">
-            <label className="form-label">Descrizione breve *</label>
-            <input {...inp('desc_breve')} placeholder="Es. Tornio parallelo CNC marca Morando" />
-          </div>
-          <div className="form-col-full form-group">
-            <label className="form-label">Descrizione estesa</label>
-            <textarea className="form-input" value={form.desc_estesa||''} onChange={e => set('desc_estesa', e.target.value)} rows={4} placeholder="Descrizione tecnica dettagliata per la perizia…" />
-          </div>
-
-          <div className="form-section">Identificazione</div>
-          <div className="form-group"><label className="form-label">Marca</label><input {...inp('marca')} /></div>
-          <div className="form-group"><label className="form-label">Modello</label><input {...inp('modello')} /></div>
-          <div className="form-group"><label className="form-label">Anno produzione</label><input {...inp('anno_prod')} /></div>
-          <div className="form-group"><label className="form-label">Matricola / N. Seriale</label><input {...inp('matricola')} /></div>
-          <div className="form-group"><label className="form-label">Targa</label><input {...inp('targa')} /></div>
-          <div className="form-group">
-            <label className="form-label">Stato</label>
-            <select className="form-input" value={form.stato||'buono'} onChange={e => set('stato', e.target.value)}>
-              {STATI.map(s => <option key={s}>{s}</option>)}
-            </select>
-          </div>
-
-          <div className="form-section">Quantità</div>
-          <div className="form-group">
-            <label className="form-label">Unità di misura</label>
-            <select className="form-input" value={form.unita_misura||'UN'} onChange={e => set('unita_misura', e.target.value)}>
-              {UM_LIST.map(u => <option key={u}>{u}</option>)}
-            </select>
-          </div>
-          <div className="form-group">
-            <label className="form-label">Quantità</label>
-            <input type="number" className="form-input" value={form.qta??1} onChange={e => set('qta', e.target.value)} min="0" step="0.001" />
-          </div>
-
-          <div className="form-col-full form-group">
-            <label className="form-label">Note</label>
-            <textarea className="form-input" value={form.note||''} onChange={e => set('note', e.target.value)} rows={2} placeholder="Note aggiuntive (certificazioni, accessori inclusi…)" />
+            <div className="form-section">Quantità</div>
+            <div className="form-group">
+              <label className="form-label">Unità di misura</label>
+              <select className="form-input" value={form.unita_misura||'UN'} onChange={e => set('unita_misura', e.target.value)}>
+                {UM_LIST.map(u => <option key={u}>{u}</option>)}
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Quantità</label>
+              <input type="number" className="form-input" value={form.qta??1} onChange={e => set('qta', e.target.value)} min="0" step="0.001" />
+            </div>
+            <div className="form-col-full form-group">
+              <label className="form-label">Note</label>
+              <textarea className="form-input" value={form.note||''} onChange={e => set('note', e.target.value)} rows={2} placeholder="Note aggiuntive…" />
+            </div>
           </div>
         </div>
       )}
 
-      {/* Tab Valori */}
       {tab === 'valori' && (
         <div className="form-grid">
           <div className="form-section">Valutazione economica</div>
           <div style={{ gridColumn: '1/-1', padding: '10px 14px', background: 'rgba(245,166,35,0.08)', border: '1px solid rgba(245,166,35,0.2)', borderRadius: 8, fontSize: 12, color: 'var(--accent-y)', marginBottom: 8 }}>
-            ⚠️ I valori possono essere generati automaticamente dall'AI (tab Foto & AI) oppure inseriti manualmente.
+            ⚠️ Valori generabili automaticamente con l'AI (tab Foto, AI & Dati) oppure inseribili manualmente.
           </div>
           <div className="form-group">
             <label className="form-label">Valore di mercato (€)</label>
@@ -352,14 +324,14 @@ Rispondi SOLO con JSON valido (nessun testo prima o dopo):
           </div>
           <div className="form-col-full">
             <div style={{ padding: '12px 16px', background: 'var(--bg3)', borderRadius: 8, display: 'flex', gap: 24, fontSize: 13 }}>
-              <div><span style={{ color: 'var(--text2)' }}>Abbattimento: </span>
-                <strong style={{ color: form.val_mercato > 0 ? 'var(--accent-y)' : 'var(--text3)' }}>
-                  {form.val_mercato > 0 && form.val_giud >= 0
-                    ? Math.round((1 - form.val_giud / form.val_mercato) * 100) + '%'
-                    : '—'}
+              <div>
+                <span style={{ color: 'var(--text2)' }}>Abbattimento: </span>
+                <strong style={{ color: 'var(--accent-y)' }}>
+                  {form.val_mercato > 0 ? Math.round((1 - form.val_giud / form.val_mercato) * 100) + '%' : '—'}
                 </strong>
               </div>
-              <div><span style={{ color: 'var(--text2)' }}>Tot. giudiziario: </span>
+              <div>
+                <span style={{ color: 'var(--text2)' }}>Tot. giudiziario: </span>
                 <strong style={{ color: 'var(--accent-g)' }}>
                   {fmtEur(Number(form.val_giud||0) * Number(form.qta||1))}
                 </strong>
@@ -369,28 +341,25 @@ Rispondi SOLO con JSON valido (nessun testo prima o dopo):
         </div>
       )}
 
-      {/* Tab Danni */}
       {tab === 'danni' && (
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, padding: '10px 14px', background: 'rgba(255,77,106,0.06)', border: '1px solid rgba(255,77,106,0.15)', borderRadius: 8 }}>
             <AlertTriangle size={16} color="var(--accent-r)" />
             <div style={{ fontSize: 12, color: 'var(--text2)' }}>
-              Riporta danni, anomalie e usura riscontrati durante il sopralluogo. Questo campo è separato dalla descrizione e viene usato nella relazione di stima.
+              Danni, anomalie e usura riscontrati. Separato dalla descrizione, usato nella relazione di stima.
             </div>
           </div>
           <div className="form-group">
             <label className="form-label">Danni e anomalie riscontrati</label>
-            <textarea className="form-input" value={form.danni||''} onChange={e => set('danni', e.target.value)}
-              rows={8}
-              placeholder="Es: Presenza di ruggine superficiale sul piano di lavoro. Cinghia di trasmissione usurata. Manopola di regolazione velocità mancante. Verniciatura ammaccata sul lato sinistro…" />
+            <textarea className="form-input" value={form.danni||''} onChange={e => set('danni', e.target.value)} rows={8}
+              placeholder="Es: Presenza di ruggine superficiale sul piano di lavoro. Cinghia di trasmissione usurata…" />
           </div>
           <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>
-            Se presenti danni, considera di abbassare il valore giudiziario nel tab Valori.
+            Se presenti danni significativi, considera di abbassare il valore giudiziario nel tab Valori.
           </div>
         </div>
       )}
 
-      {/* Footer */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
         <div style={{ fontSize: 12, color: 'var(--text3)' }}>
           {articolo?.id ? `ID: ${articolo.id.substring(0,8)}…` : 'Nuovo articolo'}
