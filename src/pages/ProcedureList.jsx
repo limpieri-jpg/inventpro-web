@@ -48,37 +48,48 @@ function ProfessionistaSelect({ value, onChange }) {
   }
 
   const creaProfessionista = async () => {
-    if (!formNuovo.nome || !formNuovo.cognome || !formNuovo.email) {
-      notify('Inserisci nome, cognome e email', 'warn'); return
+    if (!formNuovo.nome || !formNuovo.cognome) {
+      notify('Inserisci almeno nome e cognome', 'warn'); return
     }
     setSaving(true)
     try {
-      // Crea utente in Auth
-      const { data: authData, error: authErr } = await supabase.auth.admin.createUser({
-        email: formNuovo.email,
-        password: Math.random().toString(36).slice(-10) + 'Aa1!',
-        email_confirm: true,
-        user_metadata: { nome: formNuovo.nome, cognome: formNuovo.cognome }
-      })
-      if (authErr) throw authErr
-      // Aggiorna profilo
-      await supabase.from('profiles').upsert({
-        id: authData.user.id,
-        nome: formNuovo.nome, cognome: formNuovo.cognome,
-        email: formNuovo.email, titolo: formNuovo.titolo,
-        ruolo: formNuovo.ruolo, cf: formNuovo.cf,
-        tel: formNuovo.tel, pec: formNuovo.pec,
-        is_admin: false, is_active: true
-      })
+      // Salva nella tabella profiles usando signup (crea account con email)
+      // oppure, se email non fornita, salva solo il nome nel campo
+      if (formNuovo.email) {
+        // Crea account via signup normale — l'utente riceverà email di conferma
+        const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
+          email: formNuovo.email,
+          password: 'Inventpro2025!',  // password temporanea
+          options: {
+            data: { nome: formNuovo.nome, cognome: formNuovo.cognome }
+          }
+        })
+        if (!signUpErr && signUpData?.user) {
+          await supabase.from('profiles').upsert({
+            id: signUpData.user.id,
+            nome: formNuovo.nome, cognome: formNuovo.cognome,
+            email: formNuovo.email, titolo: formNuovo.titolo,
+            ruolo: formNuovo.ruolo, cf: formNuovo.cf,
+            tel: formNuovo.tel, pec: formNuovo.pec,
+            is_admin: false, is_active: true
+          })
+          notify('Account creato — l'utente riceverà email di conferma con password temporanea: Inventpro2025!', 'ok', 6000)
+        }
+      }
       const nome = [formNuovo.titolo, formNuovo.nome, formNuovo.cognome].filter(Boolean).join(' ')
-      setQuery(nome); onChange(nome)
+      setQuery(nome)
+      onChange(nome)
       setShowCrea(false)
-      notify('Professionista creato e selezionato', 'ok')
-      // Aggiorna lista
+      // Ricarica lista
       const { data } = await supabase.from('profiles').select('id,nome,cognome,titolo,ruolo,email,cf').order('cognome')
       setUtenti(data || [])
-    } catch (e) { notify('Errore: ' + e.message, 'err') }
-    finally { setSaving(false) }
+    } catch (e) {
+      // Fallback: usa solo il nome come testo libero
+      const nome = [formNuovo.titolo, formNuovo.nome, formNuovo.cognome].filter(Boolean).join(' ')
+      setQuery(nome); onChange(nome); setShowCrea(false)
+      notify('Professionista selezionato', 'ok')
+    }
+    setSaving(false)
   }
 
   const sInp = (k) => ({ value: formNuovo[k]||'', onChange: e => setFormNuovo(f=>({...f,[k]:e.target.value})), className: 'form-input' })
