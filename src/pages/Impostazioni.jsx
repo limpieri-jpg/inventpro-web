@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useStore } from '../store/useStore'
 import { Topbar } from '../components/layout'
 import { supabase } from '../lib/supabase'
-import { Eye, EyeOff, Save, Key, Building, User, Image } from 'lucide-react'
+import { Eye, EyeOff, Save, Key, Building, User } from 'lucide-react'
 
 export default function Impostazioni() {
   const { profile, notify, fetchProfile } = useStore()
@@ -12,10 +12,6 @@ export default function Impostazioni() {
   const [showKey, setShowKey] = useState(false)
   const [saving, setSaving] = useState(false)
   const [testingKey, setTestingKey] = useState(false)
-
-  const [studioLogo, setStudioLogo] = useState(localStorage.getItem('ip_logo') || '')
-  const [studioNome, setStudioNome] = useState(localStorage.getItem('ip_studio_nome') || '')
-
   const [studioLogo, setStudioLogo] = useState(localStorage.getItem('ip_logo') || '')
   const [studioNome, setStudioNome] = useState(localStorage.getItem('ip_studio_nome') || '')
 
@@ -25,42 +21,6 @@ export default function Impostazioni() {
       setApiKey(localStorage.getItem('ip_apikey') || '')
     }
   }, [profile])
-
-  const handleLogoUpload = (e) => {
-    const file = e.target.files[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = (ev) => {
-      const b64 = ev.target.result
-      setStudioLogo(b64)
-      localStorage.setItem('ip_logo', b64)
-      notify('Logo salvato', 'ok')
-    }
-    reader.readAsDataURL(file)
-  }
-
-  const saveStudio = () => {
-    localStorage.setItem('ip_studio_nome', studioNome)
-    notify('Dati studio salvati', 'ok')
-  }
-
-  const handleLogoUpload = (e) => {
-    const file = e.target.files[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = (ev) => {
-      const b64 = ev.target.result
-      setStudioLogo(b64)
-      localStorage.setItem('ip_logo', b64)
-      notify('Logo salvato', 'ok')
-    }
-    reader.readAsDataURL(file)
-  }
-
-  const saveStudio = () => {
-    localStorage.setItem('ip_studio_nome', studioNome)
-    notify('Dati studio salvati', 'ok')
-  }
 
   const set = (k, v) => setProfilo(p => ({ ...p, [k]: v }))
   const inp = (k, type = 'text') => ({ value: profilo[k] || '', type, onChange: e => set(k, e.target.value), className: 'form-input' })
@@ -104,6 +64,24 @@ export default function Impostazioni() {
     finally { setTestingKey(false) }
   }
 
+  const handleLogoUpload = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      const b64 = ev.target.result
+      setStudioLogo(b64)
+      localStorage.setItem('ip_logo', b64)
+      notify('Logo salvato', 'ok')
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const saveStudio = () => {
+    localStorage.setItem('ip_studio_nome', studioNome)
+    notify('Dati studio salvati', 'ok')
+  }
+
   const TABS = [
     { id: 'profilo', label: 'Profilo utente', icon: User },
     { id: 'studio',  label: 'Studio / Logo',  icon: Building },
@@ -136,9 +114,8 @@ export default function Impostazioni() {
                 <div className="form-group"><label className="form-label">Cognome *</label><input {...inp('cognome')} /></div>
                 <div className="form-group"><label className="form-label">Codice Fiscale</label><input {...inp('cf')} placeholder="LLLNNN00A00A000A" style={{ textTransform: 'uppercase' }} /></div>
                 <div className="form-group"><label className="form-label">Telefono</label><input {...inp('tel', 'tel')} /></div>
-                <div className="form-group"><label className="form-label">Email di studio</label><input type="email" className="form-input" value={profilo.email||''} disabled style={{opacity:0.5}} /></div>
+                <div className="form-group"><label className="form-label">Email di studio</label><input type="email" className="form-input" value={profilo.email || ''} disabled style={{ opacity: 0.5 }} /></div>
                 <div className="form-group"><label className="form-label">PEC</label><input {...inp('pec', 'email')} placeholder="nome@pec.it" /></div>
-
                 <div className="form-section">Studio professionale</div>
                 <div className="form-group"><label className="form-label">Indirizzo studio</label><input {...inp('stu_indirizzo')} /></div>
                 <div className="form-group"><label className="form-label">N. civico</label><input {...inp('stu_civico')} /></div>
@@ -155,13 +132,13 @@ export default function Impostazioni() {
           </div>
         )}
 
-        {/* Studio */}
+        {/* Studio / Logo */}
         {tab === 'studio' && (
           <div className="card">
             <div className="card-header"><div className="card-title">Studio / Logo</div></div>
             <div className="card-body">
               <div className="form-grid">
-                <div className="form-section">Intestazione documenti</div>
+                <div className="form-section">Intestazione documenti e report PDF</div>
                 <div className="form-col-full form-group">
                   <label className="form-label">Nome studio / ragione sociale</label>
                   <input className="form-input" value={studioNome} onChange={e => setStudioNome(e.target.value)} placeholder="Es. Pro.Ges.S. Srl" />
@@ -173,49 +150,16 @@ export default function Impostazioni() {
                       <img src={studioLogo} alt="Logo" style={{ maxHeight: 80, maxWidth: 220, objectFit: 'contain', border: '1px solid var(--border)', borderRadius: 6, padding: 6 }} />
                     </div>
                   )}
-                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '8px 14px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 13 }}>
-                    <Image size={14} /> {studioLogo ? 'Cambia logo' : 'Carica logo'}
-                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleLogoUpload} />
-                  </label>
-                  {studioLogo && (
-                    <button className="btn btn-ghost btn-sm" style={{ marginLeft: 8, color: 'var(--accent-r)' }} onClick={() => { setStudioLogo(''); localStorage.removeItem('ip_logo') }}>Rimuovi</button>
-                  )}
-                  <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 6 }}>Il logo viene salvato localmente e usato nei report PDF e nei documenti generati.</div>
-                </div>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
-                <button className="btn btn-primary" onClick={saveStudio}><Save size={13} /> Salva dati studio</button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Studio */}
-        {tab === 'studio' && (
-          <div className="card">
-            <div className="card-header"><div className="card-title">Studio / Logo</div></div>
-            <div className="card-body">
-              <div className="form-grid">
-                <div className="form-section">Intestazione documenti</div>
-                <div className="form-col-full form-group">
-                  <label className="form-label">Nome studio / ragione sociale</label>
-                  <input className="form-input" value={studioNome} onChange={e => setStudioNome(e.target.value)} placeholder="Es. Pro.Ges.S. Srl" />
-                </div>
-                <div className="form-col-full form-group">
-                  <label className="form-label">Logo studio</label>
-                  {studioLogo && (
-                    <div style={{ marginBottom: 12 }}>
-                      <img src={studioLogo} alt="Logo" style={{ maxHeight: 80, maxWidth: 220, objectFit: 'contain', border: '1px solid var(--border)', borderRadius: 6, padding: 6 }} />
-                    </div>
-                  )}
-                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '8px 14px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 13 }}>
-                    <Image size={14} /> {studioLogo ? 'Cambia logo' : 'Carica logo'}
-                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleLogoUpload} />
-                  </label>
-                  {studioLogo && (
-                    <button className="btn btn-ghost btn-sm" style={{ marginLeft: 8, color: 'var(--accent-r)' }} onClick={() => { setStudioLogo(''); localStorage.removeItem('ip_logo') }}>Rimuovi</button>
-                  )}
-                  <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 6 }}>Il logo viene salvato localmente e usato nei report PDF e nei documenti generati.</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '8px 14px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 13 }}>
+                      🖼 {studioLogo ? 'Cambia logo' : 'Carica logo'}
+                      <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleLogoUpload} />
+                    </label>
+                    {studioLogo && (
+                      <button className="btn btn-ghost btn-sm" style={{ color: 'var(--accent-r)' }} onClick={() => { setStudioLogo(''); localStorage.removeItem('ip_logo') }}>Rimuovi</button>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 6 }}>Il logo viene salvato localmente nel browser e usato nei report PDF generati dall'app.</div>
                 </div>
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
@@ -240,7 +184,6 @@ export default function Impostazioni() {
                   <span style={{ fontSize: 12, marginTop: 6, display: 'block', opacity: 0.8 }}>La chiave viene salvata localmente nel browser e non viene inviata ai nostri server.</span>
                 </div>
               </div>
-
               <div className="form-group">
                 <label className="form-label">API Key Anthropic</label>
                 <div style={{ position: 'relative' }}>
@@ -257,16 +200,10 @@ export default function Impostazioni() {
                   </button>
                 </div>
               </div>
-
               <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
-                <button className="btn btn-ghost" onClick={testApiKey} disabled={testingKey}>
-                  {testingKey ? 'Test in corso…' : '🔍 Testa chiave'}
-                </button>
-                <button className="btn btn-primary" onClick={saveApiKey}>
-                  <Save size={13} /> Salva chiave
-                </button>
+                <button className="btn btn-ghost" onClick={testApiKey} disabled={testingKey}>{testingKey ? 'Test in corso…' : '🔍 Testa chiave'}</button>
+                <button className="btn btn-primary" onClick={saveApiKey}><Save size={13} /> Salva chiave</button>
               </div>
-
               {apiKey && (
                 <div style={{ marginTop: 20, padding: '10px 14px', background: 'rgba(0,200,150,0.06)', border: '1px solid rgba(0,200,150,0.15)', borderRadius: 8, fontSize: 12, color: 'var(--accent-g)' }}>
                   ✅ Chiave configurata — la generazione AI è attiva in Documenti e Contratti

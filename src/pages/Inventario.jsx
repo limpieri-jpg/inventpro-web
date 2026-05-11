@@ -80,9 +80,7 @@ function ArticoloForm({ articolo, procId, onSave, onClose }) {
         const { data, error } = await supabase.from('articoli').insert({ ...form, proc_id: procId, owner_id: user.id }).select().single()
         if (error) throw error
         saved = data
-        if (photos.length > 0) {
-          notify('Articolo creato. Riapri per caricare le foto.', 'info', 4000)
-        }
+        if (photos.length > 0) notify('Articolo creato. Riapri per caricare le foto.', 'info', 4000)
       }
       notify('Articolo salvato', 'ok')
       onSave(saved)
@@ -143,7 +141,6 @@ function ArticoloForm({ articolo, procId, onSave, onClose }) {
           <label className="form-label">Note</label>
           <textarea className="form-input" value={form.note || ''} onChange={e => set('note', e.target.value)} rows={2} />
         </div>
-
         {articolo?.id && (
           <>
             <div className="form-section">Fotografie</div>
@@ -167,7 +164,6 @@ function ArticoloForm({ articolo, procId, onSave, onClose }) {
           </>
         )}
       </div>
-
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
         <button className="btn btn-ghost" onClick={onClose}>Annulla</button>
         <button className="btn btn-primary" onClick={handleSave} disabled={saving}>{saving ? 'Salvataggio…' : articolo?.id ? 'Aggiorna' : 'Crea articolo'}</button>
@@ -187,9 +183,9 @@ export default function Inventario() {
   const [editArticolo, setEditArticolo] = useState(null)
   const [page, setPage] = useState(0)
   const [showFallcoModal, setShowFallcoModal] = useState(false)
+  const [showReportModal, setShowReportModal] = useState(false)
   const [dataDeposito, setDataDeposito] = useState('')
   const [exportingFallco, setExportingFallco] = useState(false)
-  const [showReportModal, setShowReportModal] = useState(false)
   const PER_PAGE = 25
 
   useEffect(() => {
@@ -224,58 +220,40 @@ export default function Inventario() {
       if (error) throw error
       if (!tutti.length) { notify('Nessun articolo da esportare', 'warn'); return }
 
-      // Carica impostazioni studio dal localStorage
       const studioLogo = localStorage.getItem('ip_logo') || ''
       const studioNome = localStorage.getItem('ip_studio_nome') || 'Pro.Ges.S. Srl'
-
-      // Funzione QR code semplice via API gratuita (no libreria)
-      const makeQRUrl = (text) => {
-        const safe = encodeURIComponent((text || 'INV').substring(0, 100))
-        return `https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${safe}`
-      }
-
-      // Carica impostazioni studio dal localStorage
-      const studioLogo = localStorage.getItem('ip_logo') || ''
-      const studioNome = localStorage.getItem('ip_studio_nome') || 'Pro.Ges.S. Srl'
-
-      // Funzione QR code semplice via API gratuita (no libreria)
-      const makeQRUrl = (text) => {
-        const safe = encodeURIComponent((text || 'INV').substring(0, 100))
-        return `https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${safe}`
-      }
-
-      const fmtEurLocal = (n) => '€' + parseFloat(n || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      const logoHtml = studioLogo
+        ? `<img src="${studioLogo}" style="max-height:70px;max-width:200px;object-fit:contain">`
+        : `<div style="font-size:18px;font-weight:700;color:#1a3a6b">${studioNome}</div>`
+      const makeQRUrl = (text) => `https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent((text || 'INV').substring(0, 100))}`
       const proc = currentProc
       const titoloDoc = estimativo ? 'Report estimativo' : 'Report fotografico beni mobili'
       const coverTitle = estimativo ? 'REPORT ESTIMATIVO' : 'REPORT FOTOGRAFICO'
       const totVG = tutti.reduce((s, a) => s + (parseFloat(a.val_giud || 0) * parseFloat(a.qta || 1)), 0)
-
-      const logoHtml = studioLogo
-        ? `<img src="${studioLogo}" style="max-height:80px;max-width:220px;object-fit:contain">`
-        : `<div style="font-size:20px;font-weight:700;color:#1a3a6b">${studioNome}</div>`
-
-      const procQR = makeQRUrl([(proc.tipo||''),(proc.nome||''),(proc.numero||'')].join(' '))
+      const fmtEurLocal = (n) => '€' + parseFloat(n || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      const procQR = makeQRUrl([(proc.tipo || ''), (proc.nome || ''), (proc.numero || '')].join(' '))
 
       const frontespizio = '<div style="page-break-after:always;min-height:100vh;display:flex;flex-direction:column;padding:50px 60px;background:#fff;box-sizing:border-box">'
         + '<div style="text-align:center;margin-bottom:auto">'
         + '<div style="margin-bottom:24px">' + logoHtml + '</div>'
         + '<div style="font-size:24px;font-weight:700;color:#1a1a16;letter-spacing:.03em;margin-bottom:28px">' + coverTitle + '</div>'
         + '<div style="font-size:17px;color:#333;margin-bottom:8px">' + (proc.tipo || '') + '</div>'
-        + '<div style="font-size:15px;color:#555;margin-bottom:8px">N° ' + (proc.numero || '') + '</div>'
+        + '<div style="font-size:15px;color:#555;margin-bottom:8px">N\u00b0 ' + (proc.numero || '') + '</div>'
         + '<div style="font-size:15px;color:#555">Tribunale di ' + (proc.tribunale || '') + '</div>'
         + (proc.nome ? '<div style="font-size:14px;font-weight:600;color:#333;margin-top:6px">' + proc.nome + '</div>' : '')
         + '</div>'
         + '<div style="text-align:center;margin-top:auto">'
         + (proc.giudice ? '<div style="font-size:14px;color:#333;margin-bottom:8px">Giudice Delegato: ' + proc.giudice + '</div>' : '')
         + (proc.curatore ? '<div style="font-size:14px;color:#333;margin-bottom:8px">Curatore: ' + proc.curatore + '</div>' : '')
-        + '<div style="margin-top:16px;border-top:1px solid #ddd;padding-top:8px;font-size:10px;color:#888">Pro.Ges.S. Srl - Procedure Gestite e Servizi</div>'
+        + '<div style="margin-top:16px;border-top:1px solid #ddd;padding-top:8px;font-size:10px;color:#888">' + studioNome + '</div>'
         + '</div></div>'
 
       const artRows = tutti.map((a, i) => {
         const vg = parseFloat(a.val_giud || 0) * parseFloat(a.qta || 1)
+        const artQR = makeQRUrl(a.codice_siecic || ('ART-' + (i + 1)))
         let metaLeft = ''
-        metaLeft += '<tr><td class="lbl">Quantità:</td><td>' + (a.qta || 1) + ' ' + (a.unita_misura || 'UN') + '</td></tr>'
-        if (a.desc_breve || a.desc_estesa) metaLeft += '<tr><td class="lbl" style="vertical-align:top">Descrizione:</td><td>' + (a.desc_breve || '') + (a.desc_estesa ? '<br>' + a.desc_estesa : '') + '</td></tr>'
+        metaLeft += '<tr><td class="lbl">Quantit\u00e0:</td><td>' + (a.qta || 1) + ' ' + (a.unita_misura || 'UN') + '</td></tr>'
+        if (a.desc_breve || a.desc_estesa) metaLeft += '<tr><td class="lbl" style="vertical-align:top">Descrizione:</td><td>' + (a.desc_breve || '') + (a.desc_estesa ? '<br><span style="color:#555">' + a.desc_estesa + '</span>' : '') + '</td></tr>'
         let metaRight = ''
         if (a.anno_prod) metaRight += '<tr><td class="lbl">Anno:</td><td>' + a.anno_prod + '</td></tr>'
         if (a.stato) metaRight += '<tr><td class="lbl">Stato:</td><td>' + a.stato + '</td></tr>'
@@ -284,33 +262,28 @@ export default function Inventario() {
         if (a.matricola) metaRight += '<tr><td class="lbl">Matricola:</td><td>' + a.matricola + '</td></tr>'
         if (a.note) metaRight += '<tr><td class="lbl" style="vertical-align:top">Note:</td><td>' + a.note + '</td></tr>'
         const valoreHdr = estimativo ? '<div style="margin-left:auto;font-size:12px;font-weight:700;padding:0 14px;white-space:nowrap">Valore di Stima: ' + fmtEurLocal(vg) + '</div>' : ''
-
-        // Foto dalla view
         let photosHtml = ''
-        if (a.prima_foto_url) {
-          photosHtml = '<div class="photos-wrap"><div class="photos-lbl"><b>Fotografie:</b></div><div class="photos-row"><img src="' + a.prima_foto_url + '" class="photo"></div></div>'
-        }
-
-        const artQRurl = makeQRUrl(a.codice_siecic || ('ART-' + (i + 1)))
-        const artQRhtml = '<img src="' + artQRurl + '" style="width:66px;height:66px">'
+        if (a.prima_foto_url) photosHtml = '<div class="photos-wrap"><div class="photos-lbl"><b>Fotografie:</b></div><div class="photos-row"><img src="' + a.prima_foto_url + '" class="photo"></div></div>'
         return '<div class="card"><div class="card-hdr"><div class="card-num">' + (i + 1) + '</div><div class="card-title">' + (a.desc_breve || 'Articolo ' + (i + 1)) + '</div>' + valoreHdr + '</div>'
-          + '<table class="card-body"><tr><td class="qr-cell">' + artQRhtml + '</td><td class="meta-cell"><table class="meta-tbl">' + metaLeft + '</table></td>'
+          + '<table class="card-body"><tr>'
+          + '<td class="qr-cell"><img src="' + artQR + '" style="width:66px;height:66px"></td>'
+          + '<td class="meta-cell"><table class="meta-tbl">' + metaLeft + '</table></td>'
           + (metaRight ? '<td class="meta-cell"><table class="meta-tbl">' + metaRight + '</table></td>' : '')
           + '</tr></table>' + photosHtml + '</div>'
       }).join('')
 
       const totBanner = estimativo ? '<div class="tot-banner-est"><b>Valore di Stima totale:</b> ' + fmtEurLocal(totVG) + '</div>' : ''
-      const printBtn = '<div class="print-bar no-print"><div style="flex:1"><div style="font-weight:700;font-size:14px;margin-bottom:3px">📋 ' + titoloDoc + '</div>'
-        + '<div style="font-size:11px;opacity:.9">① Clicca <b>Stampa/Salva PDF</b> &nbsp;② Destinazione: <b>Salva come PDF</b> &nbsp;③ Altre impostazioni: disattiva <b>Intestazioni e piè di pagina</b> + attiva <b>Grafica di sfondo</b></div></div>'
-        + '<button onclick="window.print()" class="print-btn">🖸 Stampa / Salva PDF</button></div>'
-
-      const pageHdr = '<div class="page-hdr"><div>' + logoHtml + '</div><div style="display:flex;align-items:center;gap:10px"><img src="' + procQR + '" style="width:60px;height:60px">'
-        + '<div class="page-hdr-info"><b>' + titoloDoc + '</b>' + (proc.tipo || '') + ' ' + (proc.nome || '') + '<br>n° ' + (proc.numero || '') + ' - Tribunale di ' + (proc.tribunale || '') + '<br>'
+      const printBtn = '<div class="print-bar no-print"><div style="flex:1"><div style="font-weight:700;font-size:14px;margin-bottom:3px">\uD83D\uDCCB ' + titoloDoc + '</div>'
+        + '<div style="font-size:11px;opacity:.9">\u2460 Clicca <b>Stampa/Salva PDF</b> &nbsp;\u2461 Destinazione: <b>Salva come PDF</b> &nbsp;\u2462 Disattiva <b>Intestazioni e pi\u00e8 di pagina</b> + attiva <b>Grafica di sfondo</b></div></div>'
+        + '<button onclick="window.print()" class="print-btn">\uD83D\uDDB8 Stampa / Salva PDF</button></div>'
+      const pageHdr = '<div class="page-hdr"><div>' + logoHtml + '</div>'
+        + '<div style="display:flex;align-items:center;gap:10px">'
+        + '<div class="page-hdr-info"><b>' + titoloDoc + '</b>' + (proc.tipo || '') + ' ' + (proc.nome || '') + '<br>n\u00b0 ' + (proc.numero || '') + ' - Tribunale di ' + (proc.tribunale || '') + '<br>'
         + (proc.giudice ? 'Giudice: <em>' + proc.giudice + '</em><br>' : '')
-        + (proc.curatore ? 'Curatore: <em>' + proc.curatore + '</em>' : '') + '</div></div>'
-
-      const css = '@page{size:A4 portrait;margin:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:11px;color:#222;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}@media print{html,body{margin:0;padding:0}.report-wrap{padding:12mm 12mm 16mm 12mm}}.print-bar{position:sticky;top:0;background:#1d4ed8;color:#fff;padding:10px 20px;display:flex;align-items:center;gap:16px;z-index:999}.print-btn{background:#fff;color:#1d4ed8;border:none;padding:8px 18px;border-radius:6px;font-weight:700;cursor:pointer;font-size:13px}.page-hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding-bottom:8px;border-bottom:2px solid #2d6a7f;margin-bottom:16px}.page-hdr-info{text-align:right;font-size:10px;line-height:1.7;color:#333}.page-hdr-info b{font-size:12px;color:#000;display:block}.card{border:1px solid #aaa;margin-bottom:16px;page-break-inside:avoid;break-inside:avoid}.card-hdr{background:#1a3a5c;color:#fff;display:flex;align-items:center;-webkit-print-color-adjust:exact;print-color-adjust:exact}.card-num{width:36px;min-height:36px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;background:rgba(255,255,255,.15)}.card-title{font-size:13px;font-weight:700;padding:8px 10px;flex:1}.card-body{width:100%;border-collapse:collapse;padding:8px 12px}.meta-cell{vertical-align:top;padding:8px 12px 8px 14px}.meta-tbl{border-collapse:collapse}.lbl{font-weight:700;padding-right:6px;white-space:nowrap;line-height:1.8;vertical-align:top}.photos-wrap{padding:0 12px 12px}.photos-lbl{margin-bottom:6px}.photos-row{display:flex;flex-wrap:wrap;gap:6px}.photo{width:190px;height:142px;object-fit:cover;border:1px solid #ccc}.tot-banner-est{background:#8b1a1a;color:#fff;padding:14px 24px;margin-top:16px;font-size:16px;text-align:center;-webkit-print-color-adjust:exact;print-color-adjust:exact}@media print{.no-print{display:none!important}}'
-
+        + (proc.curatore ? 'Curatore: <em>' + proc.curatore + '</em>' : '') + '</div>'
+        + '<img src="' + procQR + '" style="width:60px;height:60px">'
+        + '</div></div>'
+      const css = '@page{size:A4 portrait;margin:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:11px;color:#222;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}@media print{html,body{margin:0;padding:0}.report-wrap{padding:12mm 12mm 16mm 12mm}}.print-bar{position:sticky;top:0;background:#1d4ed8;color:#fff;padding:10px 20px;display:flex;align-items:center;gap:16px;z-index:999}.print-btn{background:#fff;color:#1d4ed8;border:none;padding:8px 18px;border-radius:6px;font-weight:700;cursor:pointer;font-size:13px}.page-hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding-bottom:8px;border-bottom:2px solid #2d6a7f;margin-bottom:16px}.page-hdr-info{text-align:right;font-size:10px;line-height:1.7;color:#333}.page-hdr-info b{font-size:12px;color:#000;display:block}.card{border:1px solid #aaa;margin-bottom:16px;page-break-inside:avoid;break-inside:avoid}.card-hdr{background:#1a3a5c;color:#fff;display:flex;align-items:center;-webkit-print-color-adjust:exact;print-color-adjust:exact}.card-num{width:36px;min-height:36px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;background:rgba(255,255,255,.15)}.card-title{font-size:13px;font-weight:700;padding:8px 10px;flex:1}.card-body{width:100%;border-collapse:collapse;padding:8px 12px}.qr-cell{width:88px;vertical-align:top;padding:8px 6px 8px 12px}.meta-cell{vertical-align:top;padding:8px 12px 8px 14px}.meta-tbl{border-collapse:collapse}.lbl{font-weight:700;padding-right:6px;white-space:nowrap;line-height:1.8;vertical-align:top}.photos-wrap{padding:0 12px 12px}.photos-lbl{margin-bottom:6px}.photos-row{display:flex;flex-wrap:wrap;gap:6px}.photo{width:190px;height:142px;object-fit:cover;border:1px solid #ccc}.tot-banner-est{background:#8b1a1a;color:#fff;padding:14px 24px;margin-top:16px;font-size:16px;text-align:center;-webkit-print-color-adjust:exact;print-color-adjust:exact}@media print{.no-print{display:none!important}}'
       const bodyHtml = printBtn + frontespizio + '<div class="report-wrap" style="padding:16px 16px 30px">' + pageHdr + artRows + totBanner + '</div>'
       const html = '<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8"><title>' + titoloDoc + '</title><style>' + css + '</style></head><body>' + bodyHtml + '</body></html>'
       const win = window.open('', '_blank')
@@ -325,14 +298,12 @@ export default function Inventario() {
     try {
       const { data: tutti, error } = await supabase.from('v_articoli_con_foto').select('*').eq('proc_id', currentProc.id).order('sort_order')
       if (error) throw error
-
       const fmtData = (d) => {
         if (!d) return ''
         const dt = new Date(d)
         if (isNaN(dt)) return d
         return String(dt.getDate()).padStart(2, '0') + '/' + String(dt.getMonth() + 1).padStart(2, '0') + '/' + dt.getFullYear()
       }
-
       const mapTipologia = (t) => {
         if (!t) return 'M'
         const tl = t.toUpperCase()
@@ -340,7 +311,6 @@ export default function Inventario() {
         if (tl.includes('AZIENDA') || tl.includes('RAMO')) return 'A'
         return 'M'
       }
-
       const righe = tutti.map(a => ({
         'Descrizione': a.desc_breve || '',
         'Tipologia': mapTipologia(a.siecic_tipologia),
@@ -361,30 +331,19 @@ export default function Inventario() {
         'Cap ': currentProc.cap || '',
         'Zip ': '',
         'Indirizzo': currentProc.indirizzo || '',
-        'Quantità aggiudicata': '',
-        'Valore aggiudicato': '',
-        'Data decreto di trasferimento': '',
-        'Operazione chiusa': '',
-        'Codice Lotto': '',
-        'Descrizione Lotto': '',
+        'Quantità aggiudicata': '', 'Valore aggiudicato': '',
+        'Data decreto di trasferimento': '', 'Operazione chiusa': '',
+        'Codice Lotto': '', 'Descrizione Lotto': '',
         'Note': a.note || '',
-        'Sezione': a.sezione || '',
-        'Foglio': a.foglio || '',
-        'Particella': a.mappale || '',
-        'Subparticella': '',
-        'Subalterno': a.subalterno || '',
-        'Graffato': '',
+        'Sezione': a.sezione || '', 'Foglio': a.foglio || '',
+        'Particella': a.mappale || '', 'Subparticella': '',
+        'Subalterno': a.subalterno || '', 'Graffato': '',
         'Categoria': a.classe_catastale || a.categoria || '',
-        'Classe': a.classe || '',
-        'Catasto': a.comune_cat || '',
-        'Superficie mq': a.superficie || '',
-        'Rendita Catastale': a.rendita || '',
+        'Classe': a.classe || '', 'Catasto': a.comune_cat || '',
+        'Superficie mq': a.superficie || '', 'Rendita Catastale': a.rendita || '',
         'Edificio': '', 'Scala': '', 'Interno': '', 'Piano': a.piano || '',
-        'Numero vani': a.vani || '',
-        'Reddito Domenicale': '',
-        'Reddito Agrario': ''
+        'Numero vani': a.vani || '', 'Reddito Domenicale': '', 'Reddito Agrario': ''
       }))
-
       const ws = XLSX.utils.json_to_sheet(righe)
       const wb = XLSX.utils.book_new()
       XLSX.utils.book_append_sheet(wb, ws, 'Inventario')
@@ -409,9 +368,7 @@ export default function Inventario() {
         subtitle={currentProc.nome}
         actions={
           <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn btn-ghost btn-sm" onClick={() => setShowReportModal(true)}>
-              📄 Report PDF
-            </button>
+            <button className="btn btn-ghost btn-sm" onClick={() => setShowReportModal(true)}>📄 Report PDF</button>
             <button className="btn btn-ghost btn-sm" onClick={() => setShowFallcoModal(true)}>
               <FileDown size={14} /> Export FALLCO
             </button>
@@ -422,36 +379,21 @@ export default function Inventario() {
         }
       />
       <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
-
         <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(3,1fr)', marginBottom: 20 }}>
-          <div className="stat-card">
-            <div className="stat-label">Totale articoli</div>
-            <div className="stat-value stat-blue">{articoli.length}</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-label">Valore giudiziario</div>
-            <div className="stat-value stat-green" style={{ fontSize: 18 }}>
-              {totValore ? '€ ' + totValore.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}
-            </div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-label">Visualizzati</div>
-            <div className="stat-value">{articoli.length}</div>
-          </div>
+          <div className="stat-card"><div className="stat-label">Totale articoli</div><div className="stat-value stat-blue">{articoli.length}</div></div>
+          <div className="stat-card"><div className="stat-label">Valore giudiziario</div><div className="stat-value stat-green" style={{ fontSize: 18 }}>{totValore ? '€ ' + totValore.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}</div></div>
+          <div className="stat-card"><div className="stat-label">Visualizzati</div><div className="stat-value">{articoli.length}</div></div>
         </div>
-
         <div className="filter-bar">
           <div style={{ position: 'relative', flex: 1, maxWidth: 300 }}>
             <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)' }} />
-            <input className="form-input" placeholder="Cerca articolo, marca…" style={{ paddingLeft: 32 }}
-              value={search} onChange={e => { setSearch(e.target.value); setPage(0) }} />
+            <input className="form-input" placeholder="Cerca articolo, marca…" style={{ paddingLeft: 32 }} value={search} onChange={e => { setSearch(e.target.value); setPage(0) }} />
           </div>
           <select className="filter-select" value={catFilter} onChange={e => { setCatFilter(e.target.value); setPage(0) }}>
             <option value="">Tutte le categorie</option>
             {CATEGORIE.map(c => <option key={c}>{c}</option>)}
           </select>
         </div>
-
         <div className="table-card">
           {loading ? <Spinner /> : articoli.length === 0 ? (
             <Empty icon="📦" title="Nessun articolo" sub={search ? 'Nessun risultato per la ricerca' : "Crea il primo articolo dell'inventario"} />
@@ -479,19 +421,14 @@ export default function Inventario() {
                           : <div style={{ width: 36, height: 36, background: 'var(--bg3)', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>📦</div>
                         }
                       </td>
-                      <td style={{ fontWeight: 500 }}>
-                        {a.desc_breve || '—'}
-                        {a.n_foto > 0 && <span style={{ marginLeft: 6, fontSize: 10, color: 'var(--text3)' }}>📷{a.n_foto}</span>}
-                      </td>
+                      <td style={{ fontWeight: 500 }}>{a.desc_breve || '—'}{a.n_foto > 0 && <span style={{ marginLeft: 6, fontSize: 10, color: 'var(--text3)' }}>📷{a.n_foto}</span>}</td>
                       <td className="muted">{[a.marca, a.modello].filter(Boolean).join(' ') || '—'}</td>
                       <td><span className="badge badge-blue" style={{ fontSize: 10 }}>{a.categoria || '—'}</span></td>
                       <td className="mono">{a.qta} {a.unita_misura}</td>
                       <td className="mono">{fmtEur(Number(a.val_giud || 0) * Number(a.qta || 1))}</td>
                       <td><span className={`badge ${a.stato === 'ottimo' || a.stato === 'buono' ? 'badge-green' : a.stato === 'discreto' ? 'badge-yellow' : 'badge-red'}`}>{a.stato || '—'}</span></td>
                       <td onClick={e => e.stopPropagation()}>
-                        <button className="btn btn-ghost btn-sm" style={{ color: 'var(--accent-r)', padding: '4px 8px' }} onClick={() => deleteArticolo(a.id)}>
-                          <Trash2 size={13} />
-                        </button>
+                        <button className="btn btn-ghost btn-sm" style={{ color: 'var(--accent-r)', padding: '4px 8px' }} onClick={() => deleteArticolo(a.id)}><Trash2 size={13} /></button>
                       </td>
                     </tr>
                   ))}
@@ -514,9 +451,7 @@ export default function Inventario() {
 
       <Modal open={showReportModal} onClose={() => setShowReportModal(false)} title="Genera Report PDF">
         <div style={{ padding: '8px 0' }}>
-          <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 20 }}>
-            Scegli il tipo di report da generare per i {articoli.length} articoli dell'inventario.
-          </p>
+          <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 20 }}>Scegli il tipo di report per i {articoli.length} articoli dell'inventario.</p>
           <div style={{ display: 'flex', gap: 12, marginBottom: 8 }}>
             <div style={{ flex: 1, border: '1px solid var(--border)', borderRadius: 8, padding: 16, textAlign: 'center', cursor: 'pointer' }} onClick={() => genReport(false)}>
               <div style={{ fontSize: 28, marginBottom: 8 }}>📷</div>
@@ -537,9 +472,7 @@ export default function Inventario() {
 
       <Modal open={showFallcoModal} onClose={() => setShowFallcoModal(false)} title="Export FALLCO">
         <div style={{ padding: '8px 0' }}>
-          <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 20 }}>
-            Genera il file Excel nel formato FALLCO con tutti i {articoli.length} articoli dell'inventario.
-          </p>
+          <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 20 }}>Genera il file Excel nel formato FALLCO con tutti i {articoli.length} articoli dell'inventario.</p>
           <div className="form-group">
             <label className="form-label">Data deposito perizia</label>
             <input type="date" className="form-input" value={dataDeposito} onChange={e => setDataDeposito(e.target.value)} />
@@ -555,12 +488,7 @@ export default function Inventario() {
       </Modal>
 
       <Modal open={showForm} onClose={() => setShowForm(false)} title={editArticolo ? 'Modifica articolo' : 'Nuovo articolo'} wide>
-        <ArticoloForm
-          articolo={editArticolo}
-          procId={currentProc.id}
-          onClose={() => setShowForm(false)}
-          onSave={() => { setShowForm(false); loadArticoli() }}
-        />
+        <ArticoloForm articolo={editArticolo} procId={currentProc.id} onClose={() => setShowForm(false)} onSave={() => { setShowForm(false); loadArticoli() }} />
       </Modal>
     </>
   )
