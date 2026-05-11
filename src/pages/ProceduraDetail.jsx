@@ -6,7 +6,14 @@ import { supabase } from '../lib/supabase'
 import { ArrowLeft, Edit, MapPin, Package, Layers, FileText, Plus, Trash2 } from 'lucide-react'
 
 function fmtDate(d) { if (!d) return '—'; return new Date(d).toLocaleDateString('it-IT') }
-function fmtEur(n) { if (!n) return '—'; return '€ ' + Number(n).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }
+function fmtEur(n) {
+  if (n === null || n === undefined || n === '') return '\u2014'
+  const num = Number(n)
+  if (isNaN(num)) return '\u2014'
+  const [int, dec] = num.toFixed(2).split('.')
+  const intFmt = int.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+  return '\u20ac\u00a0' + intFmt + ',' + dec
+}
 
 const TIPI = ['Liquidazione Giudiziale', 'Liquidazione Controllata', 'Fallimento', 'Concordato Preventivo', 'Concordato in Continuità', 'Liquidazione Coatta', 'Amministrazione Straordinaria', 'Altro']
 const STATUS_OPTIONS = ['attiva', 'chiusa', 'sospesa']

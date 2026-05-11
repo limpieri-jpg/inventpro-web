@@ -10,8 +10,12 @@ function fmtNum(n) {
   return Number(n).toLocaleString('it-IT')
 }
 function fmtEur(n) {
-  if (!n && n !== 0) return '—'
-  return '€\u00a0' + Number(n).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  if (n === null || n === undefined || n === '') return '\u2014'
+  const num = Number(n)
+  if (isNaN(num)) return '\u2014'
+  const [int, dec] = num.toFixed(2).split('.')
+  const intFmt = int.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+  return '\u20ac\u00a0' + intFmt + ',' + dec
 }
 
 // ── Costanti SIECIC ────────────────────────────────────────────────────────

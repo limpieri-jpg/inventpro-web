@@ -5,6 +5,15 @@ import { Topbar, Spinner, Empty, Modal } from '../components/layout'
 import { Plus, Search, Filter } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
+function fmtEur(n) {
+  if (n === null || n === undefined || n === '') return '—'
+  const num = Number(n)
+  if (isNaN(num)) return '—'
+  const [int, dec] = num.toFixed(2).split('.')
+  const intFmt = int.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+  return '€ ' + intFmt + ',' + dec
+}
+
 const TIPI = ['Liquidazione Giudiziale', 'Liquidazione Controllata', 'Fallimento', 'Concordato Preventivo', 'Concordato in Continuità', 'Liquidazione Coatta', 'Amministrazione Straordinaria', 'Altro']
 const STATUS_BADGE = {
   attiva:  { cls: 'badge-green',  label: 'Attiva' },
