@@ -13,7 +13,7 @@ const NAV = [
   { label: 'Inventario',   icon: Package,          path: '/inventario',  needProc: true },
   { label: 'Lotti',        icon: Layers,           path: '/lotti',       needProc: true },
   { label: 'Aste',         icon: Gavel,            path: '/aste',        needProc: true },
-  { label: 'Documenti',    icon: FileText,         path: '/contratti',   needProc: true },
+  { label: 'Documenti',    icon: FileText,         path: '/documenti',   needProc: true },
   { section: 'Sistema' },
   { label: 'Impostazioni', icon: Settings,         path: '/impostazioni' },
   { label: 'Utenti',       icon: Users,            path: '/admin',       adminOnly: true },
