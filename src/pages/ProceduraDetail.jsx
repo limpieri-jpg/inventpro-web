@@ -186,44 +186,59 @@ function TabInventarioPreview({ procId }) {
 }
 
 
-// ─── Helpers docx ──────────────────────────────────────────────────────────
-const _PAGE_W = 11906; const _MARGIN = 1000; const _CONTENT_W = _PAGE_W - _MARGIN * 2
+// ─── Helpers docx mandati ─────────────────────────────────────────────────
+const _MW = 11906; const _MM = 1000; const _MCW = _MW - _MM * 2
 const _BN = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' }
 const _BNS = { top: _BN, bottom: _BN, left: _BN, right: _BN }
 const _BT = { style: BorderStyle.SINGLE, size: 1, color: 'AAAAAA' }
 const _BTS = { top: _BT, bottom: _BT, left: _BT, right: _BT }
-function _p(ch, opts = {}) { return new Paragraph({ children: Array.isArray(ch) ? ch : [ch], ...opts }) }
+const _J = AlignmentType.JUSTIFIED
+const _C = AlignmentType.CENTER
+const _R = AlignmentType.RIGHT
+
+function _p(ch, opts = {}) { return new Paragraph({ children: Array.isArray(ch) ? ch : [ch], alignment: _J, ...opts }) }
+function _pc(ch, opts = {}) { return new Paragraph({ children: Array.isArray(ch) ? ch : [ch], alignment: _C, ...opts }) }
 function _t(text, opts = {}) { return new TextRun({ text: String(text || ''), font: 'Gadugi', size: 22, ...opts }) }
 function _b(text, size = 22) { return _t(text, { bold: true, size }) }
-function _br() { return new Paragraph({ children: [], spacing: { before: 80, after: 80 } }) }
+function _br() { return new Paragraph({ children: [new TextRun('')], spacing: { before: 60, after: 60 } }) }
 function _cell(text, isBold, shade) {
-  return new TableCell({ borders: _BNS, width: { size: _CONTENT_W / 2, type: WidthType.DXA },
+  return new TableCell({ borders: _BNS, width: { size: _MCW / 2, type: WidthType.DXA },
     shading: shade ? { fill: shade, type: ShadingType.CLEAR } : undefined,
     margins: { top: 80, bottom: 80, left: 120, right: 120 },
-    children: [_p(isBold ? _b(text) : _t(text))] })
+    children: [new Paragraph({ children: [isBold ? _b(text) : _t(text)], alignment: _J })] })
+}
+function _cellW(text, w, isBold, shade) {
+  return new TableCell({ borders: _BNS, width: { size: w, type: WidthType.DXA },
+    shading: shade ? { fill: shade, type: ShadingType.CLEAR } : undefined,
+    margins: { top: 80, bottom: 80, left: 120, right: 120 },
+    children: [new Paragraph({ children: [isBold ? _b(text) : _t(text)], alignment: _J })] })
 }
 function _tblInfo(rows) {
-  return new Table({ width: { size: _CONTENT_W, type: WidthType.DXA }, columnWidths: [_CONTENT_W/2, _CONTENT_W/2], borders: _BTS,
+  return new Table({ width: { size: _MCW, type: WidthType.DXA }, columnWidths: [_MCW/2, _MCW/2], borders: _BTS,
     rows: rows.map(([l, v]) => new TableRow({ children: [_cell(l, false, 'EEF2F7'), _cell(v || '')] })) })
 }
 function _fatt(proc) {
   const sede = (proc.sedi || []).find(s => s.tipo === 'legale') || {}
   const ind = [sede.indirizzo, sede.civico, sede.cap, sede.comune, sede.provincia ? '('+sede.provincia+')' : ''].filter(Boolean).join(' ')
-  return new Table({ width: { size: _CONTENT_W, type: WidthType.DXA }, columnWidths: [_CONTENT_W/2, _CONTENT_W/2], borders: _BTS,
-    rows: [
-      new TableRow({ children: [new TableCell({ borders: _BTS, columnSpan: 2, shading: { fill: '244061', type: ShadingType.CLEAR }, margins: { top: 80, bottom: 80, left: 120, right: 120 }, children: [_p(_b('INTESTATARIO FATTURA:'))] })] }),
-      new TableRow({ children: [_cell('RAGIONE SOCIALE', false, 'EEF2F7'), _cell(proc.nome || '')] }),
-      new TableRow({ children: [_cell('SEDE LEGALE / INDIRIZZO', false, 'EEF2F7'), _cell(ind || '—')] }),
-      new TableRow({ children: [_cell('C.F. / P.IVA', false, 'EEF2F7'), _cell((proc.cf||'') + (proc.piva?' / '+proc.piva:''))] }),
-      new TableRow({ children: [_cell('P.E.C. (fatturazione elettronica)', false, 'EEF2F7'), _cell(proc.pec||'')] }),
-    ] })
+  const w1 = Math.floor(_MCW * 0.4); const w2 = Math.floor(_MCW * 0.45); const w3 = Math.floor(_MCW * 0.15)
+  return new Table({ width: { size: _MCW, type: WidthType.DXA }, columnWidths: [_MCW/2, _MCW/2], borders: _BTS, rows: [
+    new TableRow({ children: [new TableCell({ borders: _BTS, columnSpan: 2, shading: { fill: '244061', type: ShadingType.CLEAR }, margins: { top: 80, bottom: 80, left: 120, right: 120 }, children: [_pc(_b('INTESTATARIO FATTURA:'))] })] }),
+    new TableRow({ children: [_cell('RAGIONE SOCIALE', false, 'EEF2F7'), _cell(proc.nome || '')] }),
+    new TableRow({ children: [_cellW('SEDE LEGALE / INDIRIZZO', w1, false, 'EEF2F7'), _cellW(ind || '—', w2), _cellW('COD. SDI', w3, false, 'EEF2F7')] }),
+    new TableRow({ children: [_cell('C.F. / P.IVA', false, 'EEF2F7'), _cell((proc.cf||'') + (proc.piva?' / '+proc.piva:''))] }),
+    new TableRow({ children: [_cell('P.E.C. (fatturazione elettronica)', false, 'EEF2F7'), _cell(proc.pec||'')] }),
+  ]})
 }
-function _firme(proc) {
-  const nrg = (proc.num||'') + (proc.anno?'/'+proc.anno:'')
-  return [_br(), _p([_t(proc.tipo+' '+nrg), new TextRun({ text: '', break: 1 }), _b(proc.nome||'')]),
-    _br(), _p(_t("Il Curatore " + (proc.curatore||''))), _p(_t('________________________________')),
-    _br(), _p(_b("Pro.ges.s S.r.l.")), _p(_t("L'Amministratore Unico")), _p(_t('Luigi IMPIERI')), _p(_t('________________________________'))]
+function _fmtD(d) { if (!d) return '______'; const dt = new Date(d); return String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0')+'/'+dt.getFullYear() }
+function _dl(blob, nome) {
+  const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = nome
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(() => URL.revokeObjectURL(url), 3000)
 }
+function _numConf() {
+  return { config: [{ reference: 'blt', levels: [{ level: 0, format: LevelFormat.BULLET, text: '-', alignment: AlignmentType.LEFT, style: { paragraph: { indent: { left: 360, hanging: 360 } } } }] }] }
+}
+function _blt(ch) { return new Paragraph({ numbering: { reference: 'blt', level: 0 }, alignment: _J, children: Array.isArray(ch) ? ch : [ch] }) }
+function _secN(label) { return _blt(_b(label)) }
 function _hdr(logoB64) {
   const lr = logoB64 ? new ImageRun({ data: logoB64.split(',')[1], transformation: { width: 150, height: 50 }, type: 'png' }) : null
   return new Header({ children: [
@@ -233,44 +248,87 @@ function _hdr(logoB64) {
 }
 function _ftr() {
   return new Footer({ children: [new Paragraph({
+    alignment: _C,
     border: { top: { style: BorderStyle.SINGLE, size: 4, color: 'AAAAAA', space: 1 } },
-    children: [_t('Procedure Gestite E Servizi S.r.l. — Via Giuseppe Parini, 29 - LECCO (LC) - 23900', { size: 16 }),
-               new TextRun({ text: '', break: 1 }),
-               _t('procedure@progess-italia.it | progess@arubapec.it | C.F. e P.IVA 03546380134', { size: 16 })]
-  })]})
+    children: [
+      _b('Procedure Gestite E Servizi S.r.l.', 18),
+      new TextRun({ text: '', break: 1 }),
+      _t('Sede legale Via Giuseppe Parini, 29 - LECCO (LC) - 23900', { size: 16 }),
+      new TextRun({ text: '', break: 1 }),
+      _t('Codice Fiscale e Partita IVA 03546380134', { size: 16 }),
+      new TextRun({ text: '', break: 1 }),
+      _t('procedure@progess-italia.it | progess@arubapec.it', { size: 16 }),
+    ]
+  })])
 }
-function _fmtD(d) { if (!d) return '______'; const dt = new Date(d); return String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0')+'/'+dt.getFullYear() }
-function _dl(blob, nome) {
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a'); a.href = url; a.download = nome
-  document.body.appendChild(a); a.click(); document.body.removeChild(a)
-  setTimeout(() => URL.revokeObjectURL(url), 3000)
+function _firme(proc, dataC) {
+  const nrg = (proc.num||'') + (proc.anno?'/'+proc.anno:'')
+  return [
+    _br(),
+    _p([_t('Lecco, '+_fmtD(dataC))]),
+    _br(),
+    _p([_t('\t\t\t\t\t'), _b('Il Cliente')]),
+    _p([_t('\t\t\t\t\t'), _b(proc.tipo+' '+nrg)]),
+    _p([_t('\t\t\t\t\t'), _b(proc.nome||'')]),
+    _p([_t('\t\t\t\t\t'), _t('Il Curatore '+(proc.curatore||''))]),
+    _br(),
+    _p(_t('________________________________')),
+    _br(),
+    _p([_t('\t\t\t\t\t'), _b('Pro.ges.s S.r.l.')]),
+    _p([_t('\t\t\t\t\t'), _t("L'Amministratore Unico")]),
+    _p([_t('\t\t\t\t\t'), _t('Luigi IMPIERI')]),
+    _br(),
+    _p(_t('________________________________')),
+  ]
 }
-function _numConf() {
-  return { config: [{ reference: 'blt', levels: [{ level: 0, format: LevelFormat.BULLET, text: '-', alignment: AlignmentType.LEFT, style: { paragraph: { indent: { left: 720, hanging: 360 } } } }] }] }
-}
-function _secProps() {
-  return { properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: 1200, right: _MARGIN, bottom: 1400, left: _MARGIN } } }, headers: { default: _hdr(null) }, footers: { default: _ftr() } }
-}
-function _blt(children) { return new Paragraph({ numbering: { reference: 'blt', level: 0 }, children: Array.isArray(children) ? children : [children] }) }
 
-const SMOB = [
-  'Predisposizione Relazione di stima e Report Fotografico valorizzato',
-  'Coadiuvare il/la Curatore/Curatrice nella predisposizione degli Avvisi di vendita e dei modelli per offerte irrevocabili',
-  'Accompagnare gli utenti interessati alla visita dei beni mobili posti in vendita',
-  'Pubblicità Legale su "Progess Italia"',
-  'Pubblicità Legale sul Portale delle Vendite Pubbliche (PVP)',
-  'Esperire i tentativi di vendita mediante procedure competitive (art. 216 CCII)',
-  'Comunicare esiti delle vendite al Curatore con Verbale e Report piattaforma',
-]
-const SIMM = [
-  'Coadiuvare il Curatore nella predisposizione degli Avvisi di vendita e dei modelli per offerte irrevocabili di acquisto',
-  'Accompagnare gli utenti interessati alla visita dei beni immobili posti in vendita',
-  'Pubblicità Legale su "Progess Italia"',
-  'Pubblicità Legale sul Portale delle Vendite Pubbliche (PVP), previa nomina in qualità di soggetto abilitato da parte della Cancelleria',
-  'Esperire i tentativi di vendita necessari per la liquidazione totale dei beni immobili mediante procedure competitive (art. 216 CCII)',
-  'Comunicare gli esiti delle vendite al Curatore con Verbale delle operazioni di vendita e Report della piattaforma Progess Italia',
-]
+function _informativa(proc, dataC) {
+  const nrg = (proc.num||'') + (proc.anno?'/'+proc.anno:'')
+  return [
+    new Paragraph({ children: [], pageBreakBefore: true }),
+    _pc([_b('INFORMATIVA AI SENSI DEL REGOLAMENTO GENERALE '), new TextRun({ text: '', break: 1 }), _b('SULLA PROTEZIONE DEI DATI (Regolamento UE 2016/679)')]),
+    _br(),
+    _p(_t("Ai sensi degli Artt. 12 e 13 del Regolamento generale sulla protezione dei dati (GDPR - General Data Protection Regulation) approvato con Regolamento UE 2016/679 del Parlamento Europeo e del Consiglio del 27 aprile 2016 ed in relazione ai dati personali di Pro.Ges.S. entrerà in possesso con l'affidamento dell'incarico da Lei conferito, La informo di quanto segue:")),
+    _br(),
+    _secN('Finalità del trattamento dei dati'),
+    _p(_t("Il trattamento è finalizzato unicamente alla corretta e completa esecuzione dell'incarico ricevuto.")),
+    _br(),
+    _secN('Modalità del trattamento dei dati'),
+    _blt(_t('il trattamento può essere svolto con o senza l\'ausilio di strumenti elettronici o comunque automatizzati;')),
+    _blt(_t('il trattamento è svolto dal titolare e/o dagli incaricati del trattamento.')),
+    _br(),
+    _secN('Conferimento dei dati'),
+    _p(_t('Il conferimento di dati personali sensibili è strettamente necessario ai fini dello svolgimento delle attività di cui al punto 1.')),
+    _br(),
+    _secN('Rifiuto di conferimento dei dati'),
+    _p(_t("L'eventuale rifiuto da parte dell'interessato di conferire dati personali comporta l'impossibilità di adempiere alle attività di cui al punto 1.")),
+    _br(),
+    _secN('Comunicazione dei dati'),
+    _p(_t('I dati personali possono venire a conoscenza degli incaricati del trattamento e possono essere comunicati per le finalità di cui al punto 1 a collaboratori esterni, a soggetti operanti nel settore giudiziario e, in genere, a tutti quei soggetti pubblici e privati cui la comunicazione sia necessaria per il corretto adempimento delle finalità indicate al punto 1.')),
+    _p(_t('Il trattamento dei dati avverrà anche per le finalità previste dalla normativa vigente in materia di antiriciclaggio.')),
+    _br(),
+    _secN('Diffusione dei dati'),
+    _p(_t('I dati personali non sono soggetti a diffusione.')),
+    _br(),
+    _secN("Trasferimento dei dati all'estero"),
+    _p(_t("I dati personali possono essere trasferiti verso Paesi dell'Unione Europea e verso Paesi terzi nell'ambito delle finalità di cui al punto 1.")),
+    _br(),
+    _secN("Diritti dell'interessato"),
+    _p(_t("A norma degli Artt. 15 (Diritto di accesso), 16 (Diritto di rettifica), 17 (Diritto alla cancellazione), 18 (Diritto di limitazione di trattamento), 20 (Diritto alla portabilità dei dati) e 21 (Diritto di opposizione) del Regolamento UE 2016/679, l'interessato può in ogni momento richiedere l'accesso ai dati personali e la rettifica o la cancellazione degli stessi o la limitazione del trattamento che lo riguardano o di opporsi al loro trattamento, oltre al diritto alla portabilità dei dati, inoltrando comunicazione scritta al Titolare del Trattamento.")),
+    _p(_t("L'interessato può proporre altresì reclamo all'Autorità di controllo dello stato in cui risiede o lavora.")),
+    _p(_t("Anche ai fini della normativa in materia di antiriciclaggio, i dati relativi alle prestazioni rientranti nella predetta disciplina legislativa verranno conservati per dieci anni dall'ultimazione della prestazione.")),
+    _br(),
+    _secN('Consenso al trattamento dei dati'),
+    _p(_t("Ai sensi dell'Art. 6, par. 1, lett. a) del Regolamento generale sulla protezione dei dati personali UE n. 2016/679, con l'apposizione della firma in calce al presente modulo, manifesta il consenso al trattamento dei dati nell'ambito delle finalità e modalità sopra richiamate. Tale consenso vale fino a revoca scritta da far pervenire tramite raccomandata con ricevuta di ritorno o a mezzo PEC.")),
+    _br(),
+    _secN('Titolare del trattamento'),
+    _p(_t('Titolare del trattamento è il Signor Luigi Impieri, C.F. MPRLGU72S12D086V, con domicilio presso Pro.Ges.S. S.r.l., C.F. e P. IVA 03546380134, con sede in Lecco (LC), Via Giuseppe Parini 29, PEC progess@arubapec.it.')),
+    _br(),
+    _p(_t('Per ricevuta comunicazione e rilascio consenso')),
+    _br(),
+    ..._firme(proc, dataC),
+  ]
+}
 
 function _intro(proc, tipo) {
   const nrg = (proc.num||'') + (proc.anno?'/'+proc.anno:'')
@@ -281,60 +339,110 @@ function _intro(proc, tipo) {
     _p([_t('Con il presente contratto, da valersi ad ogni effetto di legge, tra:')]),
     _br(),
     _p([_t('la '), _b(proc.tipo||''), _t(' '), _b('R.G. '+nrg+' - '+(proc.nome||'')),
-        _t(', C.F. e P.IVA '+(proc.cf||'')+(proc.piva?' P.IVA '+proc.piva:'')+', con sede legale in '+ind+', rappresentata in questa sede dal Curatore '),
-        _b(proc.curatore||''), _t(' con sentenza n. '+(proc.sentenza_num||'n. _______')+' dal Tribunale di '+(proc.tribunale||'')+
+        _t(', C.F. e P.IVA '+(proc.cf||'')+(proc.piva?' P.IVA '+proc.piva:'')+', con sede legale in '+ind+
+        ', rappresentata in questa sede dal Curatore '), _b(proc.curatore||''),
+        _t(' con sentenza n. '+(proc.sentenza_num||'n. _______')+' dal Tribunale di '+(proc.tribunale||'')+
         ', PEC della procedura '+(proc.pec||'')+' (di seguito "'), _b('Cliente'), _t('") da una parte')]),
     _br(), _p(_b('e')), _br(),
     _p([_t('la società '), _b('"PROCEDURE GESTITE E SERVIZI S.R.L."'), _t(' - in forma abbreviata '), _b('"PRO.GES.S. S.R.L."'),
-        _t(', C.F. e P.IVA 03546380134, con sede legale in Via Giuseppe Parini n.ro 29, PEC progess@arubapec.it, in persona '),
-        _t("dell\'Amministratore Unico Sig. "), _b('Luigi IMPIERI'), _t(', C.F. MPRLGU72S12D086V, (di seguito "'),
-        _b('Pro.Ges.S.'), _t('"), dall\'altra parte')]),
+        _t(", n.ro di iscrizione al Registro delle Imprese e Codice Fiscale 03546380134, Partita IVA 03546380134, con sede legale in Via Giuseppe Parini n.ro 29, PEC progess@arubapec.it, in persona dell"),
+        _t("'Amministratore Unico Sig. "), _b('Luigi IMPIERI'),
+        _t(', C.F. MPRLGU72S12D086V, (di seguito "'), _b('Pro.Ges.S.'), _t('"), dall'), _t("'altra parte (il Cliente e Pro.Ges.S., insieme, \""), _b('Parti'), _t('")')]),
     _br(),
     _p(_b('PREMESSO CHE')),
-    _blt([_t('il Cliente intende conferire a Pro.Ges.S. il mandato per la vendita dei '), _b('beni '+tipo), _t(' acquisiti all\'attivo della procedura')]),
-    _blt([_t('Pro.Ges.S. ha le competenze e gli strumenti per adempiere il suddetto incarico, quale soggetto specializzato ai sensi dell\'Art. 216 CCII;')]),
+    _blt([_t("il Cliente intende conferire a Pro.Ges.S. il mandato per la vendita dei "), _b('beni '+tipo), _t(" acquisiti all"), _t("'attivo della procedura, con autorizzazione alla vendita e nomina di Pro.Ges.S., quale commissionario alla Vendita")]),
+    _blt([_t("Pro.Ges.S. ha le competenze e gli strumenti per adempiere il suddetto incarico, quale soggetto specializzato ai sensi dell"), _t("'Art. 216 CCII;")]),
     _br(), _p(_t('Tutto ciò premesso, tra le Parti')), _br(),
     _p(_b('SI STIPULA E CONVIENE QUANTO SEGUE')), _br(),
-    _blt(_b("OGGETTO DELL'INCARICO")), _br(),
+    _secN('PREMESSE'),
+    _p(_t('Le premesse costituiscono parte integrante e sostanziale del presente contratto.')),
+    _br(),
+    _secN("OGGETTO DELL'INCARICO"),
     _p(_t('Il Cliente conferisce incarico a Pro.Ges.S., la quale accetta di:')),
   ]
 }
 
-function _chiusura(proc, dataContratto) {
+function _clausoleFinali(proc, dataC) {
+  const nrg = (proc.num||'') + (proc.anno?'/'+proc.anno:'')
   return [
     _br(),
-    _blt(_b('FORO COMPETENTE')),
-    _p(_t('Per qualsiasi controversia connessa al presente mandato sarà esclusivamente competente il Foro di Lecco.')),
+    _secN('DURATA'),
+    _p(_t("La durata del presente contratto decorre dalla data della sua sottoscrizione sino all'espletamento dell'incarico, come sopra descritto.")),
     _br(),
-    _p(_t('Lecco, '+_fmtD(dataContratto))), _br(),
-    _p(_b('Il Cliente')),
-    ..._firme(proc),
+    _secN('OBBLIGHI DEL CLIENTE'),
+    _p(_t("Il Cliente si impegna a trasmettere a Pro.Ges.S. i documenti necessari per l'espletamento dell'incarico affidato, fra cui:")),
+    _blt(_t('Conferimento di incarico a Pro.Ges.S., sottoscritto dal Curatore e autorizzazione dal Giudice;')),
+    _blt([_t("Programma di Liquidazione predisposto dal Curatore e vistato/autorizzato dal Sig. Giudice Delegato ai sensi dell"), _t("'art. 275 c.c.i.i.;")]),
+    _blt([_t("Autorizzazione alla vendita emessa dal Sig. Giudice Delegato, "), _b("con annessa nomina di Pro.Ges.S. quale soggetto autorizzato alla vendita"), _t(" dei beni della Procedura;")]),
+    _p(_t("Tutta la documentazione sopra richiesta è da trasmettersi al seguente indirizzo di posta elettronica: procedure@progess-italia.it")),
+    _br(),
+    _secN('MODIFICHE'),
+    _p(_t("Ogni modifica al presente contratto dovrà essere fatta per iscritto tra le Parti, a pena di nullità.")),
+    _br(),
+    _secN('COMUNICAZIONI'),
+    _p(_t("Tutte le comunicazioni da eseguirsi in riferimento al presente mandato dovranno essere fatte per iscritto, a mezzo di posta elettronica certificata agli indirizzi indicati nelle premesse.")),
+    _br(),
+    _secN('FORO COMPETENTE'),
+    _p(_t("Per qualsiasi controversia connessa al presente mandato sarà esclusivamente competente il Foro di Lecco, con esclusione di qualsivoglia foro alternativo applicabile per legge.")),
+    _br(),
+    ..._firme(proc, dataC),
+    _br(), _br(),
+    _p(_t("Si precisa che il presente contratto è stato discusso in ogni suo contenuto tra le Parti.")),
+    _br(),
+    _p([_t("Ad ogni modo, ai sensi e per gli effetti di cui all"), _t("'Art 1341 c.c., si approvano espressamente le clausole 3), 4), 6) e 9).")]),
+    _br(),
+    ..._firme(proc, dataC),
+    ..._informativa(proc, dataC),
   ]
 }
+
+const SMOB = [
+  "Predisposizione della Relazione di stima e del Report Fotografico valorizzato dei beni mobili oggetto del presente incarico;",
+  "Coadiuvare il Curatore nella predisposizione degli Avvisi di vendita e dei modelli utili agli utenti per formulare offerte irrevocabili di acquisto;",
+  "Accompagnare gli utenti interessati alla visita dei beni mobili posti in vendita;",
+  'Effettuare la Pubblicità Legale su "Progess Italia";',
+  "Effettuare la Pubblicità Legale sul Portale delle Vendite Pubbliche, previo nomina in qualità di soggetto abilitato alla pubblicazione da parte della Cancelleria;",
+  "Esperire i tentativi di vendita necessari per la liquidazione totale dei beni mobili acquisiti all'attivo della Procedura, mediante procedure competitive ai sensi dell'art. 216 c.c.i.i.;",
+  "Comunicare gli esiti delle vendite al Curatore, fornendo a quest'ultimo il Verbale delle operazioni di vendita ed il Report rilasciato dalla piattaforma di proprietà di Progess Italia.",
+]
+const SIMM = [
+  "Coadiuvare il Curatore nella predisposizione degli Avvisi di vendita e dei modelli per offerte irrevocabili di acquisto;",
+  "Accompagnare gli utenti interessati alla visita dei beni immobili posti in vendita;",
+  'Effettuare la Pubblicità Legale su "Progess Italia";',
+  "Effettuare la Pubblicità Legale sul Portale delle Vendite Pubbliche (PVP), previa nomina in qualità di soggetto abilitato da parte della Cancelleria;",
+  "Esperire i tentativi di vendita necessari per la liquidazione totale dei beni immobili mediante procedure competitive (art. 216 CCII);",
+  "Comunicare gli esiti delle vendite al Curatore con Verbale delle operazioni di vendita e Report della piattaforma Progess Italia.",
+]
 
 async function _genMob(proc, opts, logoB64) {
   const { dataContratto, compenso, costoLotto, rt, servizi } = opts
   const nrg = (proc.num||'') + (proc.anno?'/'+proc.anno:'')
   const hasRT = rt && rt.trim() !== ''
   const sp = servizi.map(s => _blt(_t(s)))
-  const secP = _secProps(); secP.headers = { default: _hdr(logoB64) }; secP.footers = { default: _ftr() }
-  const doc = new Document({ numbering: _numConf(), sections: [{ ...secP, children: [
-    _p(_b('MANDATO PER LA VENDITA DI BENI MOBILI', 28), { alignment: AlignmentType.CENTER, spacing: { before: 240, after: 240 } }),
-    ..._intro(proc, 'mobili'), ...sp, _br(),
-    _p(_b('DATI DELLA PROCEDURA CONCORSUALE'), { alignment: AlignmentType.CENTER }), _br(),
-    _tblInfo([['Procedura', proc.nome||''], ['Tipo', proc.tipo||''], ['N. R.G.', nrg], ['Tribunale', proc.tribunale||''], ['Curatore', proc.curatore||''], ['PEC procedura', proc.pec||'']]),
-    _br(), _p([_t('Data contratto: '), _b(_fmtD(dataContratto))]),
-    _br(), _p(_b('Dati per fatturazione:')), _br(), _fatt(proc), _br(),
-    _p([_t('PAGAMENTO mediante bonifico bancario su conto corrente intestato a "'), _b('Pro.Ges.S. S.r.l.'), _t('" Deutsche Bank filiale di Lecco — IBAN IT63J 03104 22903 000000820981')]),
-    _br(), _blt(_b('COMPENSO')), _br(),
-    _p([_t("Per l'espletamento dei servizi effettuati da Pro.Ges.S., quest'ultima avrà diritto ad un compenso "),
-        _b('pari '+(compenso||'10')+'%'), _t(', oltre IVA, calcolato sul prezzo di aggiudicazione definitivo, per ogni lotto venduto e '),
-        _b("saranno ad esclusivo carico dell\'aggiudicatario.")]),
-    _br(), _p(_b('Costi a carico della Procedura:')),
-    _blt([_t('Per il servizio di caricamento dei Lotti su PVP e Progess Italia, Pro.Ges.S. avrà diritto ad un compenso di '),
-          _b('Euro '+(costoLotto||'25,00')+' oltre IVA'), _t(', per ciascun Lotto pubblicato.')]),
-    ...(hasRT ? [_blt([_t('Acquisto della RT di pubblicazione '), _b('Euro '+rt), _t(' oltre commissioni bancarie (per i beni mobili registrati).')])] : []),
-    ..._chiusura(proc, dataContratto),
+  const doc = new Document({ numbering: _numConf(), sections: [{ properties: { page: { size: { width: _MW, height: 16838 }, margin: { top: 1134, right: _MM, bottom: 1134, left: _MM } } }, headers: { default: _hdr(logoB64) }, footers: { default: _ftr() }, children: [
+    _pc(_b('MANDATO PER LA VENDITA DI BENI MOBILI', 28), { spacing: { before: 240, after: 240 } }),
+    ..._intro(proc, 'mobili'), ...sp,
+    _br(),
+    _p(_b('DATI DELLA PROCEDURA CONCORSUALE'), { alignment: _C }),
+    _br(),
+    _p([_t("Indicare se la procedura dispone di liquidità per il pagamento delle somme che verranno anticipate:   "), _b("SÌ"), _t("          NO")]),
+    _br(),
+    _secN('Dati per fatturazione:'),
+    _fatt(proc),
+    _br(),
+    _p([_t('PAGAMENTO mediante bonifico bancario su conto corrente intestato a "'), _b('Pro.Ges.S. S.r.l.'), _t('"')]),
+    _p(_t('Deutsche Bank filiale di Lecco agenzia di Castello')),
+    _p(_t('IBAN IT63J 03104 22903 000000820981')),
+    _br(),
+    _p([_t("Il pagamento della fattura dovrà essere effettuato entro e non oltre il termine di "), _b("30 (trenta)"), _t(" giorni dalla data di emissione della stessa. Qualora il pagamento non venga effettuato entro il suddetto termine, saranno applicati gli interessi di mora al tasso stabilito dal D.L. nr. 231 del 9 ottobre 2002.")]),
+    _br(),
+    _secN('COMPENSO'),
+    _p([_t("Per l"), _t("'espletamento dei servizi effettuati da Pro.Ges.S., quest"), _t("'ultima avrà diritto ad un compenso "), _b("pari "+compenso+"%"), _t(", oltre IVA, il quale andrà calcolato sul prezzo di aggiudicazione definitivo, per ogni lotto venduto e "), _b("saranno ad esclusivo carico dell"), _b("'aggiudicatario.")]),
+    _br(),
+    _p(_b('Costi a carico della Procedura:')),
+    _p([_t("Per il servizio di caricamento dei Lotti posti in vendita sulla piattaforma PVP e Progess Italia, Pro.Ges.S. avrà diritto ad un compenso ad "), _b("Euro "+(costoLotto||'25,00')+" oltre IVA"), _t(", per ciascun Lotto pubblicato.")]),
+    ...(hasRT ? [_p([_t("Acquisto della RT di pubblicazione "), _b("Euro "+rt), _t(" oltre commissioni bancarie per l"), _t("'acquisto (per i beni mobili registrati).")])] : []),
+    ..._clausoleFinali(proc, dataContratto),
   ]}] })
   return Packer.toBlob(doc)
 }
@@ -343,30 +451,38 @@ async function _genImm(proc, opts, logoB64) {
   const { dataContratto, scaglioni, costoLotto, iban, dataAut, servizi } = opts
   const nrg = (proc.num||'') + (proc.anno?'/'+proc.anno:'')
   const sp = servizi.map(s => _blt(_t(s)))
-  const tblS = new Table({ width: { size: _CONTENT_W, type: WidthType.DXA }, columnWidths: [_CONTENT_W/2, _CONTENT_W/2], borders: _BTS,
-    rows: [
-      new TableRow({ children: [_cell('Fino ad € 350.000', false, 'EEF2F7'), _cell((scaglioni[0]||'3')+'%', true)] }),
-      new TableRow({ children: [_cell('Da € 350.001 a € 700.000', false, 'EEF2F7'), _cell((scaglioni[1]||'2.5')+'%', true)] }),
-      new TableRow({ children: [_cell('Da € 700.001 a € 1.000.000', false, 'EEF2F7'), _cell((scaglioni[2]||'2')+'%', true)] }),
-      new TableRow({ children: [_cell('Oltre € 1.000.000', false, 'EEF2F7'), _cell((scaglioni[3]||'1.5')+'%', true)] }),
-    ] })
-  const secP = _secProps(); secP.headers = { default: _hdr(logoB64) }; secP.footers = { default: _ftr() }
-  const doc = new Document({ numbering: _numConf(), sections: [{ ...secP, children: [
-    _p(_b('MANDATO PER LA VENDITA DI BENI IMMOBILI', 28), { alignment: AlignmentType.CENTER, spacing: { before: 240, after: 240 } }),
-    ..._intro(proc, 'immobili'), ...sp, _br(),
-    _p(_b('DATI DELLA PROCEDURA CONCORSUALE'), { alignment: AlignmentType.CENTER }), _br(),
-    _tblInfo([['Procedura', proc.nome||''], ['Tipo', proc.tipo||''], ['N. R.G.', nrg], ['Tribunale', proc.tribunale||''], ['Curatore', proc.curatore||''], ['PEC procedura', proc.pec||'']]),
-    _br(), _p([_t('Data contratto: '), _b(_fmtD(dataContratto))]),
+  const tblS = new Table({ width: { size: _MCW, type: WidthType.DXA }, columnWidths: [_MCW/2, _MCW/2], borders: _BTS, rows: [
+    new TableRow({ children: [_cell('Fino ad € 350.000', false, 'EEF2F7'), _cell((scaglioni[0]||'3')+'%', true)] }),
+    new TableRow({ children: [_cell('Da € 350.001 a € 700.000', false, 'EEF2F7'), _cell((scaglioni[1]||'2.5')+'%', true)] }),
+    new TableRow({ children: [_cell('Da € 700.001 a € 1.000.000', false, 'EEF2F7'), _cell((scaglioni[2]||'2')+'%', true)] }),
+    new TableRow({ children: [_cell('Oltre € 1.000.000', false, 'EEF2F7'), _cell((scaglioni[3]||'1.5')+'%', true)] }),
+  ]})
+  const doc = new Document({ numbering: _numConf(), sections: [{ properties: { page: { size: { width: _MW, height: 16838 }, margin: { top: 1134, right: _MM, bottom: 1134, left: _MM } } }, headers: { default: _hdr(logoB64) }, footers: { default: _ftr() }, children: [
+    _pc(_b('MANDATO PER LA VENDITA DI BENI IMMOBILI', 28), { spacing: { before: 240, after: 240 } }),
+    ..._intro(proc, 'immobili'), ...sp,
+    _br(),
+    _p(_b('DATI DELLA PROCEDURA CONCORSUALE'), { alignment: _C }),
+    _br(),
+    _p([_t("Indicare se la procedura dispone di liquidità per il pagamento delle somme che verranno anticipate:   "), _b("SÌ"), _t("          NO")]),
+    _br(),
+    _secN('Dati per fatturazione:'),
+    _fatt(proc),
+    _br(),
+    _p([_t('PAGAMENTO mediante bonifico bancario su conto corrente intestato a "'), _b('Pro.Ges.S. S.r.l.'), _t('"')]),
+    _p(_t('Deutsche Bank filiale di Lecco agenzia di Castello')),
+    _p(_t('IBAN IT63J 03104 22903 000000820981')),
+    _br(),
+    _p([_t("Il pagamento della fattura dovrà essere effettuato entro e non oltre il termine di "), _b("30 (trenta)"), _t(" giorni dalla data di emissione della stessa.")]),
+    _br(),
     ...(iban ? [_p([_t('IBAN procedura (per trasferimento somme): '), _b(iban)])] : []),
     ...(dataAut ? [_p([_t('Data autorizzazione Giudice Delegato: '), _b(_fmtD(dataAut))])] : []),
-    _br(), _p(_b('Dati per fatturazione:')), _br(), _fatt(proc), _br(),
-    _p([_t('PAGAMENTO mediante bonifico bancario su conto corrente intestato a "'), _b('Pro.Ges.S. S.r.l.'), _t('" Deutsche Bank filiale di Lecco — IBAN IT63J 03104 22903 000000820981')]),
-    _br(), _blt(_b('COMPENSO')), _br(),
-    _p(_t("Per l'espletamento dei servizi, per ogni lotto venduto, Pro.Ges.S. avrà diritto ad un compenso calcolato a SCAGLIONI sul valore di aggiudicazione definitivo, OLTRE IVA, a esclusivo carico dell\'aggiudicatario:")),
+    _br(),
+    _secN('COMPENSO'),
+    _p(_t("Per l'espletamento dei servizi, per ogni lotto venduto, Pro.Ges.S. avrà diritto ad un compenso calcolato a SCAGLIONI sul valore di aggiudicazione definitivo, OLTRE IVA, a esclusivo carico dell'aggiudicatario:")),
     _br(), tblS, _br(),
     _p(_b('Costi a carico della Procedura:')),
-    _blt([_t('Caricamento lotti su PVP e Progess Italia: '), _b('Euro '+(costoLotto||'25,00')+' oltre IVA'), _t(', per ciascun lotto.')]),
-    ..._chiusura(proc, dataContratto),
+    _p([_t("Caricamento lotti su PVP e Progess Italia: "), _b("Euro "+(costoLotto||'25,00')+" oltre IVA"), _t(", per ciascun lotto.")]),
+    ..._clausoleFinali(proc, dataContratto),
   ]}] })
   return Packer.toBlob(doc)
 }
