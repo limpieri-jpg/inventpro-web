@@ -223,7 +223,7 @@ export default function Inventario() {
       const studioLogo = localStorage.getItem('ip_logo') || ''
       const studioNome = localStorage.getItem('ip_studio_nome') || 'Pro.Ges.S. Srl'
       const studioIndirizzo = localStorage.getItem('ip_studio_indirizzo') || ''
-      const footerTxt = studioNome + (studioIndirizzo ? ' — ' + studioIndirizzo : '')
+      const footerTxt = studioNome + (studioIndirizzo ? '<br>' + studioIndirizzo : '')
       const logoHtml = studioLogo
         ? `<img src="${studioLogo}" style="max-height:70px;max-width:200px;object-fit:contain">`
         : `<div style="font-size:18px;font-weight:700;color:#1a3a6b">${studioNome}</div>`
@@ -232,7 +232,7 @@ export default function Inventario() {
       const titoloDoc = estimativo ? 'Report estimativo' : 'Report fotografico beni mobili'
       const coverTitle = estimativo ? 'REPORT ESTIMATIVO' : 'REPORT FOTOGRAFICO'
       const totVG = tutti.reduce((s, a) => s + (parseFloat(a.val_giud || 0) * parseFloat(a.qta || 1)), 0)
-      const fmtEurLocal = (n) => '€' + parseFloat(n || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      const fmtEurLocal = (n) => { const parts = parseFloat(n || 0).toFixed(2).split('.'); parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.'); return '€ ' + parts[0] + ',' + parts[1]; }
       const procQR = makeQRUrl([(proc.tipo || ''), (proc.nome || ''), (proc.numero || '')].join(' '))
 
       const frontespizio = '<div style="page-break-after:always;min-height:100vh;display:flex;flex-direction:column;padding:50px 60px;background:#fff;box-sizing:border-box">'
