@@ -638,7 +638,7 @@ async function _genRelazioneStima(proc, opts, articoli, logoB64) {
   const cleanAI = (txt) => txt
     .replace(/##[^\n]*/g, '')
     .replace(/\*\*/g, '')
-    .replace(/(?i)valore di mercato[^\n]*(\n|$)/gi, '')
+    .replace(/valore di mercato[^\n]*(\n|$)/gi, '')
   const aiRows = (txt) => cleanAI(txt).split('\n').filter(l => l.trim()).map(l =>
     new Paragraph({ children:[new TextRun({text:l.trim(),font:'Gadugi',size:22})], alignment:AlignmentType.JUSTIFIED, spacing:{before:60,after:60} })
   )
