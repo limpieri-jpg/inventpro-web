@@ -3,7 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore'
 import { Topbar, Spinner, Modal, Empty } from '../components/layout'
 import { supabase } from '../lib/supabase'
-import { ArrowLeft, Edit, MapPin, Package, Layers, FileText, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, Edit, MapPin, Package, Layers, FileText, Plus, Trash2, Download } from 'lucide-react'
+import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, AlignmentType, BorderStyle, WidthType, ShadingType, LevelFormat, ImageRun, Header, Footer } from 'docx'
 
 function fmtDate(d) { if (!d) return '—'; return new Date(d).toLocaleDateString('it-IT') }
 function fmtEur(n) {
@@ -184,11 +185,343 @@ function TabInventarioPreview({ procId }) {
   )
 }
 
+
+// ─── Helpers docx ──────────────────────────────────────────────────────────
+const _PAGE_W = 11906; const _MARGIN = 1000; const _CONTENT_W = _PAGE_W - _MARGIN * 2
+const _BORDER_NONE = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' }
+const _BORDERS_NONE = { top: _BORDER_NONE, bottom: _BORDER_NONE, left: _BORDER_NONE, right: _BORDER_NONE }
+const _BORDER_THIN = { style: BorderStyle.SINGLE, size: 1, color: 'AAAAAA' }
+const _BORDERS_THIN = { top: _BORDER_THIN, bottom: _BORDER_THIN, left: _BORDER_THIN, right: _BORDER_THIN }
+function _p(children, opts = {}) { return new Paragraph({ children: Array.isArray(children) ? children : [children], ...opts }) }
+function _t(text, opts = {}) { return new TextRun({ text: String(text || ''), font: 'Gadugi', size: 22, ...opts }) }
+function _bold(text, size = 22) { return _t(text, { bold: true, size }) }
+function _br() { return new Paragraph({ children: [], spacing: { before: 80, after: 80 } }) }
+function _cell(text, isBold = false, shade = null) {
+  return new TableCell({
+    borders: _BORDERS_NONE,
+    width: { size: _CONTENT_W / 2, type: WidthType.DXA },
+    shading: shade ? { fill: shade, type: ShadingType.CLEAR } : undefined,
+    margins: { top: 80, bottom: 80, left: 120, right: 120 },
+    children: [_p(isBold ? _bold(text) : _t(text))]
+  })
+}
+function _tableInfo(rows) {
+  return new Table({
+    width: { size: _CONTENT_W, type: WidthType.DXA },
+    columnWidths: [_CONTENT_W / 2, _CONTENT_W / 2],
+    borders: _BORDERS_THIN,
+    rows: rows.map(([l, v]) => new TableRow({ children: [_cell(l, false, 'EEF2F7'), _cell(v || '')] }))
+  })
+}
+function _fatturazione(proc) {
+  const sede = (proc.sedi || []).find(s => s.tipo === 'legale') || {}
+  const ind = [sede.indirizzo, sede.civico, sede.cap, sede.comune, sede.provincia ? '('+sede.provincia+')' : ''].filter(Boolean).join(' ')
+  return new Table({
+    width: { size: _CONTENT_W, type: WidthType.DXA },
+    columnWidths: [_CONTENT_W / 2, _CONTENT_W / 2],
+    borders: _BORDERS_THIN,
+    rows: [
+      new TableRow({ children: [new TableCell({ borders: _BORDERS_THIN, columnSpan: 2, shading: { fill: '244061', type: ShadingType.CLEAR }, margins: { top: 80, bottom: 80, left: 120, right: 120 }, children: [_p(_bold('INTESTATARIO FATTURA:'))] })] }),
+      new TableRow({ children: [_cell('RAGIONE SOCIALE', false, 'EEF2F7'), _cell(proc.nome || '')] }),
+      new TableRow({ children: [_cell('SEDE LEGALE / INDIRIZZO', false, 'EEF2F7'), _cell(ind || '—')] }),
+      new TableRow({ children: [_cell('C.F. / P.IVA', false, 'EEF2F7'), _cell((proc.cf || '') + (proc.piva ? ' / ' + proc.piva : ''))] }),
+      new TableRow({ children: [_cell('P.E.C. (fatturazione elettronica)', false, 'EEF2F7'), _cell(proc.pec || '')] }),
+    ]
+  })
+}
+function _firme(proc) {
+  const nrg = (proc.num || '') + (proc.anno ? '/' + proc.anno : '')
+  return [
+    _br(),
+    _p([_t(proc.tipo + ' ' + nrg), new TextRun({ text: '', break: 1 }), _bold(proc.nome || '')]),
+    _br(),
+    _p(_t('Il Curatore ' + (proc.curatore || ''))),
+    _p(_t('________________________________')),
+    _br(),
+    _p(_bold('Pro.ges.s S.r.l.')),
+    _p(_t("L'Amministratore Unico")),
+    _p(_t('Luigi IMPIERI')),
+    _p(_t('________________________________')),
+  ]
+}
+function _header(logoB64) {
+  const logoRun = logoB64 ? new ImageRun({ data: logoB64.split(',')[1], transformation: { width: 150, height: 50 }, type: 'png' }) : null
+  return new Header({ children: [
+    new Paragraph({ children: logoRun ? [logoRun] : [_bold('PROCEDURE GESTITE E SERVIZI S.R.L.', 20)], alignment: AlignmentType.LEFT }),
+    new Paragraph({ border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: '244061', space: 1 } }, children: [] })
+  ]})
+}
+function _footer() {
+  return new Footer({ children: [new Paragraph({
+    border: { top: { style: BorderStyle.SINGLE, size: 4, color: 'AAAAAA', space: 1 } },
+    children: [_t('Procedure Gestite E Servizi S.r.l. — Via Giuseppe Parini, 29 - LECCO (LC) - 23900', { size: 16 }), new TextRun({ text: '', break: 1 }), _t('procedure@progess-italia.it | progess@arubapec.it | C.F. e P.IVA 03546380134', { size: 16 })]
+  })]})
+}
+function _fmtData(d) { if (!d) return '______'; const dt = new Date(d); return String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0')+'/'+dt.getFullYear() }
+function _scarica(blob, nome) {
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a'); a.href = url; a.download = nome
+  document.body.appendChild(a); a.click(); document.body.removeChild(a)
+  setTimeout(() => URL.revokeObjectURL(url), 3000)
+}
+
+const SERVIZI_MOBILI_DEFAULT = [
+  'Predisposizione Relazione di stima e Report Fotografico valorizzato',
+  'Coadiuvare il/la Curatore/Curatrice nella predisposizione degli Avvisi di vendita e dei modelli per offerte irrevocabili',
+  'Accompagnare gli utenti interessati alla visita dei beni mobili posti in vendita',
+  'Pubblicità Legale su "Progess Italia"',
+  'Pubblicità Legale sul Portale delle Vendite Pubbliche (PVP)',
+  'Esperire i tentativi di vendita mediante procedure competitive (art. 216 CCII)',
+  'Comunicare esiti delle vendite al Curatore con Verbale e Report piattaforma',
+]
+const SERVIZI_IMMOBILI_DEFAULT = [
+  'Coadiuvare il Curatore nella predisposizione degli Avvisi di vendita e dei modelli per offerte irrevocabili di acquisto',
+  'Accompagnare gli utenti interessati alla visita dei beni immobili posti in vendita',
+  'Pubblicità Legale su "Progess Italia"',
+  'Pubblicità Legale sul Portale delle Vendite Pubbliche (PVP), previa nomina in qualità di soggetto abilitato da parte della Cancelleria',
+  'Esperire i tentativi di vendita necessari per la liquidazione totale dei beni immobili mediante procedure competitive (art. 216 CCII)',
+  'Comunicare gli esiti delle vendite al Curatore con Verbale delle operazioni di vendita e Report della piattaforma Progess Italia',
+]
+
+async function _generaMobili(proc, opts, logoB64) {
+  const { dataContratto, compenso, costoLotto, rt, servizi } = opts
+  const nrg = (proc.num || '') + (proc.anno ? '/' + proc.anno : '')
+  const sede = (proc.sedi || []).find(s => s.tipo === 'legale') || {}
+  const ind = [sede.indirizzo, sede.civico, sede.cap, sede.comune, sede.provincia ? '('+sede.provincia+')' : ''].filter(Boolean).join(' ')
+  const hasRT = rt && rt.trim() !== ''
+  const serviziP = servizi.map(s => new Paragraph({ numbering: { reference: 'bullets', level: 0 }, children: [_t(s)] }))
+  const doc = new Document({
+    numbering: { config: [{ reference: 'bullets', levels: [{ level: 0, format: LevelFormat.BULLET, text: '-', alignment: AlignmentType.LEFT, style: { paragraph: { indent: { left: 720, hanging: 360 } } } }] }] },
+    sections: [{ properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: 1200, right: _MARGIN, bottom: 1400, left: _MARGIN } } }, headers: { default: _header(logoB64) }, footers: { default: _footer() }, children: [
+      _p(_bold('MANDATO PER LA VENDITA DI BENI MOBILI', 28), { alignment: AlignmentType.CENTER, spacing: { before: 240, after: 240 } }),
+      _br(),
+      _p([_t('Con il presente contratto, da valersi ad ogni effetto di legge, tra:')]),
+      _br(),
+      _p([_t('la '), _bold(proc.tipo || ''), _t(' '), _bold('R.G. ' + nrg + ' - ' + (proc.nome || '')), _t(', C.F. e P.IVA ' + (proc.cf || '') + (proc.piva ? ' P.IVA ' + proc.piva : '') + ', con sede legale in ' + ind + ', rappresentata in questa sede dal Curatore '), _bold(proc.curatore || ''), _t(' con sentenza n. ' + (proc.sentenza_num || 'n. _______') + ' dal Tribunale di ' + (proc.tribunale || '') + ', PEC della procedura ' + (proc.pec || '') + ' (di seguito "'), _bold('Cliente'), _t('") da una parte')]),
+      _br(), _p(_bold('e')), _br(),
+      _p([_t('la società '), _bold('"PROCEDURE GESTITE E SERVIZI S.R.L."'), _t(' - in forma abbreviata '), _bold('"PRO.GES.S. S.R.L."'), _t(', C.F. e P.IVA 03546380134, con sede legale in Via Giuseppe Parini n.ro 29, PEC progess@arubapec.it, in persona dell'Amministratore Unico Sig. '), _bold('Luigi IMPIERI'), _t(', C.F. MPRLGU72S12D086V, (di seguito "'), _bold('Pro.Ges.S.'), _t('"), dall'altra parte')]),
+      _br(),
+      _p(_bold('PREMESSO CHE')),
+      new Paragraph({ numbering: { reference: 'bullets', level: 0 }, children: [_t('il Cliente intende conferire a Pro.Ges.S. il mandato per la vendita dei '), _bold('beni mobili'), _t(' acquisiti all'attivo della procedura, con autorizzazione alla vendita e nomina di Pro.Ges.S., quale commissionario alla Vendita')] }),
+      new Paragraph({ numbering: { reference: 'bullets', level: 0 }, children: [_t('Pro.Ges.S. ha le competenze e gli strumenti per adempiere il suddetto incarico, quale soggetto specializzato ai sensi dell'Art. 216 CCII;')] }),
+      _br(), _p(_t('Tutto ciò premesso, tra le Parti')), _br(),
+      _p(_bold('SI STIPULA E CONVIENE QUANTO SEGUE')), _br(),
+      new Paragraph({ numbering: { reference: 'bullets', level: 0 }, children: [_bold('OGGETTO DELL'INCARICO')] }), _br(),
+      _p(_t('Il Cliente conferisce incarico a Pro.Ges.S., la quale accetta di:')),
+      ...serviziP, _br(),
+      _p(_bold('DATI DELLA PROCEDURA CONCORSUALE'), { alignment: AlignmentType.CENTER }), _br(),
+      _tableInfo([['Procedura', proc.nome || ''], ['Tipo', proc.tipo || ''], ['N. R.G.', nrg], ['Tribunale', proc.tribunale || ''], ['Curatore', proc.curatore || ''], ['PEC procedura', proc.pec || '']]),
+      _br(),
+      _p([_t('Data contratto: '), _bold(_fmtData(dataContratto))]),
+      _br(), _p(_bold('Dati per fatturazione:')), _br(),
+      _fatturazione(proc), _br(),
+      _p([_t('PAGAMENTO mediante bonifico bancario su conto corrente intestato a "'), _bold('Pro.Ges.S. S.r.l.'), _t('" Deutsche Bank filiale di Lecco — IBAN IT63J 03104 22903 000000820981')]),
+      _br(),
+      new Paragraph({ numbering: { reference: 'bullets', level: 0 }, children: [_bold('COMPENSO')] }), _br(),
+      _p([_t('Per l'espletamento dei servizi effettuati da Pro.Ges.S., quest'ultima avrà diritto ad un compenso '), _bold('pari ' + (compenso || '10') + '%'), _t(', oltre IVA, calcolato sul prezzo di aggiudicazione definitivo, per ogni lotto venduto e '), _bold('saranno ad esclusivo carico dell'aggiudicatario.')]),
+      _br(),
+      _p(_bold('Costi a carico della Procedura:')),
+      new Paragraph({ numbering: { reference: 'bullets', level: 0 }, children: [_t('Per il servizio di caricamento dei Lotti su PVP e Progess Italia, Pro.Ges.S. avrà diritto ad un compenso di '), _bold('Euro ' + (costoLotto || '25,00') + ' oltre IVA'), _t(', per ciascun Lotto pubblicato.')] }),
+      ...(hasRT ? [new Paragraph({ numbering: { reference: 'bullets', level: 0 }, children: [_t('Acquisto della RT di pubblicazione '), _bold('Euro ' + rt), _t(' oltre commissioni bancarie (per i beni mobili registrati).')] })] : []),
+      _br(),
+      new Paragraph({ numbering: { reference: 'bullets', level: 0 }, children: [_bold('FORO COMPETENTE')] }),
+      _p(_t('Per qualsiasi controversia connessa al presente mandato sarà esclusivamente competente il Foro di Lecco.')),
+      _br(),
+      _p(_t('Lecco, ' + _fmtData(dataContratto))), _br(),
+      _p(_bold('Il Cliente')),
+      ..._firme(proc),
+    ]}]
+  })
+  return Packer.toBlob(doc)
+}
+
+async function _generaImmobili(proc, opts, logoB64) {
+  const { dataContratto, scaglioni, costoLotto, iban, dataAut, servizi } = opts
+  const nrg = (proc.num || '') + (proc.anno ? '/' + proc.anno : '')
+  const sede = (proc.sedi || []).find(s => s.tipo === 'legale') || {}
+  const ind = [sede.indirizzo, sede.civico, sede.cap, sede.comune, sede.provincia ? '('+sede.provincia+')' : ''].filter(Boolean).join(' ')
+  const serviziP = servizi.map(s => new Paragraph({ numbering: { reference: 'bullets', level: 0 }, children: [_t(s)] }))
+  const tblScaglioni = new Table({
+    width: { size: _CONTENT_W, type: WidthType.DXA }, columnWidths: [_CONTENT_W / 2, _CONTENT_W / 2], borders: _BORDERS_THIN,
+    rows: [
+      new TableRow({ children: [_cell('Fino ad € 350.000', false, 'EEF2F7'), _cell((scaglioni[0] || '3') + '%', true)] }),
+      new TableRow({ children: [_cell('Da € 350.001 a € 700.000', false, 'EEF2F7'), _cell((scaglioni[1] || '2.5') + '%', true)] }),
+      new TableRow({ children: [_cell('Da € 700.001 a € 1.000.000', false, 'EEF2F7'), _cell((scaglioni[2] || '2') + '%', true)] }),
+      new TableRow({ children: [_cell('Oltre € 1.000.000', false, 'EEF2F7'), _cell((scaglioni[3] || '1.5') + '%', true)] }),
+    ]
+  })
+  const doc = new Document({
+    numbering: { config: [{ reference: 'bullets', levels: [{ level: 0, format: LevelFormat.BULLET, text: '-', alignment: AlignmentType.LEFT, style: { paragraph: { indent: { left: 720, hanging: 360 } } } }] }] },
+    sections: [{ properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: 1200, right: _MARGIN, bottom: 1400, left: _MARGIN } } }, headers: { default: _header(logoB64) }, footers: { default: _footer() }, children: [
+      _p(_bold('MANDATO PER LA VENDITA DI BENI IMMOBILI', 28), { alignment: AlignmentType.CENTER, spacing: { before: 240, after: 240 } }),
+      _br(),
+      _p([_t('Con il presente contratto, da valersi ad ogni effetto di legge, tra:')]),
+      _br(),
+      _p([_t('la '), _bold(proc.tipo || ''), _t(' '), _bold('R.G. ' + nrg + ' - ' + (proc.nome || '')), _t(', C.F. e P.IVA ' + (proc.cf || '') + (proc.piva ? ' P.IVA ' + proc.piva : '') + ', con sede legale in ' + ind + ', rappresentata in questa sede dal Curatore '), _bold(proc.curatore || ''), _t(' con sentenza n. ' + (proc.sentenza_num || 'n. _______') + ' dal Tribunale di ' + (proc.tribunale || '') + ', PEC della procedura ' + (proc.pec || '') + ' (di seguito "'), _bold('Cliente'), _t('") da una parte')]),
+      _br(), _p(_bold('e')), _br(),
+      _p([_t('la società '), _bold('"PROCEDURE GESTITE E SERVIZI S.R.L."'), _t(' - in forma abbreviata '), _bold('"PRO.GES.S. S.R.L."'), _t(', C.F. e P.IVA 03546380134, con sede legale in Via Giuseppe Parini n.ro 29, PEC progess@arubapec.it, in persona dell'Amministratore Unico Sig. '), _bold('Luigi IMPIERI'), _t(', C.F. MPRLGU72S12D086V, (di seguito "'), _bold('Pro.Ges.S.'), _t('"), dall'altra parte')]),
+      _br(),
+      _p(_bold('PREMESSO CHE')),
+      new Paragraph({ numbering: { reference: 'bullets', level: 0 }, children: [_t('il Cliente intende conferire a Pro.Ges.S. il mandato per la vendita dei '), _bold('beni immobili'), _t(' acquisiti all'attivo della procedura')] }),
+      new Paragraph({ numbering: { reference: 'bullets', level: 0 }, children: [_t('Pro.Ges.S. ha le competenze e gli strumenti per adempiere il suddetto incarico, quale soggetto specializzato ai sensi dell'Art. 216 CCII;')] }),
+      _br(), _p(_t('Tutto ciò premesso, tra le Parti')), _br(),
+      _p(_bold('SI STIPULA E CONVIENE QUANTO SEGUE')), _br(),
+      new Paragraph({ numbering: { reference: 'bullets', level: 0 }, children: [_bold('OGGETTO DELL'INCARICO')] }), _br(),
+      _p(_t('Il Cliente conferisce incarico a Pro.Ges.S., la quale accetta di:')),
+      ...serviziP, _br(),
+      _p(_bold('DATI DELLA PROCEDURA CONCORSUALE'), { alignment: AlignmentType.CENTER }), _br(),
+      _tableInfo([['Procedura', proc.nome || ''], ['Tipo', proc.tipo || ''], ['N. R.G.', nrg], ['Tribunale', proc.tribunale || ''], ['Curatore', proc.curatore || ''], ['PEC procedura', proc.pec || '']]),
+      _br(),
+      _p([_t('Data contratto: '), _bold(_fmtData(dataContratto))]),
+      ...(iban ? [_p([_t('IBAN procedura (per trasferimento somme): '), _bold(iban)])] : []),
+      ...(dataAut ? [_p([_t('Data autorizzazione Giudice Delegato: '), _bold(_fmtData(dataAut))])] : []),
+      _br(), _p(_bold('Dati per fatturazione:')), _br(),
+      _fatturazione(proc), _br(),
+      _p([_t('PAGAMENTO mediante bonifico bancario su conto corrente intestato a "'), _bold('Pro.Ges.S. S.r.l.'), _t('" Deutsche Bank filiale di Lecco — IBAN IT63J 03104 22903 000000820981')]),
+      _br(),
+      new Paragraph({ numbering: { reference: 'bullets', level: 0 }, children: [_bold('COMPENSO')] }), _br(),
+      _p(_t('Per l'espletamento dei servizi, per ogni lotto venduto, Pro.Ges.S. avrà diritto ad un compenso calcolato a SCAGLIONI sul valore di aggiudicazione definitivo, OLTRE IVA, a esclusivo carico dell'aggiudicatario:')),
+      _br(), tblScaglioni, _br(),
+      _p(_bold('Costi a carico della Procedura:')),
+      new Paragraph({ numbering: { reference: 'bullets', level: 0 }, children: [_t('Caricamento lotti su PVP e Progess Italia: '), _bold('Euro ' + (costoLotto || '25,00') + ' oltre IVA'), _t(' per ciascun lotto.')] }),
+      _br(),
+      new Paragraph({ numbering: { reference: 'bullets', level: 0 }, children: [_bold('FORO COMPETENTE')] }),
+      _p(_t('Per qualsiasi controversia connessa al presente mandato sarà esclusivamente competente il Foro di Lecco.')),
+      _br(),
+      _p(_t('Lecco, ' + _fmtData(dataContratto))), _br(),
+      _p(_bold('Il Cliente')),
+      ..._firme(proc),
+    ]}]
+  })
+  return Packer.toBlob(doc)
+}
+
+function WizardMandato({ tipo, proc, onClose }) {
+  const { notify } = useStore()
+  const isMobili = tipo === 'mobili'
+  const today = new Date().toISOString().slice(0, 10)
+  const [dataContratto, setDataContratto] = useState(today)
+  const [compenso, setCompenso] = useState('10')
+  const [costoLotto, setCostoLotto] = useState('25,00')
+  const [rt, setRt] = useState('')
+  const [iban, setIban] = useState('')
+  const [dataAut, setDataAut] = useState('')
+  const [scaglioni, setScaglioni] = useState(['3', '2.5', '2', '1.5'])
+  const [servizi, setServizi] = useState(isMobili ? [...SERVIZI_MOBILI_DEFAULT] : [...SERVIZI_IMMOBILI_DEFAULT])
+  const [nuovoServizio, setNuovoServizio] = useState('')
+  const [generating, setGenerating] = useState(false)
+
+  const toggleServizio = (i) => setServizi(s => s.filter((_, j) => j !== i))
+  const aggiungiServizio = () => { if (nuovoServizio.trim()) { setServizi(s => [...s, nuovoServizio.trim()]); setNuovoServizio('') } }
+
+  const genera = async () => {
+    setGenerating(true)
+    try {
+      const logoB64 = localStorage.getItem('ip_logo') || null
+      let blob
+      if (isMobili) blob = await _generaMobili(proc, { dataContratto, compenso, costoLotto, rt, servizi }, logoB64)
+      else blob = await _generaImmobili(proc, { dataContratto, scaglioni, costoLotto, iban, dataAut, servizi }, logoB64)
+      _scarica(blob, `Mandato_Beni_${isMobili ? 'Mobili' : 'Immobili'}_${(proc.nome || '').replace(/\s+/g, '_')}.docx`)
+      notify('Mandato generato con successo', 'ok')
+      onClose()
+    } catch (e) { notify('Errore: ' + e.message, 'err') }
+    finally { setGenerating(false) }
+  }
+
+  return (
+    <div style={{ padding: '8px 0' }}>
+      <div style={{ background: 'var(--bg2)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, fontSize: 13 }}>
+        <div style={{ fontWeight: 600, marginBottom: 8, color: 'var(--text2)', fontSize: 11, textTransform: 'uppercase' }}>Auto-popolato da InventPro</div>
+        {[['Procedura', proc.nome], ['Tipo', proc.tipo], ['N. R.G.', (proc.num || '') + (proc.anno ? '/' + proc.anno : '')], ['Tribunale', proc.tribunale], ['Curatore', proc.curatore], ['PEC procedura', proc.pec]].map(([l, v]) => (
+          <div key={l} style={{ display: 'flex', gap: 12, marginBottom: 4 }}>
+            <span style={{ color: 'var(--text3)', minWidth: 120 }}>{l}</span>
+            <span style={{ fontWeight: 500 }}>{v || '—'}</span>
+          </div>
+        ))}
+      </div>
+      <div className="form-grid">
+        <div className="form-col-full form-group">
+          <label className="form-label">Data contratto</label>
+          <input type="date" className="form-input" value={dataContratto} onChange={e => setDataContratto(e.target.value)} />
+        </div>
+        {isMobili ? (<>
+          <div className="form-group"><label className="form-label">Compenso % (su aggiudicazione)</label><input className="form-input" value={compenso} onChange={e => setCompenso(e.target.value)} /></div>
+          <div className="form-group"><label className="form-label">Costo caricamento lotto (€)</label><input className="form-input" value={costoLotto} onChange={e => setCostoLotto(e.target.value)} /></div>
+          <div className="form-group"><label className="form-label">RT pubblicazione beni registrati (€) — lascia vuoto se assente</label><input className="form-input" value={rt} onChange={e => setRt(e.target.value)} placeholder="Es. 100,00" /></div>
+        </>) : (<>
+          <div style={{ gridColumn: '1/-1', fontSize: 12, fontWeight: 600, color: 'var(--text2)', margin: '8px 0 4px' }}>Compenso a scaglioni (su valore aggiudicazione — a carico aggiudicatario)</div>
+          {[['Fino a €350.000 (%)', 0], ['Da €350.001 a €700.000 (%)', 1], ['Da €700.001 a €1.000.000 (%)', 2], ['Oltre €1.000.000 (%)', 3]].map(([l, i]) => (
+            <div key={i} className="form-group"><label className="form-label">{l}</label><input className="form-input" value={scaglioni[i]} onChange={e => setScaglioni(s => s.map((x, j) => j === i ? e.target.value : x))} /></div>
+          ))}
+          <div className="form-group"><label className="form-label">IBAN procedura (per trasferimento somme)</label><input className="form-input" value={iban} onChange={e => setIban(e.target.value)} placeholder="Es. IT60 X054 2811 1010 00" /></div>
+          <div className="form-group"><label className="form-label">Costo caricamento lotto (€)</label><input className="form-input" value={costoLotto} onChange={e => setCostoLotto(e.target.value)} /></div>
+          <div className="form-group"><label className="form-label">Data autorizzazione Giudice Delegato</label><input type="date" className="form-input" value={dataAut} onChange={e => setDataAut(e.target.value)} /></div>
+        </>)}
+      </div>
+      <div style={{ marginTop: 16 }}>
+        <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 10 }}>Servizi inclusi nel mandato</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {servizi.map((s, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 12px', background: 'var(--bg2)', borderRadius: 6, fontSize: 13 }}>
+              <span style={{ color: 'var(--accent-g)', fontSize: 16, marginTop: 1 }}>✓</span>
+              <span style={{ flex: 1 }}>{s}</span>
+              <button onClick={() => toggleServizio(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 16 }}>×</button>
+            </div>
+          ))}
+          <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+            <input className="form-input" placeholder="Aggiungi servizio personalizzato..." value={nuovoServizio} onChange={e => setNuovoServizio(e.target.value)} onKeyDown={e => e.key === 'Enter' && aggiungiServizio()} style={{ flex: 1 }} />
+            <button className="btn btn-ghost btn-sm" onClick={aggiungiServizio}>+ Aggiungi</button>
+          </div>
+        </div>
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 24 }}>
+        <button className="btn btn-ghost" onClick={onClose}>Chiudi</button>
+        <button className="btn btn-primary" onClick={genera} disabled={generating}>
+          <Download size={14} /> {generating ? 'Generazione…' : 'Genera Word su carta intestata'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function TabContratti({ proc }) {
+  const [showMandato, setShowMandato] = useState(null)
+  const cards = [
+    { tipo: 'mobili', titolo: 'Mandato vendita beni mobili', icon: '📦', desc: 'Genera il mandato per la vendita di beni mobili con compenso percentuale fisso.' },
+    { tipo: 'immobili', titolo: 'Mandato vendita beni immobili', icon: '🏠', desc: 'Genera il mandato per la vendita di beni immobili con compenso a scaglioni.' },
+  ]
+  return (
+    <>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
+        {cards.map(c => (
+          <div key={c.tipo} className="card" style={{ cursor: 'pointer' }} onClick={() => setShowMandato(c.tipo)}>
+            <div className="card-body" style={{ textAlign: 'center', padding: 28 }}>
+              <div style={{ fontSize: 40, marginBottom: 12 }}>{c.icon}</div>
+              <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 8 }}>{c.titolo}</div>
+              <div style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 16 }}>{c.desc}</div>
+              <button className="btn btn-primary btn-sm" style={{ width: '100%', justifyContent: 'center' }}>
+                <FileText size={13} /> Genera documento
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+      {showMandato && (
+        <Modal open={!!showMandato} onClose={() => setShowMandato(null)}
+          title={showMandato === 'mobili' ? 'Mandato vendita beni mobili' : 'Mandato vendita beni immobili'} wide>
+          <WizardMandato tipo={showMandato} proc={proc} onClose={() => setShowMandato(null)} />
+        </Modal>
+      )}
+    </>
+  )
+}
+
 const TABS = [
   { id: 'anagrafica', label: 'Anagrafica', icon: FileText },
   { id: 'sedi', label: 'Sedi', icon: MapPin },
   { id: 'inventario', label: 'Inventario', icon: Package },
   { id: 'lotti', label: 'Lotti', icon: Layers },
+  { id: 'contratti', label: 'Contratti', icon: Download },
 ]
 
 export default function ProceduraDetail() {
@@ -229,6 +562,8 @@ export default function ProceduraDetail() {
         {tab === 'sedi' && <TabSedi procId={proc.id} />}
         {tab === 'inventario' && <TabInventarioPreview procId={proc.id} />}
         {tab === 'lotti' && <Empty icon="📋" title="Lotti" sub="Vai alla sezione Lotti per gestire i lotti di vendita" />}
+        {tab === 'contratti' && <TabContratti proc={proc} />}
+        {tab === 'contratti' && <TabContratti proc={proc} />}
       </div>
       <Modal open={showEdit} onClose={() => setShowEdit(false)} title="Modifica procedura" wide>
         <ProcForm proc={proc} onClose={() => setShowEdit(false)} onSave={(p) => { setProc(p); setCurrentProc(p); setShowEdit(false) }} />
