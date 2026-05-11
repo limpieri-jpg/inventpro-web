@@ -236,11 +236,20 @@ export default function Inventario() {
         return `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}/${dt.getFullYear()}`
       }
 
+      // Mappa tipologia SIECIC → codice FALLCO
+      const mapTipologia = (t) => {
+        if (!t) return 'M'
+        const tl = t.toUpperCase()
+        if (tl.includes('IMMOBILE') || tl.includes('FABBRICATO') || tl.includes('TERRENO')) return 'I'
+        if (tl.includes('AZIENDA') || tl.includes('RAMO')) return 'A'
+        return 'M'
+      }
+
       const righe = tutti.map(a => ({
         'Descrizione': a.desc_breve || '',
-        'Tipologia': a.siecic_tipologia || 'BENE MOBILE',
-        'Società/Socio': a.societa || '',
-        'Titolo': a.titolo || '',
+        'Tipologia': mapTipologia(a.siecic_tipologia),
+        'Società/Socio': a.societa || '0',
+        'Titolo': a.titolo || 'piena_proprietà',
         'Quota %': a.quota_pct || '',
         'Codifica SIECIC': a.codice_siecic || '',
         'Società/Socio_1': '', 'Titolo_1': '', 'Quota %_1': '',
