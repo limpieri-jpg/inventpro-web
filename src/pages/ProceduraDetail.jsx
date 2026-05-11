@@ -744,7 +744,7 @@ async function _genRelazioneStima(proc, opts, articoli, logoB64) {
       ...(sezioni.metodologia ? aiParas(sezioni.metodologia) : [
         P(T("La valutazione dei beni è stata condotta secondo il metodo comparativo di mercato, integrato con il metodo del costo di riproduzione deprezzato, tenendo conto dello stato d'uso effettivo, del grado di obsolescenza tecnica ed economica, nonché delle concrete possibilità di realizzo in sede di vendita giudiziale. Si è altresì considerato il livello di specializzazione dei beni, la loro ricollocabilità sul mercato dell'usato e la documentazione tecnica disponibile.")),
         P([B("Contesto di stima: "), T(contestoStima||'Liquidazione giudiziale (valori liquidatori)')]),
-        P([B("Decurtazione prudenziale applicata: "), T((decurtazione||'15')+"% a titolo di "visto e piaciuto" e per riflettere il rischio di realizzo in sede di vendita giudiziale")]),
+        P([B("Decurtazione prudenziale applicata: "), T((decurtazione||'15')+'% a titolo di visto e piaciuto e per riflettere il rischio di realizzo in sede di vendita giudiziale')]),
         ...(noteCriteri ? [P([B("Note aggiuntive sui criteri: "), T(noteCriteri)])] : []),
       ]),
       BR(),
