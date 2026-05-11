@@ -1,456 +1,89 @@
-import { useEffect, useState, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useStore } from '../store/useStore'
-import { Topbar, Spinner, Modal, Empty } from '../components/layout'
-import { supabase } from '../lib/supabase'
-import { Plus, Search, Upload, X, Edit, Trash2, Camera, FileDown } from 'lucide-react'
-import * as XLSX from 'xlsx'
-
-function fmtEur(n) { return n ? '€ ' + Number(n).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—' }
-
-const CATEGORIE = [
-  'Macchinari e impianti', 'Attrezzature', 'Arredi e ufficio', 'Veicoli e mezzi',
-  'Informatica ed elettronica', 'Materie prime e scorte', 'Titoli e quote societarie', 'Altro'
-]
-const UM_LIST = ['UN', 'KG', 'MT', 'MQ', 'LT', 'SET', 'LOTTO']
-
-function ArticoloForm({ articolo, procId, onSave, onClose }) {
-  const { notify } = useStore()
-  const [form, setForm] = useState({
-    desc_breve: '', desc_estesa: '', marca: '', modello: '', categoria: 'Macchinari e impianti',
-    unita_misura: 'UN', qta: 1, val_mercato: 0, val_giud: 0,
-    stato: 'buono', note: '', matricola: '', anno_prod: '',
-    ...articolo
-  })
-  const [photos, setPhotos] = useState([])
-  const [uploading, setUploading] = useState(false)
-  const [saving, setSaving] = useState(false)
-
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
-  const inp = (k, type = 'text') => ({ value: form[k] ?? '', type, onChange: e => set(k, e.target.value), className: 'form-input' })
-
-  // Carica foto esistenti
-  useEffect(() => {
-    if (articolo?.id) {
-      supabase.from('foto').select('*').eq('articolo_id', articolo.id).order('sort_order')
-        .then(({ data }) => { if (data) setPhotos(data) })
-    }
-  }, [articolo?.id])
-
-  const handlePhotoUpload = async (e) => {
-    const files = Array.from(e.target.files)
-    if (!files.length) return
-    setUploading(true)
-    try {
-      for (const file of files) {
-        const ext = file.name.split('.').pop()
-        const path = `${procId}/${articolo?.id || 'new'}/${Date.now()}.${ext}`
-        const { error: upErr } = await supabase.storage.from('foto-inventario').upload(path, file)
-        if (upErr) throw upErr
-        const { data: { publicUrl } } = supabase.storage.from('foto-inventario').getPublicUrl(path)
-        if (articolo?.id) {
-          await supabase.from('foto').insert({ articolo_id: articolo.id, proc_id: procId, storage_path: path, url: publicUrl, sort_order: photos.length })
-        }
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="Content-type" content="text/html; charset=utf-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; connect-src 'self'">
+    <title>Page not found &middot; GitHub Pages</title>
+    <style type="text/css" media="screen">
+      body {
+        background-color: #f1f1f1;
+        margin: 0;
+        font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
       }
-      if (articolo?.id) {
-        const { data } = await supabase.from('foto').select('*').eq('articolo_id', articolo.id).order('sort_order')
-        setPhotos(data || [])
+
+      .container { margin: 50px auto 40px auto; width: 600px; text-align: center; }
+
+      a { color: #4183c4; text-decoration: none; }
+      a:hover { text-decoration: underline; }
+
+      h1 { width: 800px; position:relative; left: -100px; letter-spacing: -1px; line-height: 60px; font-size: 60px; font-weight: 100; margin: 0px 0 50px 0; text-shadow: 0 1px 0 #fff; }
+      p { color: rgba(0, 0, 0, 0.5); margin: 20px 0; line-height: 1.6; }
+
+      ul { list-style: none; margin: 25px 0; padding: 0; }
+      li { display: table-cell; font-weight: bold; width: 1%; }
+
+      .logo { display: inline-block; margin-top: 35px; }
+      .logo-img-2x { display: none; }
+      @media
+      only screen and (-webkit-min-device-pixel-ratio: 2),
+      only screen and (   min--moz-device-pixel-ratio: 2),
+      only screen and (     -o-min-device-pixel-ratio: 2/1),
+      only screen and (        min-device-pixel-ratio: 2),
+      only screen and (                min-resolution: 192dpi),
+      only screen and (                min-resolution: 2dppx) {
+        .logo-img-1x { display: none; }
+        .logo-img-2x { display: inline-block; }
       }
-      notify('Foto caricate', 'ok')
-    } catch (err) { notify('Errore upload: ' + err.message, 'err') }
-    finally { setUploading(false) }
-  }
 
-  const deletePhoto = async (foto) => {
-    await supabase.storage.from('foto-inventario').remove([foto.storage_path])
-    await supabase.from('foto').delete().eq('id', foto.id)
-    setPhotos(p => p.filter(f => f.id !== foto.id))
-  }
-
-  const handleSave = async () => {
-    if (!form.desc_breve) { notify('Inserisci la descrizione', 'warn'); return }
-    setSaving(true)
-    try {
-      let saved
-      if (articolo?.id) {
-        const { data, error } = await supabase.from('articoli').update(form).eq('id', articolo.id).select().single()
-        if (error) throw error
-        saved = data
-      } else {
-        const { data: { user } } = await supabase.auth.getUser()
-        const { data, error } = await supabase.from('articoli').insert({ ...form, proc_id: procId, owner_id: user.id }).select().single()
-        if (error) throw error
-        saved = data
-        // Carica foto per il nuovo articolo
-        if (photos.length > 0) {
-          notify('Articolo creato. Riapri per caricare le foto.', 'info', 4000)
-        }
+      #suggestions {
+        margin-top: 35px;
+        color: #ccc;
       }
-      notify('Articolo salvato', 'ok')
-      onSave(saved)
-    } catch (e) { notify('Errore: ' + e.message, 'err') }
-    finally { setSaving(false) }
-  }
+      #suggestions a {
+        color: #666666;
+        font-weight: 200;
+        font-size: 14px;
+        margin: 0 10px;
+      }
 
-  return (
-    <>
-      <div className="form-grid">
-        <div className="form-section">Descrizione</div>
-        <div className="form-col-full form-group">
-          <label className="form-label">Descrizione breve *</label>
-          <input {...inp('desc_breve')} placeholder="Es. Tornio parallelo CNC" />
-        </div>
-        <div className="form-col-full form-group">
-          <label className="form-label">Descrizione estesa</label>
-          <textarea className="form-input" value={form.desc_estesa || ''} onChange={e => set('desc_estesa', e.target.value)} rows={3} placeholder="Dettagli aggiuntivi…" />
-        </div>
-        <div className="form-section">Identificazione</div>
-        <div className="form-group"><label className="form-label">Marca</label><input {...inp('marca')} /></div>
-        <div className="form-group"><label className="form-label">Modello</label><input {...inp('modello')} /></div>
-        <div className="form-group"><label className="form-label">Anno produzione</label><input {...inp('anno_prod')} /></div>
-        <div className="form-group"><label className="form-label">Matricola / Serial N.</label><input {...inp('matricola')} /></div>
-        <div className="form-section">Classificazione e quantità</div>
-        <div className="form-group">
-          <label className="form-label">Categoria</label>
-          <select className="form-input" value={form.categoria || ''} onChange={e => set('categoria', e.target.value)}>
-            {CATEGORIE.map(c => <option key={c}>{c}</option>)}
-          </select>
-        </div>
-        <div className="form-group">
-          <label className="form-label">Stato</label>
-          <select className="form-input" value={form.stato || ''} onChange={e => set('stato', e.target.value)}>
-            {['ottimo', 'buono', 'discreto', 'da revisionare', 'non funzionante'].map(s => <option key={s}>{s}</option>)}
-          </select>
-        </div>
-        <div className="form-group">
-          <label className="form-label">Unità di misura</label>
-          <select className="form-input" value={form.unita_misura || 'UN'} onChange={e => set('unita_misura', e.target.value)}>
-            {UM_LIST.map(u => <option key={u}>{u}</option>)}
-          </select>
-        </div>
-        <div className="form-group">
-          <label className="form-label">Quantità</label>
-          <input type="number" className="form-input" value={form.qta ?? 1} onChange={e => set('qta', e.target.value)} min="0" step="0.01" />
-        </div>
-        <div className="form-section">Valutazione</div>
-        <div className="form-group">
-          <label className="form-label">Valore di mercato (€)</label>
-          <input type="number" className="form-input" value={form.val_mercato ?? 0} onChange={e => set('val_mercato', e.target.value)} min="0" step="0.01" />
-        </div>
-        <div className="form-group">
-          <label className="form-label">Valore giudiziario (€)</label>
-          <input type="number" className="form-input" value={form.val_giud ?? 0} onChange={e => set('val_giud', e.target.value)} min="0" step="0.01" />
-        </div>
-        <div className="form-col-full form-group">
-          <label className="form-label">Note</label>
-          <textarea className="form-input" value={form.note || ''} onChange={e => set('note', e.target.value)} rows={2} />
-        </div>
+    </style>
+  </head>
+  <body>
 
-        {/* Foto — solo per articoli esistenti */}
-        {articolo?.id && (
-          <>
-            <div className="form-section">Fotografie</div>
-            <div className="form-col-full">
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
-                {photos.map(f => (
-                  <div key={f.id} style={{ position: 'relative', width: 100, height: 80 }}>
-                    <img src={f.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 6, border: '1px solid var(--border)' }} />
-                    <button onClick={() => deletePhoto(f)} style={{ position: 'absolute', top: 2, right: 2, background: 'rgba(255,77,106,0.9)', border: 'none', borderRadius: '50%', width: 20, height: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <X size={11} color="#fff" />
-                    </button>
-                  </div>
-                ))}
-                <label style={{ width: 100, height: 80, border: '2px dashed var(--border)', borderRadius: 6, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text3)', gap: 4 }}>
-                  <Camera size={20} />
-                  <span style={{ fontSize: 11 }}>{uploading ? 'Carico…' : 'Aggiungi'}</span>
-                  <input type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={handlePhotoUpload} disabled={uploading} />
-                </label>
-              </div>
-            </div>
-          </>
-        )}
+    <div class="container">
+
+      <h1>404</h1>
+      <p><strong>File not found</strong></p>
+
+      <p>
+        The site configured at this address does not
+        contain the requested file.
+      </p>
+
+      <p>
+        If this is your site, make sure that the filename case matches the URL
+        as well as any file permissions.<br>
+        For root URLs (like <code>http://example.com/</code>) you must provide an
+        <code>index.html</code> file.
+      </p>
+
+      <p>
+        <a href="https://help.github.com/pages/">Read the full documentation</a>
+        for more information about using <strong>GitHub Pages</strong>.
+      </p>
+
+      <div id="suggestions">
+        <a href="https://githubstatus.com">GitHub Status</a> &mdash;
+        <a href="https://twitter.com/githubstatus">@githubstatus</a>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
-        <button className="btn btn-ghost" onClick={onClose}>Annulla</button>
-        <button className="btn btn-primary" onClick={handleSave} disabled={saving}>{saving ? 'Salvataggio…' : articolo?.id ? 'Aggiorna' : 'Crea articolo'}</button>
-      </div>
-    </>
-  )
-}
+      <a href="/" class="logo logo-img-1x">
+        <img width="32" height="32" title="" alt="" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyRpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMy1jMDExIDY2LjE0NTY2MSwgMjAxMi8wMi8wNi0xNDo1NjoyNyAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIENTNiAoTWFjaW50b3NoKSIgeG1wTU06SW5zdGFuY2VJRD0ieG1wLmlpZDpFMTZCRDY3REIzRjAxMUUyQUQzREIxQzRENUFFNUM5NiIgeG1wTU06RG9jdW1lbnRJRD0ieG1wLmRpZDpFMTZCRDY3RUIzRjAxMUUyQUQzREIxQzRENUFFNUM5NiI+IDx4bXBNTTpEZXJpdmVkRnJvbSBzdFJlZjppbnN0YW5jZUlEPSJ4bXAuaWlkOkUxNkJENjdCQjNGMDExRTJBRDNEQjFDNEQ1QUU1Qzk2IiBzdFJlZjpkb2N1bWVudElEPSJ4bXAuZGlkOkUxNkJENjdDQjNGMDExRTJBRDNEQjFDNEQ1QUU1Qzk2Ii8+IDwvcmRmOkRlc2NyaXB0aW9uPiA8L3JkZjpSREY+IDwveDp4bXBtZXRhPiA8P3hwYWNrZXQgZW5kPSJyIj8+SM9MCAAAA+5JREFUeNrEV11Ik1EY3s4+ddOp29Q5b0opCgKFsoKoi5Kg6CIhuwi6zLJLoYLopq4qsKKgi4i6CYIoU/q5iDAKs6syoS76IRWtyJ+p7cdt7sf1PGOD+e0c3dygAx/67ZzzPM95/877GYdHRg3ZjMXFxepQKNS6sLCwJxqNNuFpiMfjVs4ZjUa/pmmjeD6VlJS8NpvNT4QQ7mxwjSsJiEQim/1+/9lgMHgIr5ohuxG1WCw9Vqv1clFR0dCqBODElV6v90ogEDjGdYbVjXhpaendioqK07CIR7ZAqE49PT09BPL2PMgTByQGsYiZlQD4uMXtdr+JxWINhgINYhGT2MsKgMrm2dnZXgRXhaHAg5jEJodUAHxux4LudHJE9RdEdA+i3Juz7bGHe4mhE9FNrgwBCLirMFV9Okh5eflFh8PR5nK5nDabrR2BNJlKO0T35+Li4n4+/J+/JQCxhmu5h3uJoXNHPbmWZAHMshWB8l5/ipqammaAf0zPDDx1ONV3vurdidqwAQL+pEc8sLcAe1CCvQ3YHxIW8Pl85xSWNC1hADDIv0rIE/o4J0k3kww4xSlwIhcq3EFFOm7KN/hUGOQkt0CFa5WpNJlMvxBEz/IVQAxg/ZRZl9wiHA63yDYieM7DnLP5CiAGsC7I5sgtYKJGWe2A8seFqgFJrJjEPY1Cn3pJ8/9W1e5VWsFDTEmFrBcoDhZJEQkXuhICMyKpjhahqN21hRYATKfUOlDmkygrR4o4C0VOLGJKrOITKB4jijzdXygBKixyC5TDQdnk/Pz8qRw6oOWGlsTKGOQW6OH6FBWsyePxdOXLTgxiyebILZCjz+GLgMIKnXNzc49YMlcRdHXcSwxFVgTInQhC9G33UhNoJLuqq6t345p9y3eUy8OTk5PjAHuI9uo4b07FBaOhsu0A4Unc+T1TU1Nj3KsSSE5yJ65jqF2DDd8QqWYmAZrIM2VlZTdnZmb6AbpdV9V6ec9znf5Q7HjYumdRE0JOp3MjitO4SFa+cZz8Umqe3TCbSLvdfkR/kWDdNQl5InuTcysOcpFT35ZrbBxx4p3JAHlZVVW1D/634VRt+FvLBgK/v5LV9WS+10xMTEwtRw7XvqOL+e2Q8V3AYIOIAXQ26/heWVnZCVfcyKHg2CBgTpmPmjYM8l24GyaUHyaIh7XwfR9ErE8qHoDfn2LTNAVC0HX6MFcBIP8Bi+6F6cdW/DICkANRfx99fEYFQ7Nph5i/uQiA214gno7K+guhaiKg9gC62+M8eR7XsBsYJ4ilam60Fb7r7uAj8wFyuwM1oIOWgfmDy6RXEEQzJMPe23DXrVS7rtyD3Df8z/FPgAEAzWU5Ku59ZAUAAAAASUVORK5CYII=">
+      </a>
 
-export default function Inventario() {
-  const { currentProc, notify } = useStore()
-  const navigate = useNavigate()
-  const [articoli, setArticoli] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
-  const [catFilter, setCatFilter] = useState('')
-  const [showForm, setShowForm] = useState(false)
-  const [editArticolo, setEditArticolo] = useState(null)
-  const [page, setPage] = useState(0)
-  const PER_PAGE = 25
-
-  useEffect(() => {
-    if (!currentProc) { navigate('/procedure'); return }
-    loadArticoli()
-  }, [currentProc, search, catFilter])
-
-  const loadArticoli = useCallback(async () => {
-    if (!currentProc) return
-    setLoading(true)
-    try {
-      let q = supabase.from('v_articoli_con_foto').select('*').eq('proc_id', currentProc.id).order('sort_order')
-      if (search) q = q.or(`desc_breve.ilike.%${search}%,marca.ilike.%${search}%`)
-      if (catFilter) q = q.eq('categoria', catFilter)
-      const { data, error } = await q
-      if (error) throw error
-      setArticoli(data || [])
-    } catch (e) { notify('Errore: ' + e.message, 'err') }
-    finally { setLoading(false) }
-  }, [currentProc, search, catFilter])
-
-  const deleteArticolo = async (id) => {
-    if (!confirm('Eliminare questo articolo?')) return
-    await supabase.from('articoli').delete().eq('id', id)
-    loadArticoli()
-    notify('Articolo eliminato', 'ok')
-  }
-
-  const [showFallcoModal, setShowFallcoModal] = useState(false)
-  const [dataDeposito, setDataDeposito] = useState('')
-  const [exportingFallco, setExportingFallco] = useState(false)
-
-  const exportFallco = async () => {
-    setExportingFallco(true)
-    try {
-      // Carica tutti gli articoli senza paginazione
-      let q = supabase.from('v_articoli_con_foto').select('*').eq('proc_id', currentProc.id).order('sort_order')
-      const { data: tutti, error } = await q
-      if (error) throw error
-
-      const fmtData = (d) => {
-        if (!d) return ''
-        const dt = new Date(d)
-        if (isNaN(dt)) return d
-        return `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}/${dt.getFullYear()}`
-      }
-
-      // Mappa tipologia SIECIC → codice FALLCO
-      const mapTipologia = (t) => {
-        if (!t) return 'M'
-        const tl = t.toUpperCase()
-        if (tl.includes('IMMOBILE') || tl.includes('FABBRICATO') || tl.includes('TERRENO')) return 'I'
-        if (tl.includes('AZIENDA') || tl.includes('RAMO')) return 'A'
-        return 'M'
-      }
-
-      const righe = tutti.map(a => ({
-        'Descrizione': a.desc_breve || '',
-        'Tipologia': mapTipologia(a.siecic_tipologia),
-        'Società/Socio': a.societa || '0',
-        'Titolo': a.titolo || 'piena_proprietà',
-        'Quota %': a.quota_pct || '',
-        'Codifica SIECIC': a.codice_siecic || '',
-        'Società/Socio_1': '', 'Titolo_1': '', 'Quota %_1': '',
-        'Società/Socio_2': '', 'Titolo_2': '', 'Quota %_2': '',
-        'Società/Socio_3': '', 'Titolo_3': '', 'Quota %_3': '',
-        'Misura': a.unita_misura || 'UN',
-        'Quantità': a.qta || 1,
-        'Valore di stima unitario': a.val_giud || 0,
-        'Data deposito perizia': dataDeposito ? fmtData(dataDeposito) : '',
-        'Nazione': 'Italia',
-        'Provincia': currentProc.provincia || '',
-        'Comune ': currentProc.comune || '',
-        'Cap ': currentProc.cap || '',
-        'Zip ': '',
-        'Indirizzo': currentProc.indirizzo || '',
-        'Quantità aggiudicata': '',
-        'Valore aggiudicato': '',
-        'Data decreto di trasferimento': '',
-        'Operazione chiusa': '',
-        'Codice Lotto': '',
-        'Descrizione Lotto': '',
-        'Note': a.note || '',
-        // Campi catastali (solo immobili)
-        'Sezione': a.sezione || '',
-        'Foglio': a.foglio || '',
-        'Particella': a.mappale || '',
-        'Subparticella': '',
-        'Subalterno': a.subalterno || '',
-        'Graffato': '',
-        'Categoria': a.classe_catastale || a.categoria || '',
-        'Classe': a.classe || '',
-        'Catasto': a.comune_cat || '',
-        'Superficie mq': a.superficie || '',
-        'Rendita Catastale': a.rendita || '',
-        'Edificio': '', 'Scala': '', 'Interno': '', 'Piano': a.piano || '',
-        'Numero vani': a.vani || '',
-        'Reddito Domenicale': '',
-        'Reddito Agrario': ''
-      }))
-
-      const ws = XLSX.utils.json_to_sheet(righe)
-      const wb = XLSX.utils.book_new()
-      XLSX.utils.book_append_sheet(wb, ws, 'Inventario')
-      const nomeFile = `FALLCO_${currentProc.nome?.replace(/\s+/g,'_') || 'inventario'}_${new Date().toISOString().slice(0,10)}.xlsx`
-      XLSX.writeFile(wb, nomeFile)
-      notify('Export FALLCO completato', 'ok')
-      setShowFallcoModal(false)
-    } catch (e) { notify('Errore export: ' + e.message, 'err') }
-    finally { setExportingFallco(false) }
-  }
-
-  const totValore = articoli.reduce((s, a) => s + (Number(a.val_giud || 0) * Number(a.qta || 1)), 0)
-  const paginated = articoli.slice(page * PER_PAGE, (page + 1) * PER_PAGE)
-  const totalPages = Math.ceil(articoli.length / PER_PAGE)
-
-  if (!currentProc) return null
-
-  return (
-    <>
-      <Topbar
-        title="Inventario"
-        subtitle={currentProc.nome}
-        actions={
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn btn-ghost btn-sm" onClick={() => setShowFallcoModal(true)}>
-              <FileDown size={14} /> Export FALLCO
-            </button>
-            <button className="btn btn-primary btn-sm" onClick={() => { setEditArticolo(null); setShowForm(true) }}>
-              <Plus size={14} /> Nuovo articolo
-            </button>
-          </div>
-        }
-      />
-      <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
-
-        {/* Stats */}
-        <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(3,1fr)', marginBottom: 20 }}>
-          <div className="stat-card">
-            <div className="stat-label">Totale articoli</div>
-            <div className="stat-value stat-blue">{articoli.length}</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-label">Valore giudiziario</div>
-            <div className="stat-value stat-green" style={{ fontSize: 18 }}>
-              {totValore ? '€ ' + totValore.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}
-            </div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-label">Visualizzati</div>
-            <div className="stat-value">{articoli.length}</div>
-          </div>
-        </div>
-
-        {/* Filtri */}
-        <div className="filter-bar">
-          <div style={{ position: 'relative', flex: 1, maxWidth: 300 }}>
-            <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)' }} />
-            <input className="form-input" placeholder="Cerca articolo, marca…" style={{ paddingLeft: 32 }}
-              value={search} onChange={e => { setSearch(e.target.value); setPage(0) }} />
-          </div>
-          <select className="filter-select" value={catFilter} onChange={e => { setCatFilter(e.target.value); setPage(0) }}>
-            <option value="">Tutte le categorie</option>
-            {CATEGORIE.map(c => <option key={c}>{c}</option>)}
-          </select>
-        </div>
-
-        {/* Tabella */}
-        <div className="table-card">
-          {loading ? <Spinner /> : articoli.length === 0 ? (
-            <Empty icon="📦" title="Nessun articolo" sub={search ? 'Nessun risultato per la ricerca' : 'Crea il primo articolo dell\'inventario'} />
-          ) : (
-            <>
-              <table>
-                <thead>
-                  <tr>
-                    <th style={{ width: 50 }}></th>
-                    <th>Descrizione</th>
-                    <th>Marca / Modello</th>
-                    <th>Categoria</th>
-                    <th>Q.tà</th>
-                    <th>Val. Giud.</th>
-                    <th>Stato</th>
-                    <th style={{ width: 80 }}></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginated.map(a => (
-                    <tr key={a.id} onClick={() => { setEditArticolo(a); setShowForm(true) }}>
-                      <td onClick={e => e.stopPropagation()}>
-                        {a.prima_foto_url
-                          ? <img src={a.prima_foto_url} alt="" style={{ width: 36, height: 36, objectFit: 'cover', borderRadius: 4, border: '1px solid var(--border)' }} />
-                          : <div style={{ width: 36, height: 36, background: 'var(--bg3)', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>📦</div>
-                        }
-                      </td>
-                      <td style={{ fontWeight: 500 }}>
-                        {a.desc_breve || '—'}
-                        {a.n_foto > 0 && <span style={{ marginLeft: 6, fontSize: 10, color: 'var(--text3)' }}>📷{a.n_foto}</span>}
-                      </td>
-                      <td className="muted">{[a.marca, a.modello].filter(Boolean).join(' ') || '—'}</td>
-                      <td><span className="badge badge-blue" style={{ fontSize: 10 }}>{a.categoria || '—'}</span></td>
-                      <td className="mono">{a.qta} {a.unita_misura}</td>
-                      <td className="mono">{fmtEur(Number(a.val_giud || 0) * Number(a.qta || 1))}</td>
-                      <td><span className={`badge ${a.stato === 'ottimo' || a.stato === 'buono' ? 'badge-green' : a.stato === 'discreto' ? 'badge-yellow' : 'badge-red'}`}>{a.stato || '—'}</span></td>
-                      <td onClick={e => e.stopPropagation()}>
-                        <button className="btn btn-ghost btn-sm" style={{ color: 'var(--accent-r)', padding: '4px 8px' }} onClick={() => deleteArticolo(a.id)}>
-                          <Trash2 size={13} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {totalPages > 1 && (
-                <div className="pagination">
-                  <div className="pagination-info">{page * PER_PAGE + 1}–{Math.min((page+1)*PER_PAGE, articoli.length)} di {articoli.length}</div>
-                  <div className="pagination-btns">
-                    <button className="page-btn" disabled={page===0} onClick={() => setPage(p=>p-1)}>←</button>
-                    {Array.from({ length: totalPages }, (_, i) => <button key={i} className={`page-btn ${i===page?'active':''}`} onClick={() => setPage(i)}>{i+1}</button>)}
-                    <button className="page-btn" disabled={page>=totalPages-1} onClick={() => setPage(p=>p+1)}>→</button>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </div>
-
-      <Modal open={showFallcoModal} onClose={() => setShowFallcoModal(false)} title="Export FALLCO">
-        <div style={{ padding: '8px 0' }}>
-          <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 20 }}>
-            Genera il file Excel nel formato FALLCO con tutti i {articoli.length} articoli dell'inventario.
-          </p>
-          <div className="form-group">
-            <label className="form-label">Data deposito perizia</label>
-            <input
-              type="date"
-              className="form-input"
-              value={dataDeposito}
-              onChange={e => setDataDeposito(e.target.value)}
-            />
-            <span style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4, display: 'block' }}>
-              Lascia vuoto se non ancora depositata
-            </span>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 24 }}>
-            <button className="btn btn-ghost" onClick={() => setShowFallcoModal(false)}>Annulla</button>
-            <button className="btn btn-primary" onClick={exportFallco} disabled={exportingFallco}>
-              <FileDown size={14} /> {exportingFallco ? 'Generazione…' : 'Scarica FALLCO.xlsx'}
-            </button>
-          </div>
-        </div>
-      </Modal>
-
-      <Modal open={showForm} onClose={() => setShowForm(false)} title={editArticolo ? 'Modifica articolo' : 'Nuovo articolo'} wide>
-        <ArticoloForm
-          articolo={editArticolo}
-          procId={currentProc.id}
-          onClose={() => setShowForm(false)}
-          onSave={() => { setShowForm(false); loadArticoli() }}
-        />
-      </Modal>
-    </>
-  )
-}
+      <a href="/" class="logo logo-img-2x">
+        <img width="32" height="32" title="" alt="" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyRpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMy1jMDExIDY2LjE0NTY2MSwgMjAxMi8wMi8wNi0xNDo1NjoyNyAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIENTNiAoTWFjaW50b3NoKSIgeG1wTU06SW5zdGFuY2VJRD0ieG1wLmlpZDpEQUM1QkUxRUI0MUMxMUUyQUQzREIxQzRENUFFNUM5NiIgeG1wTU06RG9jdW1lbnRJRD0ieG1wLmRpZDpEQUM1QkUxRkI0MUMxMUUyQUQzREIxQzRENUFFNUM5NiI+IDx4bXBNTTpEZXJpdmVkRnJvbSBzdFJlZjppbnN0YW5jZUlEPSJ4bXAuaWlkOkUxNkJENjdGQjNGMDExRTJBRDNEQjFDNEQ1QUU1Qzk2IiBzdFJlZjpkb2N1bWVudElEPSJ4bXAuZGlkOkUxNkJENjgwQjNGMDExRTJBRDNEQjFDNEQ1QUU1Qzk2Ii8+IDwvcmRmOkRlc2NyaXB0aW9uPiA8L3JkZjpSREY+IDwveDp4bXBtZXRhPiA8P3hwYWNrZXQgZW5kPSJyIj8+hfPRaQAAB6lJREFUeNrsW2mM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">
+      </a>
+    </div>
+  </body>
+</html>
