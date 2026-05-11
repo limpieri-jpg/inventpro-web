@@ -710,7 +710,12 @@ async function _genRelazioneStima(proc, opts, articoli, logoB64) {
   const tblInventario = new Table({ width:{size:cw,type:WidthType.DXA}, columnWidths:colW, borders:BTS, rows:[hdrRow, ...artRows, totRow] })
 
   // Testo AI in paragrafi
-  const aiParas = (testo) => testo.split('\n').filter(l=>l.trim()).map(l => P(T(l.trim())))
+  const cleanAI = (testo) => testo
+    .replace(/##[^\n]*/g, '')  // rimuove intestazioni markdown
+    .replace(/\*\*/g, '')       // rimuove bold markdown
+    .replace(/valore di mercato[^\n]*(\n|$)/gi, '')  // rimuove righe con valore di mercato
+    .replace(/Val\.? merc[^\n]*(\n|$)/gi, '')
+  const aiParas = (testo) => cleanAI(testo).split('\n').filter(l=>l.trim()).map(l => P(T(l.trim())))
 
   const doc = new Document({ numbering:numConf, sections:[{
     properties:{ page:{ size:{width:_MW,height:16838}, margin:{top:1200,right:_MM,bottom:1400,left:_MM} } },
@@ -729,18 +734,18 @@ async function _genRelazioneStima(proc, opts, articoli, logoB64) {
 
       H1('2. PREMESSA E OGGETTO DELL\'INCARICO'),
       ...(sezioni.premessa ? aiParas(sezioni.premessa) : [
-        P(T("La presente relazione di stima è stata redatta su incarico del Curatore della procedura di "+proc.tipo+" in oggetto, con l'obiettivo di determinare il valore dei beni mobili acquisiti all'attivo, ai fini della liquidazione concorsuale ai sensi del D.Lgs. 14/2019 (CCII).")),
-        P([T("Il sopralluogo e la rilevazione dei beni sono stati effettuati in data "), B(fmtD2(dataSopralluogo)), T(".")]),
+        P([T("La presente relazione di stima è stata redatta su incarico "), T(proc.curatore ? "del/della "+proc.curatore+", nella sua qualità di Liquidatore/Curatore della procedura di " : "del Curatore della procedura di "), T(proc.tipo+" n. "+nrg+" – "+(proc.nome||"")+", con l"), T("'obiettivo di determinare in maniera puntuale e trasparente il valore complessivo dei beni mobili, macchinari e attrezzature costituenti il patrimonio aziendale del/della debitore/trice, ai fini della liquidazione concorsuale ai sensi del D.Lgs. 14/2019 (CCII). La valutazione è stata condotta secondo criteri di stretta prudenzialità e con particolare riferimento al contesto liquidatorio, adottando parametri coerenti con le finalità della procedura concorsuale e con le aspettative di realizzo in sede di vendita forzata.")]),
+        P([T("Il sopralluogo e la rilevazione dei beni sono stati effettuati in data "), B(fmtD2(dataSopralluogo)), T(". Al fine di pervenire ad una stima quanto più possibile aderente alla realtà economica e di mercato, si è proceduto attraverso le seguenti attività tecniche: rilevazione fisica diretta e documentazione fotografica dei beni presenti nei locali aziendali; attribuzione del valore economico al cespite sulla base di parametri di mercato e dello stato conservativo rilevato; applicazione di abbattimenti prudenziali ove ritenuto necessario in funzione delle condizioni d'uso e delle prospettive di realizzo.")]),
         ...(attivita ? [P([B("Attività aziendale: "), T(attivita)])] : []),
       ]),
       BR(),
 
       H1('3. METODOLOGIA DI VALUTAZIONE'),
       ...(sezioni.metodologia ? aiParas(sezioni.metodologia) : [
-        P(T("La valutazione è stata effettuata applicando il metodo del costo di sostituzione a nuovo decurtato dell'obsolescenza tecnica ed economica, nonché del deprezzamento connesso allo stato d'uso dei beni.")),
+        P(T("La valutazione dei beni è stata condotta secondo il metodo comparativo di mercato, integrato con il metodo del costo di riproduzione deprezzato, tenendo conto dello stato d'uso effettivo, del grado di obsolescenza tecnica ed economica, nonché delle concrete possibilità di realizzo in sede di vendita giudiziale. Si è altresì considerato il livello di specializzazione dei beni, la loro ricollocabilità sul mercato dell'usato e la documentazione tecnica disponibile.")),
         P([B("Contesto di stima: "), T(contestoStima||'Liquidazione giudiziale (valori liquidatori)')]),
-        P([B("Decurtazione prudenziale applicata: "), T((decurtazione||'15')+"% rispetto al valore di mercato")]),
-        ...(noteCriteri ? [P([B("Note sui criteri: "), T(noteCriteri)])] : []),
+        P([B("Decurtazione prudenziale applicata: "), T((decurtazione||'15')+"% a titolo di "visto e piaciuto" e per riflettere il rischio di realizzo in sede di vendita giudiziale")]),
+        ...(noteCriteri ? [P([B("Note aggiuntive sui criteri: "), T(noteCriteri)])] : []),
       ]),
       BR(),
 
@@ -783,9 +788,8 @@ async function _genRelazioneStima(proc, opts, articoli, logoB64) {
       BR(),
       H1('8. CONCLUSIONI'),
       ...(sezioni.conclusioni ? aiParas(sezioni.conclusioni) : [
-        P(T("Sulla base delle rilevazioni effettuate e dei criteri di valutazione adottati, il valore complessivo dei beni mobili acquisiti all'attivo della procedura è stimato come segue:")),
-        P([B("Valore di mercato: "), B(fmtEur(totVM))]),
-        P([B("Valore giudiziario (liquidatorio): "), B(fmtEur(totVG))]),
+        P([T("La presente perizia di stima, redatta in ottica di "), T(contestoStima||"liquidazione giudiziale"), T(", rappresenta un quadro realistico e prudenziale del valore di realizzo dei beni appartenenti alla procedura "), B(proc.tipo+" n. "+nrg+" – "+(proc.nome||"")), T(". Si evidenzia che i valori indicati tengono debitamente conto delle attuali condizioni del mercato dell'usato, dello stato d'uso effettivo dei beni nonché delle concrete possibilità di alienazione in un contesto di vendita forzata.")]),
+        P([T("Il valore complessivo stimato, pari ad "), B(fmtEur(totVG)), T(", costituisce quindi un riferimento attendibile e coerente per le finalità della procedura concorsuale. Si precisa che eventuali variazioni delle condizioni di mercato, ovvero differenti modalità di vendita – sia in blocco che frazionata – potrebbero determinare oscillazioni rispetto ai valori qui determinati.")]),
         ...(noteConclusive ? [BR(), P(T(noteConclusive))] : []),
       ]),
       BR(),
