@@ -1039,7 +1039,7 @@ function TabRelazioneStima({ proc }) {
         </button>
         <div style={{ fontSize:11, color:'var(--text3)' }}>
           {localStorage.getItem('ip_apikey')
-            ? 'L'AI genererà automaticamente il testo forense prima di creare il documento.'
+            ? "L'AI genererà automaticamente il testo forense prima di creare il documento."
             : '⚠️ Configura la chiave API in Impostazioni per attivare la generazione AI del testo.'}
         </div>
       </div>
