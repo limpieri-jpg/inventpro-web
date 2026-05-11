@@ -606,12 +606,440 @@ function TabContratti({ proc }) {
   )
 }
 
+
+// ─── Relazione di Stima ────────────────────────────────────────────────────
+const CONTESTI_STIMA = [
+  'Liquidazione giudiziale (valori liquidatori)',
+  'Liquidazione volontaria',
+  'Vendita a valore di mercato',
+  'Vendita in blocco',
+  'Vendita frazionata',
+]
+
+async function _genRelazioneStima(proc, opts, articoli, logoB64) {
+  const { dataSopralluogo, sito, attivita, causeCresi, decurtazione, contestoStima,
+          noteCriteri, contestoMacro, codiceAteco, beniEsclusi, noteConclusive, testoAI } = opts
+  const nrg = (proc.num||'') + (proc.anno?'/'+proc.anno:'')
+  const fmtEur = (n) => { const p = parseFloat(n||0).toFixed(2).split('.'); p[0]=p[0].replace(/\B(?=(\d{3})+(?!\d))/g,'.'); return '\u20ac '+p[0]+','+p[1] }
+  const fmtD2 = (d) => { if(!d) return '—'; const dt=new Date(d); return String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0')+'/'+dt.getFullYear() }
+  const totVM = articoli.reduce((s,a) => s+(parseFloat(a.val_mercato||0)*parseFloat(a.qta||1)),0)
+  const totVG = articoli.reduce((s,a) => s+(parseFloat(a.val_giud||0)*parseFloat(a.qta||1)),0)
+
+  // Parse testo AI in sezioni
+  const sezioni = { premessa:'', metodologia:'', contesto:'', inventario:'', conclusioni:'' }
+  if (testoAI) {
+    const lines = testoAI.split('\n')
+    let cur = 'premessa'
+    lines.forEach(l => {
+      const lu = l.toUpperCase()
+      if (lu.includes('METODOLOG')) cur = 'metodologia'
+      else if (lu.includes('CONTESTO') || lu.includes('MACROEC')) cur = 'contesto'
+      else if (lu.includes('INVENTARIO') || lu.includes('ANALITICO')) cur = 'inventario'
+      else if (lu.includes('CONCLUS')) cur = 'conclusioni'
+      sezioni[cur] += l + '\n'
+    })
+  }
+
+  const numConf = { config: [{ reference: 'blt', levels: [{ level: 0, format: LevelFormat.BULLET, text: '-', alignment: AlignmentType.LEFT, style: { paragraph: { indent: { left: 360, hanging: 360 } } } }] }] }
+  const lr = logoB64 ? new ImageRun({ data: logoB64.split(',')[1], transformation: { width: 150, height: 50 }, type: 'png' }) : null
+  const hdr = new Header({ children: [
+    new Paragraph({ children: lr ? [lr] : [new TextRun({ text: 'PROCEDURE GESTITE E SERVIZI S.R.L.', font:'Gadugi', bold:true, size:20 })], alignment: AlignmentType.LEFT }),
+    new Paragraph({ border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: '244061', space: 1 } }, children: [] })
+  ]})
+  const ftr = new Footer({ children: [new Paragraph({
+    alignment: AlignmentType.CENTER,
+    border: { top: { style: BorderStyle.SINGLE, size: 4, color: 'AAAAAA', space: 1 } },
+    children: [
+      new TextRun({ text: 'Procedure Gestite E Servizi S.r.l. — Via Giuseppe Parini, 29 - LECCO (LC) - 23900', font:'Gadugi', size:16 }),
+      new TextRun({ text: '', break:1 }),
+      new TextRun({ text: 'procedure@progess-italia.it | progess@arubapec.it | C.F. e P.IVA 03546380134', font:'Gadugi', size:16 }),
+    ]
+  })]})
+
+  const T = (text, opts={}) => new TextRun({ text: String(text||''), font:'Gadugi', size:22, ...opts })
+  const B = (text, size=22) => T(text, { bold:true, size })
+  const P = (ch, opts={}) => new Paragraph({ children: Array.isArray(ch)?ch:[ch], alignment: AlignmentType.JUSTIFIED, spacing:{before:60,after:60}, ...opts })
+  const PC = (ch, opts={}) => new Paragraph({ children: Array.isArray(ch)?ch:[ch], alignment: AlignmentType.CENTER, ...opts })
+  const BR = () => new Paragraph({ children:[], spacing:{before:40,after:40} })
+  const H1 = (text) => new Paragraph({ children:[B(text,26)], alignment:AlignmentType.LEFT, spacing:{before:200,after:100}, border:{ bottom:{style:BorderStyle.SINGLE,size:4,color:'244061',space:4} } })
+
+  // Tabella info procedura
+  const BN = { style:BorderStyle.NONE,size:0,color:'FFFFFF' }
+  const BNS = { top:BN,bottom:BN,left:BN,right:BN }
+  const BT = { style:BorderStyle.SINGLE,size:1,color:'AAAAAA' }
+  const BTS = { top:BT,bottom:BT,left:BT,right:BT }
+  const cw = _MCW
+  const cell = (text,bold,shade) => new TableCell({ borders:BNS, width:{size:cw/2,type:WidthType.DXA}, shading:shade?{fill:shade,type:ShadingType.CLEAR}:undefined, margins:{top:80,bottom:80,left:120,right:120}, children:[new Paragraph({children:[bold?B(text):T(text)],alignment:AlignmentType.JUSTIFIED})] })
+  const tblProc = new Table({ width:{size:cw,type:WidthType.DXA}, columnWidths:[cw/2,cw/2], borders:BTS, rows:[
+    new TableRow({children:[cell('Procedura',false,'EEF2F7'), cell(proc.nome||'')]}),
+    new TableRow({children:[cell('Tipo',false,'EEF2F7'), cell(proc.tipo||'')]}),
+    new TableRow({children:[cell('N. R.G.',false,'EEF2F7'), cell(nrg)]}),
+    new TableRow({children:[cell('Tribunale',false,'EEF2F7'), cell(proc.tribunale||'')]}),
+    new TableRow({children:[cell('Giudice Delegato',false,'EEF2F7'), cell(proc.giudice||'')]}),
+    new TableRow({children:[cell('Curatore',false,'EEF2F7'), cell(proc.curatore||'')]}),
+    new TableRow({children:[cell('Commissionario',false,'EEF2F7'), cell('Pro.Ges.S. Srl')]}),
+    new TableRow({children:[cell('Data sopralluogo',false,'EEF2F7'), cell(fmtD2(dataSopralluogo))]}),
+  ]})
+
+  // Tabella inventario analitico
+  const colW = [Math.floor(cw*0.5), Math.floor(cw*0.1), Math.floor(cw*0.2), Math.floor(cw*0.2)]
+  const hdrRow = new TableRow({ children:[
+    new TableCell({ borders:BTS, width:{size:colW[0],type:WidthType.DXA}, shading:{fill:'244061',type:ShadingType.CLEAR}, margins:{top:80,bottom:80,left:120,right:120}, children:[new Paragraph({children:[B('Descrizione',20)],alignment:AlignmentType.LEFT})] }),
+    new TableCell({ borders:BTS, width:{size:colW[1],type:WidthType.DXA}, shading:{fill:'244061',type:ShadingType.CLEAR}, margins:{top:80,bottom:80,left:120,right:120}, children:[new Paragraph({children:[B('Q.tà',20)],alignment:AlignmentType.CENTER})] }),
+    new TableCell({ borders:BTS, width:{size:colW[2],type:WidthType.DXA}, shading:{fill:'244061',type:ShadingType.CLEAR}, margins:{top:80,bottom:80,left:120,right:120}, children:[new Paragraph({children:[B('Prezzo unit.',20)],alignment:AlignmentType.RIGHT})] }),
+    new TableCell({ borders:BTS, width:{size:colW[3],type:WidthType.DXA}, shading:{fill:'244061',type:ShadingType.CLEAR}, margins:{top:80,bottom:80,left:120,right:120}, children:[new Paragraph({children:[B('Totale',20)],alignment:AlignmentType.RIGHT})] }),
+  ]})
+  const artRows = articoli.map((a,i) => {
+    const vg = parseFloat(a.val_giud||0)
+    const qta = parseFloat(a.qta||1)
+    const tot = vg * qta
+    const shade = i%2===0 ? 'F8F9FA' : 'FFFFFF'
+    return new TableRow({ children:[
+      new TableCell({ borders:BTS, width:{size:colW[0],type:WidthType.DXA}, shading:{fill:shade,type:ShadingType.CLEAR}, margins:{top:60,bottom:60,left:120,right:120}, children:[new Paragraph({children:[T(a.desc_breve||'—',{size:20})],alignment:AlignmentType.JUSTIFIED})] }),
+      new TableCell({ borders:BTS, width:{size:colW[1],type:WidthType.DXA}, shading:{fill:shade,type:ShadingType.CLEAR}, margins:{top:60,bottom:60,left:120,right:120}, children:[new Paragraph({children:[T(String(qta)+' '+(a.unita_misura||'UN'),{size:20})],alignment:AlignmentType.CENTER})] }),
+      new TableCell({ borders:BTS, width:{size:colW[2],type:WidthType.DXA}, shading:{fill:shade,type:ShadingType.CLEAR}, margins:{top:60,bottom:60,left:120,right:120}, children:[new Paragraph({children:[T(fmtEur(vg),{size:20})],alignment:AlignmentType.RIGHT})] }),
+      new TableCell({ borders:BTS, width:{size:colW[3],type:WidthType.DXA}, shading:{fill:shade,type:ShadingType.CLEAR}, margins:{top:60,bottom:60,left:120,right:120}, children:[new Paragraph({children:[T(fmtEur(tot),{size:20})],alignment:AlignmentType.RIGHT})] }),
+    ]})
+  })
+  const totRow = new TableRow({ children:[
+    new TableCell({ borders:BTS, columnSpan:2, width:{size:colW[0]+colW[1],type:WidthType.DXA}, shading:{fill:'244061',type:ShadingType.CLEAR}, margins:{top:80,bottom:80,left:120,right:120}, children:[new Paragraph({children:[B('VALORE TOTALE GIUDIZIARIO',20)],alignment:AlignmentType.LEFT})] }),
+    new TableCell({ borders:BTS, columnSpan:2, width:{size:colW[2]+colW[3],type:WidthType.DXA}, shading:{fill:'244061',type:ShadingType.CLEAR}, margins:{top:80,bottom:80,left:120,right:120}, children:[new Paragraph({children:[B(fmtEur(totVG),22)],alignment:AlignmentType.RIGHT})] }),
+  ]})
+  const tblInventario = new Table({ width:{size:cw,type:WidthType.DXA}, columnWidths:colW, borders:BTS, rows:[hdrRow, ...artRows, totRow] })
+
+  // Testo AI in paragrafi
+  const aiParas = (testo) => testo.split('\n').filter(l=>l.trim()).map(l => P(T(l.trim())))
+
+  const doc = new Document({ numbering:numConf, sections:[{
+    properties:{ page:{ size:{width:_MW,height:16838}, margin:{top:1200,right:_MM,bottom:1400,left:_MM} } },
+    headers:{ default:hdr },
+    footers:{ default:ftr },
+    children:[
+      PC([B('RELAZIONE DI STIMA', 30)], {spacing:{before:240,after:80}}),
+      PC([T(proc.nome||'', {size:24})], {spacing:{before:0,after:40}}),
+      PC([T('Tribunale di '+(proc.tribunale||'')+' — '+(proc.tipo||'')+' N. R.G. '+nrg, {size:20,italics:true})]),
+      BR(),
+
+      H1('1. DATI DELLA PROCEDURA'),
+      BR(),
+      tblProc,
+      BR(),
+
+      H1('2. PREMESSA E OGGETTO DELL\'INCARICO'),
+      ...(sezioni.premessa ? aiParas(sezioni.premessa) : [
+        P(T("La presente relazione di stima è stata redatta su incarico del Curatore della procedura di "+proc.tipo+" in oggetto, con l'obiettivo di determinare il valore dei beni mobili acquisiti all'attivo, ai fini della liquidazione concorsuale ai sensi del D.Lgs. 14/2019 (CCII).")),
+        P([T("Il sopralluogo e la rilevazione dei beni sono stati effettuati in data "), B(fmtD2(dataSopralluogo)), T(".")]),
+        ...(attivita ? [P([B("Attività aziendale: "), T(attivita)])] : []),
+      ]),
+      BR(),
+
+      H1('3. METODOLOGIA DI VALUTAZIONE'),
+      ...(sezioni.metodologia ? aiParas(sezioni.metodologia) : [
+        P(T("La valutazione è stata effettuata applicando il metodo del costo di sostituzione a nuovo decurtato dell'obsolescenza tecnica ed economica, nonché del deprezzamento connesso allo stato d'uso dei beni.")),
+        P([B("Contesto di stima: "), T(contestoStima||'Liquidazione giudiziale (valori liquidatori)')]),
+        P([B("Decurtazione prudenziale applicata: "), T((decurtazione||'15')+"% rispetto al valore di mercato")]),
+        ...(noteCriteri ? [P([B("Note sui criteri: "), T(noteCriteri)])] : []),
+      ]),
+      BR(),
+
+      H1('4. CAUSE DELLA CRISI AZIENDALE'),
+      ...(sezioni.contesto.length > 20 ? aiParas(sezioni.contesto) : (causeCresi ? [P(T(causeCresi))] : [P(T("Le cause della crisi aziendale sono in corso di accertamento da parte degli organi della procedura."))])),
+      BR(),
+
+      H1('5. CONTESTO MACROECONOMICO DEL SETTORE'),
+      ...(contestoMacro ? aiParas(contestoMacro) : [P(T("L'analisi del contesto macroeconomico di riferimento è stata condotta tenendo conto delle condizioni di mercato del settore di appartenenza dell'azienda debitrice."))]),
+      ...(codiceAteco ? [P([B("Codice ATECO di riferimento: "), T(codiceAteco)])] : []),
+      BR(),
+
+      ...(beniEsclusi ? [H1('6. BENI ESCLUSI DALLA STIMA'), P(T(beniEsclusi)), BR()] : []),
+
+      H1('7. INVENTARIO ANALITICO E VALORIZZAZIONE'),
+      P(T("Si riporta di seguito l'inventario analitico dei beni mobili rilevati, con l'indicazione del valore unitario e totale ai fini della presente stima:")),
+      BR(),
+      tblInventario,
+      BR(),
+      P([T("Valore di mercato totale: "), B(fmtEur(totVM))]),
+      P([T("Valore giudiziario totale (dopo decurtazione "+decurtazione+"%): "), B(fmtEur(totVG))]),
+      BR(),
+
+      H1('8. CONCLUSIONI'),
+      ...(sezioni.conclusioni ? aiParas(sezioni.conclusioni) : [
+        P(T("Sulla base delle rilevazioni effettuate e dei criteri di valutazione adottati, il valore complessivo dei beni mobili acquisiti all'attivo della procedura è stimato come segue:")),
+        P([B("Valore di mercato: "), B(fmtEur(totVM))]),
+        P([B("Valore giudiziario (liquidatorio): "), B(fmtEur(totVG))]),
+        ...(noteConclusive ? [BR(), P(T(noteConclusive))] : []),
+      ]),
+      BR(),
+      BR(),
+      P(T("Lecco, "+fmtD2(dataSopralluogo||new Date().toISOString().slice(0,10)))),
+      BR(),
+      P([T("\t\t\t\t\tIl Commissionario")]),
+      P([T("\t\t\t\t\t"), B("Pro.Ges.S. Srl")]),
+      P([T("\t\t\t\t\tL"), T("'Amministratore Unico")]),
+      P([T("\t\t\t\t\tLuigi IMPIERI")]),
+      BR(),
+      P(T("________________________________")),
+    ]
+  }]})
+  return Packer.toBlob(doc)
+}
+
+function TabRelazioneStima({ proc }) {
+  const { notify } = useStore()
+  const [dataSopralluogo, setDataSopralluogo] = useState(new Date().toISOString().slice(0,10))
+  const [sito, setSito] = useState('')
+  const [attivita, setAttivita] = useState('')
+  const [causeCrisi, setCauseCrisi] = useState('')
+  const [decurtazione, setDecurtazione] = useState('15')
+  const [contestoStima, setContestoStima] = useState(CONTESTI_STIMA[0])
+  const [noteCriteri, setNoteCriteri] = useState('')
+  const [contestoMacro, setContestoMacro] = useState('')
+  const [codiceAteco, setCodiceAteco] = useState('')
+  const [beniEsclusi, setBeniEsclusi] = useState('')
+  const [noteConclusive, setNoteConclusive] = useState('')
+  const [articoli, setArticoli] = useState([])
+  const [generating, setGenerating] = useState(false)
+  const [genAI, setGenAI] = useState(false)
+  const [testoAI, setTestoAI] = useState('')
+
+  useEffect(() => {
+    if (proc?.id) {
+      supabase.from('v_articoli_con_foto').select('*').eq('proc_id', proc.id).order('sort_order')
+        .then(({ data }) => setArticoli(data || []))
+    }
+  }, [proc?.id])
+
+  const generaConAI = async () => {
+    const apiKey = localStorage.getItem('ip_apikey') || ''
+    if (!apiKey || apiKey.length < 20) { notify('Inserisci la chiave API in Impostazioni', 'warn'); return }
+    setGenAI(true)
+    try {
+      const nrg = (proc.num||'') + (proc.anno?'/'+proc.anno:'')
+      const totVG = articoli.reduce((s,a) => s+(parseFloat(a.val_giud||0)*parseFloat(a.qta||1)),0)
+      const fmtEur = (n) => { const p = parseFloat(n||0).toFixed(2).split('.'); p[0]=p[0].replace(/\B(?=(\d{3})+(?!\d))/g,'.'); return '\u20ac '+p[0]+','+p[1] }
+      const elenco = articoli.slice(0,30).map((a,i) => `${i+1}. ${a.desc_breve||'—'} (q.tà ${a.qta||1}, val. giud. ${fmtEur(a.val_giud||0)})`).join('\n')
+      const prompt = `Sei un perito esperto in valutazioni per procedure concorsuali italiane (CCII D.Lgs. 14/2019).
+
+Redigi una relazione di stima professionale per la seguente procedura concorsuale:
+- Procedura: ${proc.tipo||''} "${proc.nome||''}" N. R.G. ${nrg}
+- Tribunale di ${proc.tribunale||''}, Giudice Delegato: ${proc.giudice||''}
+- Curatore: ${proc.curatore||''}
+- Data sopralluogo: ${dataSopralluogo}
+${sito ? '- Sito aziendale: '+sito : ''}
+${attivita ? '- Attività: '+attivita : ''}
+${causeCrisi ? '- Cause crisi: '+causeCrisi : ''}
+${contestoMacro ? '- Contesto macroeconomico: '+contestoMacro : ''}
+${codiceAteco ? '- Codice ATECO: '+codiceAteco : ''}
+- Contesto di stima: ${contestoStima}
+- Decurtazione applicata: ${decurtazione}%
+${noteCriteri ? '- Note criteri: '+noteCriteri : ''}
+${beniEsclusi ? '- Beni esclusi: '+beniEsclusi : ''}
+
+Inventario (${articoli.length} articoli, valore totale giudiziario ${fmtEur(totVG)}):
+${elenco}
+${articoli.length > 30 ? `...e altri ${articoli.length-30} articoli` : ''}
+
+Redigi il testo in italiano forense formale. Struttura la relazione con queste sezioni:
+## PREMESSA E OGGETTO DELL'INCARICO
+## METODOLOGIA DI VALUTAZIONE
+## CONTESTO MACROECONOMICO DEL SETTORE
+## CONCLUSIONI
+
+Ogni sezione deve essere completa e professionale. NON includere l'inventario (viene aggiunto automaticamente).`
+
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-5-20250929',
+          max_tokens: 3000,
+          messages: [{ role: 'user', content: prompt }]
+        })
+      })
+      const data = await res.json()
+      const testo = data.content?.[0]?.text || ''
+      if (!testo) throw new Error('Risposta AI vuota')
+      setTestoAI(testo)
+      notify('Relazione AI generata — verifica e genera il documento', 'ok', 5000)
+    } catch (e) { notify('Errore AI: ' + e.message, 'err') }
+    finally { setGenAI(false) }
+  }
+
+  const genera = async () => {
+    setGenerating(true)
+    try {
+      const logo = localStorage.getItem('ip_logo') || null
+      const blob = await _genRelazioneStima(proc, {
+        dataSopralluogo, sito, attivita, causeCresi: causeCrisi,
+        decurtazione, contestoStima, noteCriteri, contestoMacro,
+        codiceAteco, beniEsclusi, noteConclusive, testoAI
+      }, articoli, logo)
+      _dl(blob, 'Relazione_Stima_'+(proc.nome||'').replace(/\s+/g,'_')+'.docx')
+      notify('Relazione di Stima generata', 'ok')
+    } catch (e) { notify('Errore: ' + e.message, 'err') }
+    finally { setGenerating(false) }
+  }
+
+  const inp = (label, val, set, placeholder='', type='text') => (
+    <div className="form-col-full form-group">
+      <label className="form-label">{label}</label>
+      {type === 'textarea'
+        ? <textarea className="form-input" value={val} onChange={e=>set(e.target.value)} placeholder={placeholder} rows={3} />
+        : <input type={type} className="form-input" value={val} onChange={e=>set(e.target.value)} placeholder={placeholder} />
+      }
+    </div>
+  )
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+      {/* Dati procedura */}
+      <div className="card">
+        <div className="card-header">
+          <div className="card-title">🏛 Dati procedura (da InventPro)</div>
+        </div>
+        <div className="card-body">
+          <div style={{ background: 'var(--bg2)', borderRadius: 8, padding: '12px 16px', fontSize: 13 }}>
+            {[['Procedura', proc.nome],['Tipo', proc.tipo],['N. R.G.', (proc.num||'')+(proc.anno?'/'+proc.anno:'')],['Tribunale', proc.tribunale],['Giudice Delegato', proc.giudice],['Curatore', proc.curatore],['Commissionario', 'Pro.Ges.S. Srl']].map(([l,v]) => (
+              <div key={l} style={{ display:'flex', gap:12, marginBottom:4 }}>
+                <span style={{ color:'var(--text3)', minWidth:140 }}>{l}</span>
+                <span style={{ fontWeight:500 }}>{v||'—'}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Info per AI */}
+      <div className="card">
+        <div className="card-header"><div className="card-title">🌐 Informazioni azienda per l'AI</div></div>
+        <div className="card-body">
+          <div className="form-grid">
+            <div className="form-group">
+              <label className="form-label">Sito internet azienda (facoltativo)</label>
+              <input className="form-input" value={sito} onChange={e=>setSito(e.target.value)} placeholder="https://www.esempio.it" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Data sopralluogo / perizia</label>
+              <input type="date" className="form-input" value={dataSopralluogo} onChange={e=>setDataSopralluogo(e.target.value)} />
+            </div>
+            {inp("Di cosa si occupa / si occupava l'azienda", attivita, setAttivita, "Es: officina metalmeccanica specializzata in lavorazioni per conto terzi...", 'textarea')}
+          </div>
+        </div>
+      </div>
+
+      {/* Cause crisi */}
+      <div className="card">
+        <div className="card-header"><div className="card-title">📉 Cause della crisi aziendale</div></div>
+        <div className="card-body">
+          <div className="form-grid">
+            {inp('', causeCrisi, setCauseCrisi, 'Es: difficoltà finanziarie legate a calo ordini, perdita commesse principali, aumento costi energia...', 'textarea')}
+          </div>
+        </div>
+      </div>
+
+      {/* Criteri */}
+      <div className="card">
+        <div className="card-header"><div className="card-title">⚖️ Criteri di valutazione applicati</div></div>
+        <div className="card-body">
+          <div className="form-grid">
+            <div className="form-group">
+              <label className="form-label">Decurtazione prudenziale (%)</label>
+              <input className="form-input" value={decurtazione} onChange={e=>setDecurtazione(e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Contesto di stima</label>
+              <select className="form-input" value={contestoStima} onChange={e=>setContestoStima(e.target.value)}>
+                {CONTESTI_STIMA.map(c => <option key={c}>{c}</option>)}
+              </select>
+            </div>
+            {inp('Note aggiuntive sui criteri (facoltativo)', noteCriteri, setNoteCriteri, 'Es: macchinari privi di certificazione CE valorizzati come rottame...', 'textarea')}
+          </div>
+        </div>
+      </div>
+
+      {/* Contesto macro */}
+      <div className="card">
+        <div className="card-header"><div className="card-title">📊 Contesto macroeconomico del settore</div></div>
+        <div className="card-body">
+          <div className="form-grid">
+            {inp('', contestoMacro, setContestoMacro, 'Es: il settore manifatturiero ha subito pressioni a aumento costi energetici...', 'textarea')}
+            <div className="form-col-full form-group">
+              <label className="form-label">Codice ATECO del settore (facoltativo)</label>
+              <input className="form-input" value={codiceAteco} onChange={e=>setCodiceAteco(e.target.value)} placeholder="Es: 25.62 - Lavori di meccanica" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Beni esclusi */}
+      <div className="card">
+        <div className="card-header"><div className="card-title">🚫 Beni esclusi dalla stima</div></div>
+        <div className="card-body">
+          <div className="form-grid">
+            {inp('', beniEsclusi, setBeniEsclusi, 'Es: beni in leasing, beni di proprietà di terzi, assets immateriali...', 'textarea')}
+          </div>
+        </div>
+      </div>
+
+      {/* Note conclusive */}
+      <div className="card">
+        <div className="card-header"><div className="card-title">📝 Note conclusive</div></div>
+        <div className="card-body">
+          <div className="form-grid">
+            {inp('', noteConclusive, setNoteConclusive, 'Es: i valori riportati sono da ritenersi stime prudenziali in ottica liquidatoria...', 'textarea')}
+          </div>
+        </div>
+      </div>
+
+      {/* Inventario */}
+      <div className="card">
+        <div className="card-header"><div className="card-title">📦 Inventario analitico</div></div>
+        <div className="card-body">
+          <p style={{ fontSize:13, color:'var(--text2)' }}>
+            {articoli.length > 0
+              ? `${articoli.length} articoli da InventPro verranno inclusi nel documento con descrizione, quantità e valori.`
+              : 'Nessun articolo trovato per questa procedura.'}
+          </p>
+        </div>
+      </div>
+
+      {/* Testo AI generato */}
+      {testoAI && (
+        <div className="card">
+          <div className="card-header"><div className="card-title">✦ Testo generato dall'AI</div></div>
+          <div className="card-body">
+            <textarea className="form-input" value={testoAI} onChange={e=>setTestoAI(e.target.value)} rows={12} style={{ fontFamily:'monospace', fontSize:12 }} />
+            <div style={{ fontSize:11, color:'var(--text3)', marginTop:4 }}>Puoi modificare il testo prima di generare il documento.</div>
+          </div>
+        </div>
+      )}
+
+      {/* Azioni */}
+      <div style={{ display:'flex', justifyContent:'flex-end', gap:10, paddingBottom:24 }}>
+        <button className="btn btn-ghost" onClick={generaConAI} disabled={genAI || articoli.length===0}>
+          ✦ {genAI ? 'Generazione AI…' : 'Genera testo con AI'}
+        </button>
+        <button className="btn btn-primary" onClick={genera} disabled={generating || articoli.length===0}>
+          <Download size={14} /> {generating ? 'Generazione…' : 'Genera Relazione di Stima (.docx)'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 const TABS = [
   { id: 'anagrafica', label: 'Anagrafica', icon: FileText },
   { id: 'sedi', label: 'Sedi', icon: MapPin },
   { id: 'inventario', label: 'Inventario', icon: Package },
   { id: 'lotti', label: 'Lotti', icon: Layers },
   { id: 'contratti', label: 'Contratti', icon: Download },
+  { id: 'relazione', label: 'Rel. di Stima', icon: FileText },
 ]
 
 export default function ProceduraDetail() {
@@ -653,6 +1081,7 @@ export default function ProceduraDetail() {
         {tab === 'inventario' && <TabInventarioPreview procId={proc.id} />}
         {tab === 'lotti' && <Empty icon="📋" title="Lotti" sub="Vai alla sezione Lotti per gestire i lotti di vendita" />}
         {tab === 'contratti' && <TabContratti proc={proc} />}
+        {tab === 'relazione' && <TabRelazioneStima proc={proc} />}
       </div>
       <Modal open={showEdit} onClose={() => setShowEdit(false)} title="Modifica procedura" wide>
         <ProcForm proc={proc} onClose={() => setShowEdit(false)} onSave={(p) => { setProc(p); setCurrentProc(p); setShowEdit(false) }} />
