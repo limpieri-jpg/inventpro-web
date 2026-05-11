@@ -607,7 +607,8 @@ function TabContratti({ proc }) {
 }
 
 
-// ─── Relazione di Stima ────────────────────────────────────────────────────
+// ─── Tab Relazione di Stima ──────────────────────────────────────────────────
+
 const CONTESTI_STIMA = [
   'Liquidazione giudiziale (valori liquidatori)',
   'Liquidazione volontaria',
@@ -617,191 +618,216 @@ const CONTESTI_STIMA = [
 ]
 
 async function _genRelazioneStima(proc, opts, articoli, logoB64) {
-  const { dataSopralluogo, sito, attivita, causeCresi, decurtazione, contestoStima,
-          noteCriteri, contestoMacro, codiceAteco, beniEsclusi, noteConclusive, testoAI } = opts
-  const nrg = (proc.num||'') + (proc.anno?'/'+proc.anno:'')
-  const fmtEur = (n) => { const p = parseFloat(n||0).toFixed(2).split('.'); p[0]=p[0].replace(/\B(?=(\d{3})+(?!\d))/g,'.'); return '\u20ac '+p[0]+','+p[1] }
-  const fmtD2 = (d) => { if(!d) return '—'; const dt=new Date(d); return String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0')+'/'+dt.getFullYear() }
-  const totVM = articoli.reduce((s,a) => s+(parseFloat(a.val_mercato||0)*parseFloat(a.qta||1)),0)
-  const totVG = articoli.reduce((s,a) => s+(parseFloat(a.val_giud||0)*parseFloat(a.qta||1)),0)
+  const { dataSopralluogo, sito, attivita, causeCrisi, decurtazione,
+    contestoStima, noteCriteri, contestoMacro, codiceAteco,
+    beniEsclusi, noteConclusive, testoAI } = opts
+  const nrg = (proc.num||'') + (proc.anno ? '/'+proc.anno : '')
+  const eu = (n) => {
+    const p = parseFloat(n||0).toFixed(2).split('.')
+    p[0] = p[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+    return '\u20ac\u00a0' + p[0] + ',' + p[1]
+  }
+  const fd = (d) => {
+    if (!d) return '\u2014'
+    const dt = new Date(d)
+    return String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0')+'/'+dt.getFullYear()
+  }
+  const totVG = articoli.reduce((s,a) => s + parseFloat(a.val_giud||0)*parseFloat(a.qta||1), 0)
 
-  // Parse testo AI in sezioni
-  const sezioni = { premessa:'', metodologia:'', contesto:'', inventario:'', conclusioni:'' }
+  // Pulisce testo AI: rimuove markdown e righe con valore di mercato
+  const cleanAI = (txt) => txt
+    .replace(/##[^\n]*/g, '')
+    .replace(/\*\*/g, '')
+    .replace(/(?i)valore di mercato[^\n]*(\n|$)/gi, '')
+  const aiRows = (txt) => cleanAI(txt).split('\n').filter(l => l.trim()).map(l =>
+    new Paragraph({ children:[new TextRun({text:l.trim(),font:'Gadugi',size:22})], alignment:AlignmentType.JUSTIFIED, spacing:{before:60,after:60} })
+  )
+
+  // Sezioni dal testo AI
+  const S = { intro:'', descr:'', beni:'', cause:'', macro:'', criteri:'', concl:'' }
   if (testoAI) {
-    const lines = testoAI.split('\n')
-    let cur = 'premessa'
-    lines.forEach(l => {
-      const lu = l.toUpperCase()
-      if (lu.includes('METODOLOG')) cur = 'metodologia'
-      else if (lu.includes('CONTESTO') || lu.includes('MACROEC')) cur = 'contesto'
-      else if (lu.includes('INVENTARIO') || lu.includes('ANALITICO')) cur = 'inventario'
-      else if (lu.includes('CONCLUS')) cur = 'conclusioni'
-      sezioni[cur] += l + '\n'
+    let cur = 'intro'
+    testoAI.split('\n').forEach(l => {
+      const u = l.toUpperCase()
+      if (u.includes('DESCRIZ') || u.includes('ATTIVIT')) cur = 'descr'
+      else if (u.includes('BENI') && u.includes('OGGETTO')) cur = 'beni'
+      else if (u.includes('CAUSE') || u.includes('CRISI')) cur = 'cause'
+      else if (u.includes('MACRO') || u.includes('SETTORE')) cur = 'macro'
+      else if (u.includes('CRITERI')) cur = 'criteri'
+      else if (u.includes('CONCLUS')) cur = 'concl'
+      S[cur] += l + '\n'
     })
   }
+  const has = (s) => s && s.replace(/\s/g,'').length > 20
 
-  const numConf = { config: [{ reference: 'blt', levels: [{ level: 0, format: LevelFormat.BULLET, text: '-', alignment: AlignmentType.LEFT, style: { paragraph: { indent: { left: 360, hanging: 360 } } } }] }] }
-  const lr = logoB64 ? new ImageRun({ data: logoB64.split(',')[1], transformation: { width: 150, height: 50 }, type: 'png' }) : null
-  const hdr = new Header({ children: [
-    new Paragraph({ children: lr ? [lr] : [new TextRun({ text: 'PROCEDURE GESTITE E SERVIZI S.R.L.', font:'Gadugi', bold:true, size:20 })], alignment: AlignmentType.LEFT }),
-    new Paragraph({ border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: '244061', space: 1 } }, children: [] })
+  // Helpers docx
+  const CW = _MCW
+  const BN = { style:BorderStyle.NONE, size:0, color:'FFFFFF' }
+  const BNS = { top:BN, bottom:BN, left:BN, right:BN }
+  const BT = { style:BorderStyle.SINGLE, size:1, color:'AAAAAA' }
+  const BTS = { top:BT, bottom:BT, left:BT, right:BT }
+  const T = (text, o={}) => new TextRun({ text:String(text||''), font:'Gadugi', size:22, ...o })
+  const B = (text, size=22) => T(text, { bold:true, size })
+  const P = (ch, o={}) => new Paragraph({ children:Array.isArray(ch)?ch:[ch], alignment:AlignmentType.JUSTIFIED, spacing:{before:60,after:60}, ...o })
+  const PC = (ch, o={}) => new Paragraph({ children:Array.isArray(ch)?ch:[ch], alignment:AlignmentType.CENTER, ...o })
+  const BR = () => new Paragraph({ children:[], spacing:{before:40,after:40} })
+  const H = (text) => new Paragraph({
+    children:[B(text,24)], alignment:AlignmentType.LEFT,
+    spacing:{before:200,after:80},
+    border:{ bottom:{ style:BorderStyle.SINGLE, size:4, color:'244061', space:4 } }
+  })
+  const mkCell = (ch, w, opts={}) => new TableCell({
+    borders: opts.nb ? BNS : BTS,
+    width:{ size:w, type:WidthType.DXA },
+    shading: opts.fill ? { fill:opts.fill, type:ShadingType.CLEAR } : undefined,
+    margins:{ top:80, bottom:80, left:120, right:120 },
+    children:[ new Paragraph({ children:Array.isArray(ch)?ch:[ch], alignment:opts.align||AlignmentType.JUSTIFIED }) ],
+    columnSpan: opts.span || undefined,
+  })
+
+  // Header / Footer
+  const lr = logoB64 ? new ImageRun({ data:logoB64.split(',')[1], transformation:{width:150,height:50}, type:'png' }) : null
+  const hdr = new Header({ children:[
+    new Paragraph({ children: lr ? [lr] : [B('PROCEDURE GESTITE E SERVIZI S.R.L.',20)], alignment:AlignmentType.LEFT }),
+    new Paragraph({ border:{ bottom:{ style:BorderStyle.SINGLE, size:6, color:'244061', space:1 } }, children:[] })
   ]})
-  const ftr = new Footer({ children: [new Paragraph({
-    alignment: AlignmentType.CENTER,
-    border: { top: { style: BorderStyle.SINGLE, size: 4, color: 'AAAAAA', space: 1 } },
-    children: [
-      new TextRun({ text: 'Procedure Gestite E Servizi S.r.l. — Via Giuseppe Parini, 29 - LECCO (LC) - 23900', font:'Gadugi', size:16 }),
-      new TextRun({ text: '', break:1 }),
-      new TextRun({ text: 'procedure@progess-italia.it | progess@arubapec.it | C.F. e P.IVA 03546380134', font:'Gadugi', size:16 }),
+  const ftr = new Footer({ children:[ new Paragraph({
+    alignment:AlignmentType.CENTER,
+    border:{ top:{ style:BorderStyle.SINGLE, size:4, color:'AAAAAA', space:1 } },
+    children:[
+      B('Procedure Gestite E Servizi S.r.l.',18),
+      new TextRun({ text:'', break:1 }),
+      T('Via Giuseppe Parini, 29 - LECCO (LC) - 23900', { size:16 }),
+      new TextRun({ text:'', break:1 }),
+      T('procedure@progess-italia.it | progess@arubapec.it | C.F. e P.IVA 03546380134', { size:16 }),
     ]
   })]})
 
-  const T = (text, opts={}) => new TextRun({ text: String(text||''), font:'Gadugi', size:22, ...opts })
-  const B = (text, size=22) => T(text, { bold:true, size })
-  const P = (ch, opts={}) => new Paragraph({ children: Array.isArray(ch)?ch:[ch], alignment: AlignmentType.JUSTIFIED, spacing:{before:60,after:60}, ...opts })
-  const PC = (ch, opts={}) => new Paragraph({ children: Array.isArray(ch)?ch:[ch], alignment: AlignmentType.CENTER, ...opts })
-  const BR = () => new Paragraph({ children:[], spacing:{before:40,after:40} })
-  const H1 = (text) => new Paragraph({ children:[B(text,26)], alignment:AlignmentType.LEFT, spacing:{before:200,after:100}, border:{ bottom:{style:BorderStyle.SINGLE,size:4,color:'244061',space:4} } })
+  // Tabella dati procedura
+  const HCW = Math.floor(CW/2)
+  const tblProc = new Table({ width:{size:CW,type:WidthType.DXA}, columnWidths:[HCW,HCW], borders:BTS, rows:[
+    ['Procedura', proc.nome||''],
+    ['Tipo', proc.tipo||''],
+    ['N. R.G.', nrg],
+    ['Tribunale', proc.tribunale||''],
+    ['Giudice Delegato', proc.giudice||''],
+    ['Liquidatore / Curatore', proc.curatore||''],
+    ['Commissionario', 'Pro.Ges.S. Srl'],
+    ['Data sopralluogo', fd(dataSopralluogo)],
+  ].map(([l,v]) => new TableRow({ children:[
+    mkCell([T(l,{size:20})], HCW, { fill:'EEF2F7' }),
+    mkCell([T(v,{size:20})], HCW),
+  ]}))})
 
-  // Tabella info procedura
-  const BN = { style:BorderStyle.NONE,size:0,color:'FFFFFF' }
-  const BNS = { top:BN,bottom:BN,left:BN,right:BN }
-  const BT = { style:BorderStyle.SINGLE,size:1,color:'AAAAAA' }
-  const BTS = { top:BT,bottom:BT,left:BT,right:BT }
-  const cw = _MCW
-  const cell = (text,bold,shade) => new TableCell({ borders:BNS, width:{size:cw/2,type:WidthType.DXA}, shading:shade?{fill:shade,type:ShadingType.CLEAR}:undefined, margins:{top:80,bottom:80,left:120,right:120}, children:[new Paragraph({children:[bold?B(text):T(text)],alignment:AlignmentType.JUSTIFIED})] })
-  const tblProc = new Table({ width:{size:cw,type:WidthType.DXA}, columnWidths:[cw/2,cw/2], borders:BTS, rows:[
-    new TableRow({children:[cell('Procedura',false,'EEF2F7'), cell(proc.nome||'')]}),
-    new TableRow({children:[cell('Tipo',false,'EEF2F7'), cell(proc.tipo||'')]}),
-    new TableRow({children:[cell('N. R.G.',false,'EEF2F7'), cell(nrg)]}),
-    new TableRow({children:[cell('Tribunale',false,'EEF2F7'), cell(proc.tribunale||'')]}),
-    new TableRow({children:[cell('Giudice Delegato',false,'EEF2F7'), cell(proc.giudice||'')]}),
-    new TableRow({children:[cell('Curatore',false,'EEF2F7'), cell(proc.curatore||'')]}),
-    new TableRow({children:[cell('Commissionario',false,'EEF2F7'), cell('Pro.Ges.S. Srl')]}),
-    new TableRow({children:[cell('Data sopralluogo',false,'EEF2F7'), cell(fmtD2(dataSopralluogo))]}),
+  // Tabella inventario analitico: Descrizione | U.M. | Q.ta | Valore unit. | Totale
+  const CW0=Math.floor(CW*0.44), CW1=Math.floor(CW*0.08), CW2=Math.floor(CW*0.08), CW3=Math.floor(CW*0.19), CW4=CW-CW0-CW1-CW2-CW3
+  const hdClr = { fill:'244061' }
+  const tblInv = new Table({ width:{size:CW,type:WidthType.DXA}, columnWidths:[CW0,CW1,CW2,CW3,CW4], borders:BTS, rows:[
+    new TableRow({ children:[
+      mkCell([B('Descrizione',20)], CW0, { fill:'244061', align:AlignmentType.LEFT }),
+      mkCell([B('U.M.',20)],        CW1, { fill:'244061', align:AlignmentType.CENTER }),
+      mkCell([B('Q.t\u00e0',20)],  CW2, { fill:'244061', align:AlignmentType.CENTER }),
+      mkCell([B('Valore unit. (\u20ac)',20)], CW3, { fill:'244061', align:AlignmentType.RIGHT }),
+      mkCell([B('Totale (\u20ac)',20)],       CW4, { fill:'244061', align:AlignmentType.RIGHT }),
+    ]}),
+    ...articoli.map((a,i) => {
+      const vg = parseFloat(a.val_giud||0), qta = parseFloat(a.qta||1), tot = vg*qta
+      const shade = i%2===0 ? 'F8F9FA' : 'FFFFFF'
+      return new TableRow({ children:[
+        mkCell([T(a.desc_breve||'\u2014',{size:20})], CW0, { fill:shade }),
+        mkCell([T(a.unita_misura||'UN',{size:20})],    CW1, { fill:shade, align:AlignmentType.CENTER }),
+        mkCell([T(String(qta),{size:20})],             CW2, { fill:shade, align:AlignmentType.CENTER }),
+        mkCell([T(eu(vg),{size:20})],                  CW3, { fill:shade, align:AlignmentType.RIGHT }),
+        mkCell([T(eu(tot),{size:20})],                 CW4, { fill:shade, align:AlignmentType.RIGHT }),
+      ]})
+    }),
+    new TableRow({ children:[
+      mkCell([B('TOTALE',20)], CW0+CW1+CW2, { fill:'244061', span:3 }),
+      mkCell([B(eu(totVG),22)], CW3+CW4, { fill:'244061', align:AlignmentType.RIGHT, span:2 }),
+    ]}),
   ]})
 
-  // Tabella inventario analitico
-  const colW = [Math.floor(cw*0.45), Math.floor(cw*0.1), Math.floor(cw*0.1), Math.floor(cw*0.17), Math.floor(cw*0.18)]
-  const hdrRow = new TableRow({ children:[
-    new TableCell({ borders:BTS, width:{size:colW[0],type:WidthType.DXA}, shading:{fill:'244061',type:ShadingType.CLEAR}, margins:{top:80,bottom:80,left:120,right:120}, children:[new Paragraph({children:[B('Descrizione',20)],alignment:AlignmentType.LEFT})] }),
-    new TableCell({ borders:BTS, width:{size:colW[1],type:WidthType.DXA}, shading:{fill:'244061',type:ShadingType.CLEAR}, margins:{top:80,bottom:80,left:120,right:120}, children:[new Paragraph({children:[B('U.M.',20)],alignment:AlignmentType.CENTER})] }),
-    new TableCell({ borders:BTS, width:{size:colW[2],type:WidthType.DXA}, shading:{fill:'244061',type:ShadingType.CLEAR}, margins:{top:80,bottom:80,left:120,right:120}, children:[new Paragraph({children:[B('Q.tà',20)],alignment:AlignmentType.CENTER})] }),
-    new TableCell({ borders:BTS, width:{size:colW[3],type:WidthType.DXA}, shading:{fill:'244061',type:ShadingType.CLEAR}, margins:{top:80,bottom:80,left:120,right:120}, children:[new Paragraph({children:[B('Valore unit. (€)',20)],alignment:AlignmentType.RIGHT})] }),
-    new TableCell({ borders:BTS, width:{size:colW[4],type:WidthType.DXA}, shading:{fill:'244061',type:ShadingType.CLEAR}, margins:{top:80,bottom:80,left:120,right:120}, children:[new Paragraph({children:[B('Totale (€)',20)],alignment:AlignmentType.RIGHT})] }),
+  // Tabella prospetto sintesi
+  const S1=Math.floor(CW*0.7), S2=CW-S1
+  const tblSint = new Table({ width:{size:CW,type:WidthType.DXA}, columnWidths:[S1,S2], borders:BTS, rows:[
+    new TableRow({ children:[ mkCell([B('Descrizione',20)],S1,{fill:'244061'}), mkCell([B('Valore stimato',20)],S2,{fill:'244061',align:AlignmentType.RIGHT}) ] }),
+    new TableRow({ children:[ mkCell([T('Beni mobili e attrezzature aziendali',{size:20})],S1), mkCell([T(eu(totVG),{size:20})],S2,{align:AlignmentType.RIGHT}) ] }),
+    new TableRow({ children:[ mkCell([B('TOTALE',20)],S1,{fill:'EEF2F7'}), mkCell([B(eu(totVG),22)],S2,{fill:'EEF2F7',align:AlignmentType.RIGHT}) ] }),
   ]})
-  const artRows = articoli.map((a,i) => {
-    const vg = parseFloat(a.val_giud||0)
-    const qta = parseFloat(a.qta||1)
-    const tot = vg * qta
-    const shade = i%2===0 ? 'F8F9FA' : 'FFFFFF'
-    return new TableRow({ children:[
-      new TableCell({ borders:BTS, width:{size:colW[0],type:WidthType.DXA}, shading:{fill:shade,type:ShadingType.CLEAR}, margins:{top:60,bottom:60,left:120,right:120}, children:[new Paragraph({children:[T(a.desc_breve||'—',{size:20})],alignment:AlignmentType.JUSTIFIED})] }),
-      new TableCell({ borders:BTS, width:{size:colW[1],type:WidthType.DXA}, shading:{fill:shade,type:ShadingType.CLEAR}, margins:{top:60,bottom:60,left:120,right:120}, children:[new Paragraph({children:[T(a.unita_misura||'UN',{size:20})],alignment:AlignmentType.CENTER})] }),
-      new TableCell({ borders:BTS, width:{size:colW[2],type:WidthType.DXA}, shading:{fill:shade,type:ShadingType.CLEAR}, margins:{top:60,bottom:60,left:120,right:120}, children:[new Paragraph({children:[T(String(qta),{size:20})],alignment:AlignmentType.CENTER})] }),
-      new TableCell({ borders:BTS, width:{size:colW[3],type:WidthType.DXA}, shading:{fill:shade,type:ShadingType.CLEAR}, margins:{top:60,bottom:60,left:120,right:120}, children:[new Paragraph({children:[T(fmtEur(vg),{size:20})],alignment:AlignmentType.RIGHT})] }),
-      new TableCell({ borders:BTS, width:{size:colW[4],type:WidthType.DXA}, shading:{fill:shade,type:ShadingType.CLEAR}, margins:{top:60,bottom:60,left:120,right:120}, children:[new Paragraph({children:[T(fmtEur(tot),{size:20})],alignment:AlignmentType.RIGHT})] }),
-    ]})
-  })
-  const totRow = new TableRow({ children:[
-    new TableCell({ borders:BTS, columnSpan:3, width:{size:colW[0]+colW[1]+colW[2],type:WidthType.DXA}, shading:{fill:'244061',type:ShadingType.CLEAR}, margins:{top:80,bottom:80,left:120,right:120}, children:[new Paragraph({children:[B('TOTALE',20)],alignment:AlignmentType.LEFT})] }),
-    new TableCell({ borders:BTS, columnSpan:2, width:{size:colW[3]+colW[4],type:WidthType.DXA}, shading:{fill:'244061',type:ShadingType.CLEAR}, margins:{top:80,bottom:80,left:120,right:120}, children:[new Paragraph({children:[B(fmtEur(totVG),22)],alignment:AlignmentType.RIGHT})] }),
-  ]})
-  const tblInventario = new Table({ width:{size:cw,type:WidthType.DXA}, columnWidths:colW, borders:BTS, rows:[hdrRow, ...artRows, totRow] })
 
-  // Testo AI in paragrafi
-  const cleanAI = (testo) => testo
-    .replace(/##[^\n]*/g, '')  // rimuove intestazioni markdown
-    .replace(/\*\*/g, '')       // rimuove bold markdown
-    .replace(/valore di mercato[^\n]*(\n|$)/gi, '')  // rimuove righe con valore di mercato
-    .replace(/Val\.? merc[^\n]*(\n|$)/gi, '')
-  const aiParas = (testo) => cleanAI(testo).split('\n').filter(l=>l.trim()).map(l => P(T(l.trim())))
+  // Testi fallback per ciascuna sezione (linguaggio forense)
+  const nomeCuratore = proc.curatore || 'il Curatore'
+  const fb_intro = [
+    P([T('La presente relazione di stima \u00e8 stata redatta su incarico '),
+       T(nomeCuratore+', nella sua qualit\u00e0 di Liquidatore/Curatore della procedura di '),
+       T((proc.tipo||'')+' n. '+nrg+' \u2013 '+(proc.nome||'')+', con l\u2019obiettivo di determinare in maniera puntuale e trasparente il valore complessivo dei beni mobili, macchinari e attrezzature costituenti il patrimonio aziendale del/della debitore/trice, ai fini della liquidazione concorsuale ai sensi del D.Lgs. 14/2019 (CCII).')]),
+    P(T('La valutazione \u00e8 stata condotta secondo criteri di stretta prudenzialit\u00e0 e con particolare riferimento al contesto della liquidazione giudiziale, adottando parametri coerenti con le finalit\u00e0 della procedura concorsuale e con le aspettative di realizzo in sede di vendita forzata. Al fine di pervenire ad una stima quanto pi\u00f9 possibile aderente alla realt\u00e0 economica e di mercato, si \u00e8 proceduto attraverso le seguenti attivit\u00e0 tecniche: rilevazione fisica diretta e documentazione fotografica dei beni presenti nei locali aziendali; attribuzione del valore economico al cespite sulla base di parametri oggettivi e dello stato conservativo rilevato; applicazione di abbattimenti prudenziali in funzione delle condizioni d\u2019uso e delle prospettive di realizzo.')),
+    P([T('Il sopralluogo e la rilevazione dei beni sono stati effettuati in data '), B(fd(dataSopralluogo)), T('.')]),
+  ]
+  const fb_descr = [ P(T('La debitrice svolgeva l\u2019attivit\u00e0 di cui alla presente procedura concorsuale. La struttura aziendale risultava articolata in beni strumentali funzionali all\u2019esercizio dell\u2019impresa, oggetto della presente perizia di stima.')), ...(attivita ? [P([B('Attivit\u00e0 esercitata: '), T(attivita)])] : []) ]
+  const fb_beni = [ P(T('Sono stati oggetto di ricognizione e valutazione i beni mobili, macchinari e attrezzature presenti nei locali aziendali alla data del sopralluogo. Il complesso dei beni inventariati risulta coerente con la tipologia di attivit\u00e0 esercitata dalla debitrice e si configura quale essenziale per lo svolgimento dell\u2019attivit\u00e0 commerciale nella configurazione ante procedura.')) ]
+  const fb_cause = causeCrisi ? [P(T(causeCrisi))] : [ P(T('Le cause della crisi aziendale sono in corso di accertamento da parte degli organi della procedura sulla base della documentazione acquisita nel corso della procedura.')) ]
+  const fb_macro = contestoMacro ? [P(T(contestoMacro))] : [ P(T('L\u2019analisi del contesto macroeconomico di riferimento \u00e8 stata condotta tenendo conto delle condizioni di mercato del settore di appartenenza dell\u2019azienda debitrice e delle dinamiche competitive che ne caratterizzano l\u2019operativit\u00e0.')) ]
+  const fb_criteri = [
+    P(T('La valutazione dei beni \u00e8 stata condotta secondo il metodo comparativo di mercato, integrato con il metodo del costo di riproduzione deprezzato, tenendo conto dello stato d\u2019uso effettivo, del grado di obsolescenza tecnica ed economica, nonch\u00e9 delle concrete possibilit\u00e0 di realizzo in sede di vendita giudiziale. Si \u00e8 altres\u00ec considerato il livello di specializzazione dei beni, la loro ricollocabilit\u00e0 sul mercato dell\u2019usato e la documentazione tecnica disponibile.')),
+    P(T('Nel determinare i valori, si \u00e8 tenuto conto dei seguenti fattori: svalutazione fisiologica dovuta all\u2019utilizzo prolungato; limitata richiesta di mercato per beni destinati ad attivit\u00e0 settoriali specifiche; difficolt\u00e0 di ricollocazione in contesto liquidatorio, caratterizzato da tempi contingentati e limitate opportunit\u00e0 di valorizzazione; contesto di vendita forzata, che notoriamente deprime i valori di realizzo rispetto alle condizioni ordinarie di mercato.')),
+    P([B('Contesto di stima: '), T(contestoStima||'Liquidazione giudiziale (valori liquidatori)')]),
+    P([T('Al valore cos\u00ec determinato \u00e8 stata applicata un\u2019ulteriore decurtazione prudenziale del '), B((decurtazione||'15')+'%'), T(', a titolo di visto e piaciuto e per riflettere il rischio di realizzo in sede di vendita giudiziale.')]),
+    ...(noteCriteri ? [P([B('Note aggiuntive: '), T(noteCriteri)])] : []),
+    ...(beniEsclusi ? [P([B('Beni esclusi dalla stima: '), T(beniEsclusi)])] : []),
+  ]
+  const fb_concl = [
+    P([T('La presente perizia di stima, redatta in ottica di '), T(contestoStima||'liquidazione giudiziale'), T(', rappresenta un quadro realistico e prudenziale del valore di realizzo dei beni appartenenti alla procedura '), B((proc.tipo||'')+' n. '+nrg+' \u2013 '+(proc.nome||'')), T('. Si evidenzia che i valori indicati tengono debitamente conto delle attuali condizioni del mercato dell\u2019usato per beni strumentali, dello stato d\u2019uso effettivo degli stessi nonch\u00e9 delle concrete possibilit\u00e0 di alienazione in un contesto di vendita forzata.')]),
+    P([T('\u00c8 stato inoltre considerato il carattere specifico e settoriale della dotazione inventariata, fattore che inevitabilmente incide sulle prospettive di collocamento sul mercato. Si precisa che eventuali variazioni delle condizioni di mercato, ovvero differenti modalit\u00e0 di vendita \u2013 sia in blocco che frazionata \u2013 potrebbero determinare oscillazioni rispetto ai valori qui determinati. Il valore complessivo stimato, pari ad '), B(eu(totVG)), T(', costituisce quindi un riferimento attendibile e coerente per le finalit\u00e0 della procedura concorsuale.')]),
+    ...(noteConclusive ? [BR(), P(T(noteConclusive))] : []),
+  ]
 
-  const doc = new Document({ numbering:numConf, sections:[{
-    properties:{ page:{ size:{width:_MW,height:16838}, margin:{top:1200,right:_MM,bottom:1400,left:_MM} } },
-    headers:{ default:hdr },
-    footers:{ default:ftr },
+  const doc = new Document({ numbering:{ config:[{ reference:'blt', levels:[{ level:0, format:LevelFormat.BULLET, text:'-', alignment:AlignmentType.LEFT, style:{ paragraph:{ indent:{ left:360, hanging:360 } } } }] }] }, sections:[{
+    properties:{ page:{ size:{ width:_MW, height:16838 }, margin:{ top:1200, right:_MM, bottom:1400, left:_MM } } },
+    headers:{ default:hdr }, footers:{ default:ftr },
     children:[
-      PC([B('RELAZIONE DI STIMA', 30)], {spacing:{before:240,after:80}}),
-      PC([T(proc.nome||'', {size:24})], {spacing:{before:0,after:40}}),
-      PC([T('Tribunale di '+(proc.tribunale||'')+' — '+(proc.tipo||'')+' N. R.G. '+nrg, {size:20,italics:true})]),
+      PC([B('RELAZIONE DI STIMA BENI MOBILI',30)], { spacing:{before:240,after:80} }),
+      PC([T(proc.nome||'',{size:24})]),
+      PC([T('Tribunale di '+(proc.tribunale||'')+' \u2014 '+(proc.tipo||'')+' N. R.G. '+nrg, {size:20,italics:true})]),
       BR(),
-
-      H1('1. DATI DELLA PROCEDURA'),
+      H('1. DATI DELLA PROCEDURA'),
+      BR(), tblProc, BR(),
+      H('2. INTRODUZIONE ALLA PERIZIA DI STIMA'),
+      ...(has(S.intro) ? aiRows(S.intro) : fb_intro),
       BR(),
-      tblProc,
+      H('3. DESCRIZIONE DELL\u2019ATTIVIT\u00c0 E DELL\u2019IMPRESA'),
+      ...(has(S.descr) ? aiRows(S.descr) : fb_descr),
       BR(),
-
-      H1('2. PREMESSA E OGGETTO DELL\'INCARICO'),
-      ...(sezioni.premessa ? aiParas(sezioni.premessa) : [
-        P([T("La presente relazione di stima è stata redatta su incarico "), T(proc.curatore ? "del/della "+proc.curatore+", nella sua qualità di Liquidatore/Curatore della procedura di " : "del Curatore della procedura di "), T(proc.tipo+" n. "+nrg+" – "+(proc.nome||"")+", con l"), T("'obiettivo di determinare in maniera puntuale e trasparente il valore complessivo dei beni mobili, macchinari e attrezzature costituenti il patrimonio aziendale del/della debitore/trice, ai fini della liquidazione concorsuale ai sensi del D.Lgs. 14/2019 (CCII). La valutazione è stata condotta secondo criteri di stretta prudenzialità e con particolare riferimento al contesto liquidatorio, adottando parametri coerenti con le finalità della procedura concorsuale e con le aspettative di realizzo in sede di vendita forzata.")]),
-        P([T("Il sopralluogo e la rilevazione dei beni sono stati effettuati in data "), B(fmtD2(dataSopralluogo)), T(". Al fine di pervenire ad una stima quanto più possibile aderente alla realtà economica e di mercato, si è proceduto attraverso le seguenti attività tecniche: rilevazione fisica diretta e documentazione fotografica dei beni presenti nei locali aziendali; attribuzione del valore economico al cespite sulla base di parametri di mercato e dello stato conservativo rilevato; applicazione di abbattimenti prudenziali ove ritenuto necessario in funzione delle condizioni d'uso e delle prospettive di realizzo.")]),
-        ...(attivita ? [P([B("Attività aziendale: "), T(attivita)])] : []),
-      ]),
+      H('4. BENI AZIENDALI OGGETTO DI PERIZIA'),
+      ...(has(S.beni) ? aiRows(S.beni) : fb_beni),
       BR(),
-
-      H1('3. METODOLOGIA DI VALUTAZIONE'),
-      ...(sezioni.metodologia ? aiParas(sezioni.metodologia) : [
-        P(T("La valutazione dei beni è stata condotta secondo il metodo comparativo di mercato, integrato con il metodo del costo di riproduzione deprezzato, tenendo conto dello stato d'uso effettivo, del grado di obsolescenza tecnica ed economica, nonché delle concrete possibilità di realizzo in sede di vendita giudiziale. Si è altresì considerato il livello di specializzazione dei beni, la loro ricollocabilità sul mercato dell'usato e la documentazione tecnica disponibile.")),
-        P([B("Contesto di stima: "), T(contestoStima||'Liquidazione giudiziale (valori liquidatori)')]),
-        P([B("Decurtazione prudenziale applicata: "), T((decurtazione||'15')+'% a titolo di visto e piaciuto e per riflettere il rischio di realizzo in sede di vendita giudiziale')]),
-        ...(noteCriteri ? [P([B("Note aggiuntive sui criteri: "), T(noteCriteri)])] : []),
-      ]),
+      H('5. CAUSE DELLA CRISI AZIENDALE'),
+      ...(has(S.cause) ? aiRows(S.cause) : fb_cause),
       BR(),
-
-      H1('4. CAUSE DELLA CRISI AZIENDALE'),
-      ...(sezioni.contesto.length > 20 ? aiParas(sezioni.contesto) : (causeCresi ? [P(T(causeCresi))] : [P(T("Le cause della crisi aziendale sono in corso di accertamento da parte degli organi della procedura."))])),
+      H('6. ANALISI MACROECONOMICA DEL SETTORE'),
+      ...(has(S.macro) ? aiRows(S.macro) : fb_macro),
+      ...(codiceAteco ? [P([B('Codice ATECO: '), T(codiceAteco)])] : []),
       BR(),
-
-      H1('5. CONTESTO MACROECONOMICO DEL SETTORE'),
-      ...(contestoMacro ? aiParas(contestoMacro) : [P(T("L'analisi del contesto macroeconomico di riferimento è stata condotta tenendo conto delle condizioni di mercato del settore di appartenenza dell'azienda debitrice."))]),
-      ...(codiceAteco ? [P([B("Codice ATECO di riferimento: "), T(codiceAteco)])] : []),
+      H('7. CRITERI DI STIMA'),
+      ...(has(S.criteri) ? aiRows(S.criteri) : fb_criteri),
       BR(),
-
-      ...(beniEsclusi ? [H1('6. BENI ESCLUSI DALLA STIMA'), P(T(beniEsclusi)), BR()] : []),
-
-      H1('7. INVENTARIO ANALITICO E VALORIZZAZIONE'),
-      P(T("Si riporta di seguito l'inventario analitico dei beni mobili rilevati, con l'indicazione del valore unitario e totale ai fini della presente stima:")),
+      H('8. INVENTARIO ANALITICO'),
+      P(T('Si riporta di seguito l\u2019inventario analitico dei beni mobili rilevati, con l\u2019indicazione del valore unitario e totale ai fini della presente stima:')),
+      BR(), tblInv, BR(),
+      H('9. PROSPETTO DI SINTESI DELLA STIMA'),
+      P(T('Si riporta di seguito il prospetto di sintesi del valore complessivo dei beni oggetto di perizia:')),
+      BR(), tblSint, BR(),
+      H('10. CONCLUSIONI'),
+      ...(has(S.concl) ? aiRows(S.concl) : fb_concl),
+      BR(), BR(),
+      P(T('Lecco, '+fd(dataSopralluogo||new Date().toISOString().slice(0,10)))),
       BR(),
-      tblInventario,
+      P([T('\t\t\t\t\t'), B('Pro.Ges.S. Srl')]),
+      P([T('\t\t\t\t\tProcedure Gestite e Servizi S.r.l.')]),
+      P([T('\t\t\t\t\tL\u2019Amministratore Unico')]),
+      P([T('\t\t\t\t\tLuigi IMPIERI')]),
       BR(),
-      P([T("Il valore complessivo stimato dei beni mobili, ai fini della procedura concorsuale, ammonta a: "), B(fmtEur(totVG))]),
-      BR(),
-
-      H1('7. PROSPETTO DI SINTESI DELLA STIMA'),
-      P(T("Si riporta di seguito il prospetto di sintesi del valore complessivo dei beni oggetto di perizia:")),
-      BR(),
-      new Table({ width:{size:cw,type:WidthType.DXA}, columnWidths:[Math.floor(cw*0.7),Math.floor(cw*0.3)], borders:BTS, rows:[
-        new TableRow({ children:[
-          new TableCell({ borders:BTS, width:{size:Math.floor(cw*0.7),type:WidthType.DXA}, shading:{fill:'244061',type:ShadingType.CLEAR}, margins:{top:80,bottom:80,left:120,right:120}, children:[new Paragraph({children:[B('Descrizione',20)],alignment:AlignmentType.LEFT})] }),
-          new TableCell({ borders:BTS, width:{size:Math.floor(cw*0.3),type:WidthType.DXA}, shading:{fill:'244061',type:ShadingType.CLEAR}, margins:{top:80,bottom:80,left:120,right:120}, children:[new Paragraph({children:[B('Valore stimato',20)],alignment:AlignmentType.RIGHT})] }),
-        ]}),
-        new TableRow({ children:[
-          new TableCell({ borders:BTS, width:{size:Math.floor(cw*0.7),type:WidthType.DXA}, margins:{top:80,bottom:80,left:120,right:120}, children:[new Paragraph({children:[T('Beni mobili e attrezzature aziendali',{size:20})],alignment:AlignmentType.LEFT})] }),
-          new TableCell({ borders:BTS, width:{size:Math.floor(cw*0.3),type:WidthType.DXA}, margins:{top:80,bottom:80,left:120,right:120}, children:[new Paragraph({children:[T(fmtEur(totVG),{size:20})],alignment:AlignmentType.RIGHT})] }),
-        ]}),
-        new TableRow({ children:[
-          new TableCell({ borders:BTS, width:{size:Math.floor(cw*0.7),type:WidthType.DXA}, shading:{fill:'EEF2F7',type:ShadingType.CLEAR}, margins:{top:80,bottom:80,left:120,right:120}, children:[new Paragraph({children:[B('TOTALE',20)],alignment:AlignmentType.LEFT})] }),
-          new TableCell({ borders:BTS, width:{size:Math.floor(cw*0.3),type:WidthType.DXA}, shading:{fill:'EEF2F7',type:ShadingType.CLEAR}, margins:{top:80,bottom:80,left:120,right:120}, children:[new Paragraph({children:[B('€ '+fmtEur(totVG).replace('€ ',''),22)],alignment:AlignmentType.RIGHT})] }),
-        ]}),
-      ]}),
-      BR(),
-      H1('8. CONCLUSIONI'),
-      ...(sezioni.conclusioni ? aiParas(sezioni.conclusioni) : [
-        P([T("La presente perizia di stima, redatta in ottica di "), T(contestoStima||"liquidazione giudiziale"), T(", rappresenta un quadro realistico e prudenziale del valore di realizzo dei beni appartenenti alla procedura "), B(proc.tipo+" n. "+nrg+" – "+(proc.nome||"")), T(". Si evidenzia che i valori indicati tengono debitamente conto delle attuali condizioni del mercato dell'usato, dello stato d'uso effettivo dei beni nonché delle concrete possibilità di alienazione in un contesto di vendita forzata.")]),
-        P([T("Il valore complessivo stimato, pari ad "), B(fmtEur(totVG)), T(", costituisce quindi un riferimento attendibile e coerente per le finalità della procedura concorsuale. Si precisa che eventuali variazioni delle condizioni di mercato, ovvero differenti modalità di vendita – sia in blocco che frazionata – potrebbero determinare oscillazioni rispetto ai valori qui determinati.")]),
-        ...(noteConclusive ? [BR(), P(T(noteConclusive))] : []),
-      ]),
-      BR(),
-      BR(),
-      P(T("Lecco, "+fmtD2(dataSopralluogo||new Date().toISOString().slice(0,10)))),
-      BR(),
-      P([T("\t\t\t\t\tIl Commissionario")]),
-      P([T("\t\t\t\t\t"), B("Pro.Ges.S. Srl")]),
-      P([T("\t\t\t\t\tL"), T("'Amministratore Unico")]),
-      P([T("\t\t\t\t\tLuigi IMPIERI")]),
-      BR(),
-      P(T("________________________________")),
+      P(T('________________________________')),
     ]
   }]})
   return Packer.toBlob(doc)
@@ -822,8 +848,7 @@ function TabRelazioneStima({ proc }) {
   const [noteConclusive, setNoteConclusive] = useState('')
   const [articoli, setArticoli] = useState([])
   const [generating, setGenerating] = useState(false)
-  const [genAI, setGenAI] = useState(false)
-  const [testoAI, setTestoAI] = useState('')
+  const [genStep, setGenStep] = useState('')
 
   useEffect(() => {
     if (proc?.id) {
@@ -832,150 +857,120 @@ function TabRelazioneStima({ proc }) {
     }
   }, [proc?.id])
 
-  const generaConAI = async () => {
-    const apiKey = localStorage.getItem('ip_apikey') || ''
-    if (!apiKey || apiKey.length < 20) { notify('Inserisci la chiave API in Impostazioni', 'warn'); return }
-    setGenAI(true)
-    try {
-      const nrg = (proc.num||'') + (proc.anno?'/'+proc.anno:'')
-      const totVG = articoli.reduce((s,a) => s+(parseFloat(a.val_giud||0)*parseFloat(a.qta||1)),0)
-      const fmtEur = (n) => { const p = parseFloat(n||0).toFixed(2).split('.'); p[0]=p[0].replace(/\B(?=(\d{3})+(?!\d))/g,'.'); return '\u20ac '+p[0]+','+p[1] }
-      const elenco = articoli.slice(0,30).map((a,i) => `${i+1}. ${a.desc_breve||'—'} (q.tà ${a.qta||1}, val. giud. ${fmtEur(a.val_giud||0)})`).join('\n')
-      const prompt = `Sei un perito giudiziario esperto in valutazioni per procedure concorsuali italiane ai sensi del D.Lgs. 14/2019 (CCII).
-
-Redigi una RELAZIONE DI STIMA DETTAGLIATA E ARTICOLATA per la seguente procedura:
-- Procedura: ${proc.tipo||''} n. ${nrg} – ${proc.nome||''}
-- Tribunale di ${proc.tribunale||''}, Giudice Delegato: ${proc.giudice||''}
-- Liquidatore/Curatore: ${proc.curatore||''}
-- Data sopralluogo: ${dataSopralluogo}
-${sito ? '- Sito aziendale: '+sito : ''}
-${attivita ? '- Attività esercitata: '+attivita : ''}
-${causeCrisi ? '- Cause della crisi: '+causeCrisi : ''}
-${contestoMacro ? '- Contesto macroeconomico: '+contestoMacro : ''}
-${codiceAteco ? '- Codice ATECO: '+codiceAteco : ''}
-- Contesto di stima: ${contestoStima}
-- Decurtazione prudenziale applicata: ${decurtazione}%
-${noteCriteri ? '- Note aggiuntive sui criteri: '+noteCriteri : ''}
-${beniEsclusi ? '- Beni esclusi dalla stima: '+beniEsclusi : ''}
-
-Inventario (${articoli.length} articoli, valore giudiziario totale ${fmtEur(totVG)}):
-${elenco}
-${articoli.length > 30 ? '...e altri '+(articoli.length-30)+' articoli' : ''}
-
-ISTRUZIONI FONDAMENTALI:
-1. Usa ESCLUSIVAMENTE linguaggio tecnico-giuridico forense italiano (es. "si è proceduto a", "è stato accertato che", "ai sensi dell'art.", "nel caso di specie", "si evidenzia che").
-2. Ogni sezione deve essere LUNGA e ARTICOLATA: almeno 3-4 paragrafi per sezione, con frasi complete e subordinate.
-3. NON riportare mai il valore di mercato — usa SOLO il valore giudiziario/liquidatorio.
-4. Integra i dati dell'inventario nella narrativa delle sezioni (categorie di beni, tipologie, stato d'uso).
-5. NON includere tabelle inventario (vengono aggiunte automaticamente dopo).
-
-Struttura OBBLIGATORIA con queste sezioni:
-## 1. INTRODUZIONE ALLA PERIZIA DI STIMA
-## 2. DESCRIZIONE DELL'ATTIVITÀ E DELL'IMPRESA  
-## 3. BENI AZIENDALI OGGETTO DI PERIZIA
-## 4. CAUSE DELLA CRISI AZIENDALE
-## 5. ANALISI MACROECONOMICA DEL SETTORE
-## 6. CRITERI DI STIMA
-## 7. CONCLUSIONI
-
-Ogni sezione deve essere esaustiva e professionale, con riferimenti normativi dove pertinente.`
-
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true'
-        },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-5-20250929',
-          max_tokens: 3000,
-          messages: [{ role: 'user', content: prompt }]
-        })
-      })
-      const data = await res.json()
-      const testo = data.content?.[0]?.text || ''
-      if (!testo) throw new Error('Risposta AI vuota')
-      setTestoAI(testo)
-      notify('Relazione AI generata — verifica e genera il documento', 'ok', 5000)
-    } catch (e) { notify('Errore AI: ' + e.message, 'err') }
-    finally { setGenAI(false) }
-  }
-
-  const genera = async () => {
+  const generaDocumento = async () => {
     setGenerating(true)
+    let testoAI = ''
     try {
+      const apiKey = localStorage.getItem('ip_apikey') || ''
+      if (apiKey && apiKey.length >= 20) {
+        setGenStep('ai')
+        const nrg = (proc.num||'') + (proc.anno ? '/'+proc.anno : '')
+        const totVG = articoli.reduce((s,a) => s + parseFloat(a.val_giud||0)*parseFloat(a.qta||1), 0)
+        const eu2 = (n) => { const p = parseFloat(n||0).toFixed(2).split('.'); p[0]=p[0].replace(/\B(?=(\d{3})+(?!\d))/g,'.'); return '\u20ac '+p[0]+','+p[1] }
+        const elenco = articoli.slice(0,30).map((a,i) => (i+1)+'. '+(a.desc_breve||'—')+' (q.ta '+(a.qta||1)+', val. giud. '+eu2(a.val_giud||0)+')').join('\n')
+        const prompt =
+          'Sei un perito giudiziario esperto in valutazioni per procedure concorsuali italiane (D.Lgs. 14/2019 CCII).\n\n'
+          + 'Redigi una RELAZIONE DI STIMA DETTAGLIATA per la procedura:\n'
+          + '- '+(proc.tipo||'')+' n. '+nrg+' \u2013 '+(proc.nome||'')+'\n'
+          + '- Tribunale di '+(proc.tribunale||'')+', GD: '+(proc.giudice||'')+'\n'
+          + '- Liquidatore/Curatore: '+(proc.curatore||'')+'\n'
+          + '- Sopralluogo: '+dataSopralluogo+'\n'
+          + (sito ? '- Sito: '+sito+'\n' : '')
+          + (attivita ? '- Attivita: '+attivita+'\n' : '')
+          + (causeCrisi ? '- Cause crisi: '+causeCrisi+'\n' : '')
+          + (contestoMacro ? '- Macro: '+contestoMacro+'\n' : '')
+          + (codiceAteco ? '- ATECO: '+codiceAteco+'\n' : '')
+          + '- Contesto stima: '+contestoStima+'\n'
+          + '- Decurtazione: '+decurtazione+'%\n'
+          + (noteCriteri ? '- Note criteri: '+noteCriteri+'\n' : '')
+          + (beniEsclusi ? '- Beni esclusi: '+beniEsclusi+'\n' : '')
+          + '\nInventario ('+articoli.length+' articoli, tot. giud. '+eu2(totVG)+'):\n'+elenco
+          + (articoli.length>30 ? '\n...e altri '+(articoli.length-30)+' articoli' : '')
+          + '\n\nREGOLE ASSOLUTE:\n'
+          + '- Linguaggio tecnico-giuridico forense italiano\n'
+          + '- Ogni sezione: almeno 3-4 paragrafi articolati\n'
+          + '- NO valore di mercato. Solo valore giudiziario/liquidatorio\n'
+          + '- Integra dati inventario nella narrativa\n'
+          + '- NO tabelle (vengono aggiunte automaticamente)\n\n'
+          + 'Struttura OBBLIGATORIA (usa esattamente questi titoli):\n'
+          + '## 2. INTRODUZIONE ALLA PERIZIA DI STIMA\n'
+          + '## 3. DESCRIZIONE DELL ATTIVITA E DELL IMPRESA\n'
+          + '## 4. BENI AZIENDALI OGGETTO DI PERIZIA\n'
+          + '## 5. CAUSE DELLA CRISI AZIENDALE\n'
+          + '## 6. ANALISI MACROECONOMICA DEL SETTORE\n'
+          + '## 7. CRITERI DI STIMA\n'
+          + '## 10. CONCLUSIONI'
+        const res = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: { 'Content-Type':'application/json', 'x-api-key':apiKey, 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
+          body: JSON.stringify({ model:'claude-sonnet-4-5-20250929', max_tokens:3000, messages:[{ role:'user', content:prompt }] })
+        })
+        const data = await res.json()
+        testoAI = data.content?.[0]?.text || ''
+        if (!testoAI) notify('AI non ha risposto — uso testo predefinito', 'warn', 3000)
+      } else {
+        notify('Chiave API non configurata: documento con testo predefinito', 'warn', 4000)
+      }
+      setGenStep('docx')
       const logo = localStorage.getItem('ip_logo') || null
       const blob = await _genRelazioneStima(proc, {
-        dataSopralluogo, sito, attivita, causeCresi: causeCrisi,
-        decurtazione, contestoStima, noteCriteri, contestoMacro,
-        codiceAteco, beniEsclusi, noteConclusive, testoAI
+        dataSopralluogo, sito, attivita, causeCrisi,
+        decurtazione, contestoStima, noteCriteri,
+        contestoMacro, codiceAteco, beniEsclusi, noteConclusive, testoAI
       }, articoli, logo)
       _dl(blob, 'Relazione_Stima_'+(proc.nome||'').replace(/\s+/g,'_')+'.docx')
       notify('Relazione di Stima generata', 'ok')
-    } catch (e) { notify('Errore: ' + e.message, 'err') }
-    finally { setGenerating(false) }
+    } catch(e) { notify('Errore: '+e.message, 'err') }
+    finally { setGenerating(false); setGenStep('') }
   }
 
-  const inp = (label, val, set, placeholder='', type='text') => (
+  const TA = (label, val, set, ph) => (
     <div className="form-col-full form-group">
-      <label className="form-label">{label}</label>
-      {type === 'textarea'
-        ? <textarea className="form-input" value={val} onChange={e=>set(e.target.value)} placeholder={placeholder} rows={3} />
-        : <input type={type} className="form-input" value={val} onChange={e=>set(e.target.value)} placeholder={placeholder} />
-      }
+      {label && <label className="form-label">{label}</label>}
+      <textarea className="form-input" value={val} onChange={e=>set(e.target.value)} placeholder={ph} rows={3} />
     </div>
   )
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-
+    <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
       {/* Dati procedura */}
       <div className="card">
-        <div className="card-header">
-          <div className="card-title">🏛 Dati procedura (da InventPro)</div>
-        </div>
+        <div className="card-header"><div className="card-title">🏛 Dati procedura (da InventPro)</div></div>
         <div className="card-body">
-          <div style={{ background: 'var(--bg2)', borderRadius: 8, padding: '12px 16px', fontSize: 13 }}>
-            {[['Procedura', proc.nome],['Tipo', proc.tipo],['N. R.G.', (proc.num||'')+(proc.anno?'/'+proc.anno:'')],['Tribunale', proc.tribunale],['Giudice Delegato', proc.giudice],['Curatore', proc.curatore],['Commissionario', 'Pro.Ges.S. Srl']].map(([l,v]) => (
+          <div style={{ background:'var(--bg2)', borderRadius:8, padding:'12px 16px', fontSize:13 }}>
+            {[['Procedura',proc.nome],['Tipo',proc.tipo],['N. R.G.',(proc.num||'')+(proc.anno?'/'+proc.anno:'')],
+              ['Tribunale',proc.tribunale],['Giudice Delegato',proc.giudice],['Liquidatore/Curatore',proc.curatore],
+              ['Commissionario','Pro.Ges.S. Srl']].map(([l,v])=>(
               <div key={l} style={{ display:'flex', gap:12, marginBottom:4 }}>
-                <span style={{ color:'var(--text3)', minWidth:140 }}>{l}</span>
+                <span style={{ color:'var(--text3)', minWidth:160 }}>{l}</span>
                 <span style={{ fontWeight:500 }}>{v||'—'}</span>
               </div>
             ))}
           </div>
         </div>
       </div>
-
-      {/* Info per AI */}
+      {/* Info AI */}
       <div className="card">
         <div className="card-header"><div className="card-title">🌐 Informazioni azienda per l'AI</div></div>
         <div className="card-body">
           <div className="form-grid">
             <div className="form-group">
-              <label className="form-label">Sito internet azienda (facoltativo)</label>
+              <label className="form-label">Sito internet (facoltativo)</label>
               <input className="form-input" value={sito} onChange={e=>setSito(e.target.value)} placeholder="https://www.esempio.it" />
             </div>
             <div className="form-group">
               <label className="form-label">Data sopralluogo / perizia</label>
               <input type="date" className="form-input" value={dataSopralluogo} onChange={e=>setDataSopralluogo(e.target.value)} />
             </div>
-            {inp("Di cosa si occupa / si occupava l'azienda", attivita, setAttivita, "Es: officina metalmeccanica specializzata in lavorazioni per conto terzi...", 'textarea')}
+            {TA("Di cosa si occupa / occupava l'azienda", attivita, setAttivita, "Es: officina metalmeccanica specializzata in lavorazioni per conto terzi, tornitura e fresatura CNC...")}
           </div>
         </div>
       </div>
-
       {/* Cause crisi */}
       <div className="card">
         <div className="card-header"><div className="card-title">📉 Cause della crisi aziendale</div></div>
-        <div className="card-body">
-          <div className="form-grid">
-            {inp('', causeCrisi, setCauseCrisi, 'Es: difficoltà finanziarie legate a calo ordini, perdita commesse principali, aumento costi energia...', 'textarea')}
-          </div>
-        </div>
+        <div className="card-body"><div className="form-grid">{TA('', causeCrisi, setCauseCrisi, 'Es: difficoltà finanziarie legate a calo ordini, perdita commesse principali, aumento costi energia...')}</div></div>
       </div>
-
       {/* Criteri */}
       <div className="card">
         <div className="card-header"><div className="card-title">⚖️ Criteri di valutazione applicati</div></div>
@@ -988,20 +983,19 @@ Ogni sezione deve essere esaustiva e professionale, con riferimenti normativi do
             <div className="form-group">
               <label className="form-label">Contesto di stima</label>
               <select className="form-input" value={contestoStima} onChange={e=>setContestoStima(e.target.value)}>
-                {CONTESTI_STIMA.map(c => <option key={c}>{c}</option>)}
+                {CONTESTI_STIMA.map(cs => <option key={cs}>{cs}</option>)}
               </select>
             </div>
-            {inp('Note aggiuntive sui criteri (facoltativo)', noteCriteri, setNoteCriteri, 'Es: macchinari privi di certificazione CE valorizzati come rottame...', 'textarea')}
+            {TA('Note aggiuntive sui criteri (facoltativo)', noteCriteri, setNoteCriteri, 'Es: macchinari privi di certificazione CE valorizzati come rottame, presenza di beni di proprietà di terzi esclusi...')}
           </div>
         </div>
       </div>
-
-      {/* Contesto macro */}
+      {/* Macro */}
       <div className="card">
         <div className="card-header"><div className="card-title">📊 Contesto macroeconomico del settore</div></div>
         <div className="card-body">
           <div className="form-grid">
-            {inp('', contestoMacro, setContestoMacro, 'Es: il settore manifatturiero ha subito pressioni a aumento costi energetici...', 'textarea')}
+            {TA('', contestoMacro, setContestoMacro, 'Es: il settore manifatturiero ha subito pressioni da aumento costi energetici e delle materie prime...')}
             <div className="form-col-full form-group">
               <label className="form-label">Codice ATECO del settore (facoltativo)</label>
               <input className="form-input" value={codiceAteco} onChange={e=>setCodiceAteco(e.target.value)} placeholder="Es: 25.62 - Lavori di meccanica" />
@@ -1009,58 +1003,45 @@ Ogni sezione deve essere esaustiva e professionale, con riferimenti normativi do
           </div>
         </div>
       </div>
-
       {/* Beni esclusi */}
       <div className="card">
         <div className="card-header"><div className="card-title">🚫 Beni esclusi dalla stima</div></div>
-        <div className="card-body">
-          <div className="form-grid">
-            {inp('', beniEsclusi, setBeniEsclusi, 'Es: beni in leasing, beni di proprietà di terzi, assets immateriali...', 'textarea')}
-          </div>
-        </div>
+        <div className="card-body"><div className="form-grid">{TA('', beniEsclusi, setBeniEsclusi, 'Es: beni in leasing, beni di proprietà di terzi, assets immateriali (avviamento, marchi, licenze)...')}</div></div>
       </div>
-
       {/* Note conclusive */}
       <div className="card">
         <div className="card-header"><div className="card-title">📝 Note conclusive</div></div>
-        <div className="card-body">
-          <div className="form-grid">
-            {inp('', noteConclusive, setNoteConclusive, 'Es: i valori riportati sono da ritenersi stime prudenziali in ottica liquidatoria...', 'textarea')}
-          </div>
-        </div>
+        <div className="card-body"><div className="form-grid">{TA('', noteConclusive, setNoteConclusive, 'Es: i valori riportati sono da ritenersi stime prudenziali in ottica liquidatoria, soggetti a variazioni...')}</div></div>
       </div>
-
       {/* Inventario */}
       <div className="card">
         <div className="card-header"><div className="card-title">📦 Inventario analitico</div></div>
         <div className="card-body">
-          <p style={{ fontSize:13, color:'var(--text2)' }}>
+          <p style={{ fontSize:13, color:'var(--text2)', margin:0 }}>
             {articoli.length > 0
-              ? `${articoli.length} articoli da InventPro verranno inclusi nel documento con descrizione, quantità e valori.`
+              ? <>{articoli.length} articoli da InventPro verranno inclusi nel documento con U.M., quantità e valori.</>
               : 'Nessun articolo trovato per questa procedura.'}
           </p>
         </div>
       </div>
-
-      {/* Testo AI generato */}
-      {testoAI && (
-        <div className="card">
-          <div className="card-header"><div className="card-title">✦ Testo generato dall'AI</div></div>
-          <div className="card-body">
-            <textarea className="form-input" value={testoAI} onChange={e=>setTestoAI(e.target.value)} rows={12} style={{ fontFamily:'monospace', fontSize:12 }} />
-            <div style={{ fontSize:11, color:'var(--text3)', marginTop:4 }}>Puoi modificare il testo prima di generare il documento.</div>
+      {/* Pulsante unico */}
+      <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:8, paddingBottom:24 }}>
+        {generating && (
+          <div style={{ fontSize:13, color:'var(--accent)', fontWeight:500 }}>
+            {genStep==='ai' ? '✦ Generazione testo con AI…' : genStep==='docx' ? '📄 Creazione documento Word…' : ''}
           </div>
+        )}
+        <button className="btn btn-primary" onClick={generaDocumento}
+          disabled={generating || articoli.length===0}
+          style={{ minWidth:280, justifyContent:'center' }}>
+          <Download size={14} />
+          {generating ? 'In corso…' : '✦ Genera Relazione di Stima (.docx)'}
+        </button>
+        <div style={{ fontSize:11, color:'var(--text3)' }}>
+          {localStorage.getItem('ip_apikey')
+            ? 'L'AI genererà automaticamente il testo forense prima di creare il documento.'
+            : '⚠️ Configura la chiave API in Impostazioni per attivare la generazione AI del testo.'}
         </div>
-      )}
-
-      {/* Azioni */}
-      <div style={{ display:'flex', justifyContent:'flex-end', gap:10, paddingBottom:24 }}>
-        <button className="btn btn-ghost" onClick={generaConAI} disabled={genAI || articoli.length===0}>
-          ✦ {genAI ? 'Generazione AI…' : 'Genera testo con AI'}
-        </button>
-        <button className="btn btn-primary" onClick={genera} disabled={generating || articoli.length===0}>
-          <Download size={14} /> {generating ? 'Generazione…' : 'Genera Relazione di Stima (.docx)'}
-        </button>
       </div>
     </div>
   )
