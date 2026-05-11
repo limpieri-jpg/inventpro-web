@@ -682,12 +682,13 @@ async function _genRelazioneStima(proc, opts, articoli, logoB64) {
   ]})
 
   // Tabella inventario analitico
-  const colW = [Math.floor(cw*0.5), Math.floor(cw*0.1), Math.floor(cw*0.2), Math.floor(cw*0.2)]
+  const colW = [Math.floor(cw*0.45), Math.floor(cw*0.1), Math.floor(cw*0.1), Math.floor(cw*0.17), Math.floor(cw*0.18)]
   const hdrRow = new TableRow({ children:[
     new TableCell({ borders:BTS, width:{size:colW[0],type:WidthType.DXA}, shading:{fill:'244061',type:ShadingType.CLEAR}, margins:{top:80,bottom:80,left:120,right:120}, children:[new Paragraph({children:[B('Descrizione',20)],alignment:AlignmentType.LEFT})] }),
-    new TableCell({ borders:BTS, width:{size:colW[1],type:WidthType.DXA}, shading:{fill:'244061',type:ShadingType.CLEAR}, margins:{top:80,bottom:80,left:120,right:120}, children:[new Paragraph({children:[B('Q.tà',20)],alignment:AlignmentType.CENTER})] }),
-    new TableCell({ borders:BTS, width:{size:colW[2],type:WidthType.DXA}, shading:{fill:'244061',type:ShadingType.CLEAR}, margins:{top:80,bottom:80,left:120,right:120}, children:[new Paragraph({children:[B('Prezzo unit.',20)],alignment:AlignmentType.RIGHT})] }),
-    new TableCell({ borders:BTS, width:{size:colW[3],type:WidthType.DXA}, shading:{fill:'244061',type:ShadingType.CLEAR}, margins:{top:80,bottom:80,left:120,right:120}, children:[new Paragraph({children:[B('Totale',20)],alignment:AlignmentType.RIGHT})] }),
+    new TableCell({ borders:BTS, width:{size:colW[1],type:WidthType.DXA}, shading:{fill:'244061',type:ShadingType.CLEAR}, margins:{top:80,bottom:80,left:120,right:120}, children:[new Paragraph({children:[B('U.M.',20)],alignment:AlignmentType.CENTER})] }),
+    new TableCell({ borders:BTS, width:{size:colW[2],type:WidthType.DXA}, shading:{fill:'244061',type:ShadingType.CLEAR}, margins:{top:80,bottom:80,left:120,right:120}, children:[new Paragraph({children:[B('Q.tà',20)],alignment:AlignmentType.CENTER})] }),
+    new TableCell({ borders:BTS, width:{size:colW[3],type:WidthType.DXA}, shading:{fill:'244061',type:ShadingType.CLEAR}, margins:{top:80,bottom:80,left:120,right:120}, children:[new Paragraph({children:[B('Valore unit. (€)',20)],alignment:AlignmentType.RIGHT})] }),
+    new TableCell({ borders:BTS, width:{size:colW[4],type:WidthType.DXA}, shading:{fill:'244061',type:ShadingType.CLEAR}, margins:{top:80,bottom:80,left:120,right:120}, children:[new Paragraph({children:[B('Totale (€)',20)],alignment:AlignmentType.RIGHT})] }),
   ]})
   const artRows = articoli.map((a,i) => {
     const vg = parseFloat(a.val_giud||0)
@@ -696,14 +697,15 @@ async function _genRelazioneStima(proc, opts, articoli, logoB64) {
     const shade = i%2===0 ? 'F8F9FA' : 'FFFFFF'
     return new TableRow({ children:[
       new TableCell({ borders:BTS, width:{size:colW[0],type:WidthType.DXA}, shading:{fill:shade,type:ShadingType.CLEAR}, margins:{top:60,bottom:60,left:120,right:120}, children:[new Paragraph({children:[T(a.desc_breve||'—',{size:20})],alignment:AlignmentType.JUSTIFIED})] }),
-      new TableCell({ borders:BTS, width:{size:colW[1],type:WidthType.DXA}, shading:{fill:shade,type:ShadingType.CLEAR}, margins:{top:60,bottom:60,left:120,right:120}, children:[new Paragraph({children:[T(String(qta)+' '+(a.unita_misura||'UN'),{size:20})],alignment:AlignmentType.CENTER})] }),
-      new TableCell({ borders:BTS, width:{size:colW[2],type:WidthType.DXA}, shading:{fill:shade,type:ShadingType.CLEAR}, margins:{top:60,bottom:60,left:120,right:120}, children:[new Paragraph({children:[T(fmtEur(vg),{size:20})],alignment:AlignmentType.RIGHT})] }),
-      new TableCell({ borders:BTS, width:{size:colW[3],type:WidthType.DXA}, shading:{fill:shade,type:ShadingType.CLEAR}, margins:{top:60,bottom:60,left:120,right:120}, children:[new Paragraph({children:[T(fmtEur(tot),{size:20})],alignment:AlignmentType.RIGHT})] }),
+      new TableCell({ borders:BTS, width:{size:colW[1],type:WidthType.DXA}, shading:{fill:shade,type:ShadingType.CLEAR}, margins:{top:60,bottom:60,left:120,right:120}, children:[new Paragraph({children:[T(a.unita_misura||'UN',{size:20})],alignment:AlignmentType.CENTER})] }),
+      new TableCell({ borders:BTS, width:{size:colW[2],type:WidthType.DXA}, shading:{fill:shade,type:ShadingType.CLEAR}, margins:{top:60,bottom:60,left:120,right:120}, children:[new Paragraph({children:[T(String(qta),{size:20})],alignment:AlignmentType.CENTER})] }),
+      new TableCell({ borders:BTS, width:{size:colW[3],type:WidthType.DXA}, shading:{fill:shade,type:ShadingType.CLEAR}, margins:{top:60,bottom:60,left:120,right:120}, children:[new Paragraph({children:[T(fmtEur(vg),{size:20})],alignment:AlignmentType.RIGHT})] }),
+      new TableCell({ borders:BTS, width:{size:colW[4],type:WidthType.DXA}, shading:{fill:shade,type:ShadingType.CLEAR}, margins:{top:60,bottom:60,left:120,right:120}, children:[new Paragraph({children:[T(fmtEur(tot),{size:20})],alignment:AlignmentType.RIGHT})] }),
     ]})
   })
   const totRow = new TableRow({ children:[
-    new TableCell({ borders:BTS, columnSpan:2, width:{size:colW[0]+colW[1],type:WidthType.DXA}, shading:{fill:'244061',type:ShadingType.CLEAR}, margins:{top:80,bottom:80,left:120,right:120}, children:[new Paragraph({children:[B('VALORE TOTALE GIUDIZIARIO',20)],alignment:AlignmentType.LEFT})] }),
-    new TableCell({ borders:BTS, columnSpan:2, width:{size:colW[2]+colW[3],type:WidthType.DXA}, shading:{fill:'244061',type:ShadingType.CLEAR}, margins:{top:80,bottom:80,left:120,right:120}, children:[new Paragraph({children:[B(fmtEur(totVG),22)],alignment:AlignmentType.RIGHT})] }),
+    new TableCell({ borders:BTS, columnSpan:3, width:{size:colW[0]+colW[1]+colW[2],type:WidthType.DXA}, shading:{fill:'244061',type:ShadingType.CLEAR}, margins:{top:80,bottom:80,left:120,right:120}, children:[new Paragraph({children:[B('TOTALE',20)],alignment:AlignmentType.LEFT})] }),
+    new TableCell({ borders:BTS, columnSpan:2, width:{size:colW[3]+colW[4],type:WidthType.DXA}, shading:{fill:'244061',type:ShadingType.CLEAR}, margins:{top:80,bottom:80,left:120,right:120}, children:[new Paragraph({children:[B(fmtEur(totVG),22)],alignment:AlignmentType.RIGHT})] }),
   ]})
   const tblInventario = new Table({ width:{size:cw,type:WidthType.DXA}, columnWidths:colW, borders:BTS, rows:[hdrRow, ...artRows, totRow] })
 
@@ -758,10 +760,27 @@ async function _genRelazioneStima(proc, opts, articoli, logoB64) {
       BR(),
       tblInventario,
       BR(),
-      P([T("Valore di mercato totale: "), B(fmtEur(totVM))]),
-      P([T("Valore giudiziario totale (dopo decurtazione "+decurtazione+"%): "), B(fmtEur(totVG))]),
+      P([T("Il valore complessivo stimato dei beni mobili, ai fini della procedura concorsuale, ammonta a: "), B(fmtEur(totVG))]),
       BR(),
 
+      H1('7. PROSPETTO DI SINTESI DELLA STIMA'),
+      P(T("Si riporta di seguito il prospetto di sintesi del valore complessivo dei beni oggetto di perizia:")),
+      BR(),
+      new Table({ width:{size:cw,type:WidthType.DXA}, columnWidths:[Math.floor(cw*0.7),Math.floor(cw*0.3)], borders:BTS, rows:[
+        new TableRow({ children:[
+          new TableCell({ borders:BTS, width:{size:Math.floor(cw*0.7),type:WidthType.DXA}, shading:{fill:'244061',type:ShadingType.CLEAR}, margins:{top:80,bottom:80,left:120,right:120}, children:[new Paragraph({children:[B('Descrizione',20)],alignment:AlignmentType.LEFT})] }),
+          new TableCell({ borders:BTS, width:{size:Math.floor(cw*0.3),type:WidthType.DXA}, shading:{fill:'244061',type:ShadingType.CLEAR}, margins:{top:80,bottom:80,left:120,right:120}, children:[new Paragraph({children:[B('Valore stimato',20)],alignment:AlignmentType.RIGHT})] }),
+        ]}),
+        new TableRow({ children:[
+          new TableCell({ borders:BTS, width:{size:Math.floor(cw*0.7),type:WidthType.DXA}, margins:{top:80,bottom:80,left:120,right:120}, children:[new Paragraph({children:[T('Beni mobili e attrezzature aziendali',{size:20})],alignment:AlignmentType.LEFT})] }),
+          new TableCell({ borders:BTS, width:{size:Math.floor(cw*0.3),type:WidthType.DXA}, margins:{top:80,bottom:80,left:120,right:120}, children:[new Paragraph({children:[T(fmtEur(totVG),{size:20})],alignment:AlignmentType.RIGHT})] }),
+        ]}),
+        new TableRow({ children:[
+          new TableCell({ borders:BTS, width:{size:Math.floor(cw*0.7),type:WidthType.DXA}, shading:{fill:'EEF2F7',type:ShadingType.CLEAR}, margins:{top:80,bottom:80,left:120,right:120}, children:[new Paragraph({children:[B('TOTALE',20)],alignment:AlignmentType.LEFT})] }),
+          new TableCell({ borders:BTS, width:{size:Math.floor(cw*0.3),type:WidthType.DXA}, shading:{fill:'EEF2F7',type:ShadingType.CLEAR}, margins:{top:80,bottom:80,left:120,right:120}, children:[new Paragraph({children:[B('€ '+fmtEur(totVG).replace('€ ',''),22)],alignment:AlignmentType.RIGHT})] }),
+        ]}),
+      ]}),
+      BR(),
       H1('8. CONCLUSIONI'),
       ...(sezioni.conclusioni ? aiParas(sezioni.conclusioni) : [
         P(T("Sulla base delle rilevazioni effettuate e dei criteri di valutazione adottati, il valore complessivo dei beni mobili acquisiti all'attivo della procedura è stimato come segue:")),
@@ -818,34 +837,44 @@ function TabRelazioneStima({ proc }) {
       const totVG = articoli.reduce((s,a) => s+(parseFloat(a.val_giud||0)*parseFloat(a.qta||1)),0)
       const fmtEur = (n) => { const p = parseFloat(n||0).toFixed(2).split('.'); p[0]=p[0].replace(/\B(?=(\d{3})+(?!\d))/g,'.'); return '\u20ac '+p[0]+','+p[1] }
       const elenco = articoli.slice(0,30).map((a,i) => `${i+1}. ${a.desc_breve||'—'} (q.tà ${a.qta||1}, val. giud. ${fmtEur(a.val_giud||0)})`).join('\n')
-      const prompt = `Sei un perito esperto in valutazioni per procedure concorsuali italiane (CCII D.Lgs. 14/2019).
+      const prompt = `Sei un perito giudiziario esperto in valutazioni per procedure concorsuali italiane ai sensi del D.Lgs. 14/2019 (CCII).
 
-Redigi una relazione di stima professionale per la seguente procedura concorsuale:
-- Procedura: ${proc.tipo||''} "${proc.nome||''}" N. R.G. ${nrg}
+Redigi una RELAZIONE DI STIMA DETTAGLIATA E ARTICOLATA per la seguente procedura:
+- Procedura: ${proc.tipo||''} n. ${nrg} – ${proc.nome||''}
 - Tribunale di ${proc.tribunale||''}, Giudice Delegato: ${proc.giudice||''}
-- Curatore: ${proc.curatore||''}
+- Liquidatore/Curatore: ${proc.curatore||''}
 - Data sopralluogo: ${dataSopralluogo}
 ${sito ? '- Sito aziendale: '+sito : ''}
-${attivita ? '- Attività: '+attivita : ''}
-${causeCrisi ? '- Cause crisi: '+causeCrisi : ''}
+${attivita ? '- Attività esercitata: '+attivita : ''}
+${causeCrisi ? '- Cause della crisi: '+causeCrisi : ''}
 ${contestoMacro ? '- Contesto macroeconomico: '+contestoMacro : ''}
 ${codiceAteco ? '- Codice ATECO: '+codiceAteco : ''}
 - Contesto di stima: ${contestoStima}
-- Decurtazione applicata: ${decurtazione}%
-${noteCriteri ? '- Note criteri: '+noteCriteri : ''}
-${beniEsclusi ? '- Beni esclusi: '+beniEsclusi : ''}
+- Decurtazione prudenziale applicata: ${decurtazione}%
+${noteCriteri ? '- Note aggiuntive sui criteri: '+noteCriteri : ''}
+${beniEsclusi ? '- Beni esclusi dalla stima: '+beniEsclusi : ''}
 
-Inventario (${articoli.length} articoli, valore totale giudiziario ${fmtEur(totVG)}):
+Inventario (${articoli.length} articoli, valore giudiziario totale ${fmtEur(totVG)}):
 ${elenco}
-${articoli.length > 30 ? `...e altri ${articoli.length-30} articoli` : ''}
+${articoli.length > 30 ? '...e altri '+(articoli.length-30)+' articoli' : ''}
 
-Redigi il testo in italiano forense formale. Struttura la relazione con queste sezioni:
-## PREMESSA E OGGETTO DELL'INCARICO
-## METODOLOGIA DI VALUTAZIONE
-## CONTESTO MACROECONOMICO DEL SETTORE
-## CONCLUSIONI
+ISTRUZIONI FONDAMENTALI:
+1. Usa ESCLUSIVAMENTE linguaggio tecnico-giuridico forense italiano (es. "si è proceduto a", "è stato accertato che", "ai sensi dell'art.", "nel caso di specie", "si evidenzia che").
+2. Ogni sezione deve essere LUNGA e ARTICOLATA: almeno 3-4 paragrafi per sezione, con frasi complete e subordinate.
+3. NON riportare mai il valore di mercato — usa SOLO il valore giudiziario/liquidatorio.
+4. Integra i dati dell'inventario nella narrativa delle sezioni (categorie di beni, tipologie, stato d'uso).
+5. NON includere tabelle inventario (vengono aggiunte automaticamente dopo).
 
-Ogni sezione deve essere completa e professionale. NON includere l'inventario (viene aggiunto automaticamente).`
+Struttura OBBLIGATORIA con queste sezioni:
+## 1. INTRODUZIONE ALLA PERIZIA DI STIMA
+## 2. DESCRIZIONE DELL'ATTIVITÀ E DELL'IMPRESA  
+## 3. BENI AZIENDALI OGGETTO DI PERIZIA
+## 4. CAUSE DELLA CRISI AZIENDALE
+## 5. ANALISI MACROECONOMICA DEL SETTORE
+## 6. CRITERI DI STIMA
+## 7. CONCLUSIONI
+
+Ogni sezione deve essere esaustiva e professionale, con riferimenti normativi dove pertinente.`
 
       const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
