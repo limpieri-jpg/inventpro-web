@@ -259,8 +259,7 @@ function _ftr() {
       new TextRun({ text: '', break: 1 }),
       _t('procedure@progess-italia.it | progess@arubapec.it', { size: 16 }),
     ]
-  })])
-}
+  })]})}
 function _firme(proc, dataC) {
   const nrg = (proc.num||'') + (proc.anno?'/'+proc.anno:'')
   return [
