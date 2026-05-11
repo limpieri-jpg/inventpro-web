@@ -224,15 +224,31 @@ export default function Inventario() {
       if (error) throw error
       if (!tutti.length) { notify('Nessun articolo da esportare', 'warn'); return }
 
+      // Carica impostazioni studio dal localStorage
+      const studioLogo = localStorage.getItem('ip_logo') || ''
+      const studioNome = localStorage.getItem('ip_studio_nome') || 'Pro.Ges.S. Srl'
+
+      // Funzione QR code semplice via API gratuita (no libreria)
+      const makeQRUrl = (text) => {
+        const safe = encodeURIComponent((text || 'INV').substring(0, 100))
+        return `https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${safe}`
+      }
+
       const fmtEurLocal = (n) => '€' + parseFloat(n || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
       const proc = currentProc
       const titoloDoc = estimativo ? 'Report estimativo' : 'Report fotografico beni mobili'
       const coverTitle = estimativo ? 'REPORT ESTIMATIVO' : 'REPORT FOTOGRAFICO'
       const totVG = tutti.reduce((s, a) => s + (parseFloat(a.val_giud || 0) * parseFloat(a.qta || 1)), 0)
 
+      const logoHtml = studioLogo
+        ? `<img src="${studioLogo}" style="max-height:80px;max-width:220px;object-fit:contain">`
+        : `<div style="font-size:20px;font-weight:700;color:#1a3a6b">${studioNome}</div>`
+
+      const procQR = makeQRUrl([(proc.tipo||''),(proc.nome||''),(proc.numero||'')].join(' '))
+
       const frontespizio = '<div style="page-break-after:always;min-height:100vh;display:flex;flex-direction:column;padding:50px 60px;background:#fff;box-sizing:border-box">'
         + '<div style="text-align:center;margin-bottom:auto">'
-        + '<div style="font-size:22px;font-weight:700;color:#1a3a6b;margin-bottom:24px">Pro.Ges.S. Srl</div>'
+        + '<div style="margin-bottom:24px">' + logoHtml + '</div>'
         + '<div style="font-size:24px;font-weight:700;color:#1a1a16;letter-spacing:.03em;margin-bottom:28px">' + coverTitle + '</div>'
         + '<div style="font-size:17px;color:#333;margin-bottom:8px">' + (proc.tipo || '') + '</div>'
         + '<div style="font-size:15px;color:#555;margin-bottom:8px">N° ' + (proc.numero || '') + '</div>'
@@ -265,8 +281,10 @@ export default function Inventario() {
           photosHtml = '<div class="photos-wrap"><div class="photos-lbl"><b>Fotografie:</b></div><div class="photos-row"><img src="' + a.prima_foto_url + '" class="photo"></div></div>'
         }
 
+        const artQRurl = makeQRUrl(a.codice_siecic || ('ART-' + (i + 1)))
+        const artQRhtml = '<img src="' + artQRurl + '" style="width:66px;height:66px">'
         return '<div class="card"><div class="card-hdr"><div class="card-num">' + (i + 1) + '</div><div class="card-title">' + (a.desc_breve || 'Articolo ' + (i + 1)) + '</div>' + valoreHdr + '</div>'
-          + '<table class="card-body"><tr><td class="meta-cell"><table class="meta-tbl">' + metaLeft + '</table></td>'
+          + '<table class="card-body"><tr><td class="qr-cell">' + artQRhtml + '</td><td class="meta-cell"><table class="meta-tbl">' + metaLeft + '</table></td>'
           + (metaRight ? '<td class="meta-cell"><table class="meta-tbl">' + metaRight + '</table></td>' : '')
           + '</tr></table>' + photosHtml + '</div>'
       }).join('')
@@ -276,7 +294,7 @@ export default function Inventario() {
         + '<div style="font-size:11px;opacity:.9">① Clicca <b>Stampa/Salva PDF</b> &nbsp;② Destinazione: <b>Salva come PDF</b> &nbsp;③ Altre impostazioni: disattiva <b>Intestazioni e piè di pagina</b> + attiva <b>Grafica di sfondo</b></div></div>'
         + '<button onclick="window.print()" class="print-btn">🖸 Stampa / Salva PDF</button></div>'
 
-      const pageHdr = '<div class="page-hdr"><div style="font-size:18px;font-weight:700;color:#1a3a6b">Pro.Ges.S. Srl</div>'
+      const pageHdr = '<div class="page-hdr"><div>' + logoHtml + '</div><div style="display:flex;align-items:center;gap:10px"><img src="' + procQR + '" style="width:60px;height:60px">'
         + '<div class="page-hdr-info"><b>' + titoloDoc + '</b>' + (proc.tipo || '') + ' ' + (proc.nome || '') + '<br>n° ' + (proc.numero || '') + ' - Tribunale di ' + (proc.tribunale || '') + '<br>'
         + (proc.giudice ? 'Giudice: <em>' + proc.giudice + '</em><br>' : '')
         + (proc.curatore ? 'Curatore: <em>' + proc.curatore + '</em>' : '') + '</div></div>'
