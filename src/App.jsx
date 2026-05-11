@@ -14,6 +14,7 @@ import Aste from './pages/Aste'
 import Contratti from './pages/Contratti'
 import Impostazioni from './pages/Impostazioni'
 import Admin from './pages/Admin'
+import Documenti from './pages/Documenti'
 
 function AppLayout({ children }) {
   return (
@@ -77,6 +78,7 @@ export default function App() {
         <Route path="/lotti" element={<ProtectedRoute><Lotti /></ProtectedRoute>} />
         <Route path="/aste" element={<ProtectedRoute><Aste /></ProtectedRoute>} />
         <Route path="/contratti" element={<ProtectedRoute><Contratti /></ProtectedRoute>} />
+        <Route path="/documenti" element={<ProtectedRoute><Documenti /></ProtectedRoute>} />
         <Route path="/impostazioni" element={<ProtectedRoute><Impostazioni /></ProtectedRoute>} />
         <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />
