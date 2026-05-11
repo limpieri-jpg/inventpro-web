@@ -243,7 +243,7 @@ export default function Inventario() {
         'Tipologia': mapTipologia(a.siecic_tipologia),
         'Società/Socio': a.societa || '0',
         'Titolo': a.titolo || 'piena_proprietà',
-        'Quota %': a.quota_pct || '',
+        'Quota %': (a.titolo === 'piena_proprietà' || !a.titolo) ? '100' : (a.quota_pct || ''),
         'Codifica SIECIC': a.codice_siecic || '',
         'Società/Socio_1': '', 'Titolo_1': '', 'Quota %_1': '',
         'Società/Socio_2': '', 'Titolo_2': '', 'Quota %_2': '',
