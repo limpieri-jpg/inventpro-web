@@ -16,12 +16,33 @@ export default function Impostazioni() {
   const [studioLogo, setStudioLogo] = useState(localStorage.getItem('ip_logo') || '')
   const [studioNome, setStudioNome] = useState(localStorage.getItem('ip_studio_nome') || '')
 
+  const [studioLogo, setStudioLogo] = useState(localStorage.getItem('ip_logo') || '')
+  const [studioNome, setStudioNome] = useState(localStorage.getItem('ip_studio_nome') || '')
+
   useEffect(() => {
     if (profile) {
       setProfilo({ ...profile })
       setApiKey(localStorage.getItem('ip_apikey') || '')
     }
   }, [profile])
+
+  const handleLogoUpload = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      const b64 = ev.target.result
+      setStudioLogo(b64)
+      localStorage.setItem('ip_logo', b64)
+      notify('Logo salvato', 'ok')
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const saveStudio = () => {
+    localStorage.setItem('ip_studio_nome', studioNome)
+    notify('Dati studio salvati', 'ok')
+  }
 
   const handleLogoUpload = (e) => {
     const file = e.target.files[0]
@@ -129,6 +150,41 @@ export default function Impostazioni() {
                 <button className="btn btn-primary" onClick={saveProfilo} disabled={saving}>
                   <Save size={13} /> {saving ? 'Salvataggio…' : 'Salva profilo'}
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Studio */}
+        {tab === 'studio' && (
+          <div className="card">
+            <div className="card-header"><div className="card-title">Studio / Logo</div></div>
+            <div className="card-body">
+              <div className="form-grid">
+                <div className="form-section">Intestazione documenti</div>
+                <div className="form-col-full form-group">
+                  <label className="form-label">Nome studio / ragione sociale</label>
+                  <input className="form-input" value={studioNome} onChange={e => setStudioNome(e.target.value)} placeholder="Es. Pro.Ges.S. Srl" />
+                </div>
+                <div className="form-col-full form-group">
+                  <label className="form-label">Logo studio</label>
+                  {studioLogo && (
+                    <div style={{ marginBottom: 12 }}>
+                      <img src={studioLogo} alt="Logo" style={{ maxHeight: 80, maxWidth: 220, objectFit: 'contain', border: '1px solid var(--border)', borderRadius: 6, padding: 6 }} />
+                    </div>
+                  )}
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '8px 14px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 13 }}>
+                    <Image size={14} /> {studioLogo ? 'Cambia logo' : 'Carica logo'}
+                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleLogoUpload} />
+                  </label>
+                  {studioLogo && (
+                    <button className="btn btn-ghost btn-sm" style={{ marginLeft: 8, color: 'var(--accent-r)' }} onClick={() => { setStudioLogo(''); localStorage.removeItem('ip_logo') }}>Rimuovi</button>
+                  )}
+                  <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 6 }}>Il logo viene salvato localmente e usato nei report PDF e nei documenti generati.</div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+                <button className="btn btn-primary" onClick={saveStudio}><Save size={13} /> Salva dati studio</button>
               </div>
             </div>
           </div>

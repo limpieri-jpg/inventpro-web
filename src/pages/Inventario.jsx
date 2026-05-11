@@ -234,6 +234,16 @@ export default function Inventario() {
         return `https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${safe}`
       }
 
+      // Carica impostazioni studio dal localStorage
+      const studioLogo = localStorage.getItem('ip_logo') || ''
+      const studioNome = localStorage.getItem('ip_studio_nome') || 'Pro.Ges.S. Srl'
+
+      // Funzione QR code semplice via API gratuita (no libreria)
+      const makeQRUrl = (text) => {
+        const safe = encodeURIComponent((text || 'INV').substring(0, 100))
+        return `https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${safe}`
+      }
+
       const fmtEurLocal = (n) => '€' + parseFloat(n || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
       const proc = currentProc
       const titoloDoc = estimativo ? 'Report estimativo' : 'Report fotografico beni mobili'
