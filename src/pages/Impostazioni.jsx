@@ -14,6 +14,7 @@ export default function Impostazioni() {
   const [testingKey, setTestingKey] = useState(false)
   const [studioLogo, setStudioLogo] = useState(localStorage.getItem('ip_logo') || '')
   const [studioNome, setStudioNome] = useState(localStorage.getItem('ip_studio_nome') || '')
+  const [studioIndirizzo, setStudioIndirizzo] = useState(localStorage.getItem('ip_studio_indirizzo') || '')
 
   useEffect(() => {
     if (profile) {
@@ -79,6 +80,7 @@ export default function Impostazioni() {
 
   const saveStudio = () => {
     localStorage.setItem('ip_studio_nome', studioNome)
+    localStorage.setItem('ip_studio_indirizzo', studioIndirizzo)
     notify('Dati studio salvati', 'ok')
   }
 
@@ -142,6 +144,11 @@ export default function Impostazioni() {
                 <div className="form-col-full form-group">
                   <label className="form-label">Nome studio / ragione sociale</label>
                   <input className="form-input" value={studioNome} onChange={e => setStudioNome(e.target.value)} placeholder="Es. Pro.Ges.S. Srl" />
+                </div>
+                <div className="form-col-full form-group">
+                  <label className="form-label">Indirizzo studio (per carta intestata)</label>
+                  <input className="form-input" value={studioIndirizzo} onChange={e => setStudioIndirizzo(e.target.value)} placeholder="Es. Via Roma 1, 20100 Milano (MI)" />
+                  <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>Appare nel footer di ogni pagina dei report PDF come carta intestata.</div>
                 </div>
                 <div className="form-col-full form-group">
                   <label className="form-label">Logo studio</label>
