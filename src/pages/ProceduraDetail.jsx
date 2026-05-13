@@ -758,11 +758,14 @@ async function _genRelazioneStima(proc, opts, articoli, logoB64) {
   // Testi fallback per ciascuna sezione (linguaggio forense)
   const nomeCuratore = proc.curatore || 'il Curatore'
   const fb_intro = [
-    P([T('La presente relazione di stima \u00e8 stata redatta su incarico '),
-       T(nomeCuratore+', nella sua qualit\u00e0 di Liquidatore/Curatore della procedura di '),
-       T((proc.tipo||'')+' n. '+nrg+' \u2013 '+(proc.nome||'')+', con l\u2019obiettivo di determinare in maniera puntuale e trasparente il valore complessivo dei beni mobili, macchinari e attrezzature costituenti il patrimonio aziendale del/della debitore/trice, ai fini della liquidazione concorsuale ai sensi del D.Lgs. 14/2019 (CCII).')]),
-    P(T('La valutazione \u00e8 stata condotta secondo criteri di stretta prudenzialit\u00e0 e con particolare riferimento al contesto della liquidazione giudiziale, adottando parametri coerenti con le finalit\u00e0 della procedura concorsuale e con le aspettative di realizzo in sede di vendita forzata. Al fine di pervenire ad una stima quanto pi\u00f9 possibile aderente alla realt\u00e0 economica e di mercato, si \u00e8 proceduto attraverso le seguenti attivit\u00e0 tecniche: rilevazione fisica diretta e documentazione fotografica dei beni presenti nei locali aziendali; attribuzione del valore economico al cespite sulla base di parametri oggettivi e dello stato conservativo rilevato; applicazione di abbattimenti prudenziali in funzione delle condizioni d\u2019uso e delle prospettive di realizzo.')),
-    P([T('Il sopralluogo e la rilevazione dei beni sono stati effettuati in data '), B(fd(dataSopralluogo)), T('.')]),
+    P([T('La presente perizia di stima \u00e8 stata redatta su incarico '),
+       T(nomeCuratore+', nella sua qualit\u00e0 di Liquidatore/Curatore della '),
+       T((proc.tipo||'')+' n. '+nrg+' \u2013 '+(proc.nome||'')+', con l\u2019obiettivo di determinare in maniera puntuale e trasparente il valore complessivo dei beni mobili, macchinari e attrezzature costituenti il patrimonio aziendale della debitrice'),
+       T(attivita ? ', attiva nel settore di: '+attivita+'.' : '.'),
+       T(' La valutazione \u00e8 stata condotta secondo criteri di stretta prudenzialit\u00e0 e con particolare riferimento al contesto della liquidazione giudiziale, adottando parametri coerenti con le finalit\u00e0 della procedura concorsuale e con le aspettative di realizzo in sede di vendita forzata. Al fine di pervenire ad una stima quanto pi\u00f9 possibile aderente alla realt\u00e0 economica e di mercato, si \u00e8 proceduto attraverso le seguenti attivit\u00e0 tecniche:')]),
+    new Paragraph({ numbering:{ reference:'blt', level:0 }, alignment:AlignmentType.JUSTIFIED, children:[T('rilevazione fisica diretta e documentazione fotografica dei beni presenti presso la sede aziendale;')] }),
+    new Paragraph({ numbering:{ reference:'blt', level:0 }, alignment:AlignmentType.JUSTIFIED, children:[T('attribuzione del valore economico al cespite sulla base di parametri di mercato e dello stato conservativo rilevato;')] }),
+    new Paragraph({ numbering:{ reference:'blt', level:0 }, alignment:AlignmentType.JUSTIFIED, children:[T('applicazione di abbattimenti prudenziali ove ritenuto necessario in funzione delle condizioni d\u2019uso e delle prospettive di realizzo.')] }),
   ]
   const fb_descr = [ P(T('La debitrice svolgeva l\u2019attivit\u00e0 di cui alla presente procedura concorsuale. La struttura aziendale risultava articolata in beni strumentali funzionali all\u2019esercizio dell\u2019impresa, oggetto della presente perizia di stima.')), ...(attivita ? [P([B('Attivit\u00e0 esercitata: '), T(attivita)])] : []) ]
   const fb_beni = [ P(T('Sono stati oggetto di ricognizione e valutazione i beni mobili, macchinari e attrezzature presenti nei locali aziendali alla data del sopralluogo. Il complesso dei beni inventariati risulta coerente con la tipologia di attivit\u00e0 esercitata dalla debitrice e si configura quale essenziale per lo svolgimento dell\u2019attivit\u00e0 commerciale nella configurazione ante procedura.')) ]
@@ -893,7 +896,7 @@ function TabRelazioneStima({ proc }) {
           + '- Integra dati inventario nella narrativa\n'
           + '- NO tabelle (vengono aggiunte automaticamente)\n\n'
           + 'Struttura OBBLIGATORIA (usa esattamente questi titoli):\n'
-          + '## 2. INTRODUZIONE ALLA PERIZIA DI STIMA\n'
+          + '## 2. INTRODUZIONE ALLA PERIZIA DI STIMA\n(Testo narrativo con: incarico del curatore con nome e qualifica, procedura, obiettivo, metodologia. Poi elenco puntato con: rilevazione fisica, attribuzione valore, abbattimenti prudenziali. NON ripetere i dati procedura già in tabella.)\n'
           + '## 3. DESCRIZIONE DELL ATTIVITA E DELL IMPRESA\n'
           + '## 4. BENI AZIENDALI OGGETTO DI PERIZIA\n'
           + '## 5. CAUSE DELLA CRISI AZIENDALE\n'
