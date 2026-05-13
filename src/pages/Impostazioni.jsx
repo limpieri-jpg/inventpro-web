@@ -12,6 +12,10 @@ export default function Impostazioni() {
   const [showKey, setShowKey] = useState(false)
   const [saving, setSaving] = useState(false)
   const [testingKey, setTestingKey] = useState(false)
+  const [studioNome, setStudioNome] = useState(localStorage.getItem('ip_studio_nome') || '')
+  const [studioIndirizzo, setStudioIndirizzo] = useState(localStorage.getItem('ip_studio_indirizzo') || '')
+  const [logoPreview, setLogoPreview] = useState(localStorage.getItem('ip_logo') || null)
+
 
   useEffect(() => {
     if (profile) {
@@ -65,7 +69,33 @@ export default function Impostazioni() {
   const TABS = [
     { id: 'profilo', label: 'Profilo utente', icon: User },
     { id: 'api',     label: 'Chiave API AI',  icon: Key },
+    { id: 'studio',  label: 'Studio / Logo',  icon: Building },
   ]
+
+  const salvaStudio = () => {
+    localStorage.setItem('ip_studio_nome', studioNome.trim())
+    localStorage.setItem('ip_studio_indirizzo', studioIndirizzo.trim())
+    notify('Dati studio salvati', 'ok')
+  }
+
+  const handleLogo = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      const b64 = ev.target.result
+      localStorage.setItem('ip_logo', b64)
+      setLogoPreview(b64)
+      notify('Logo salvato', 'ok')
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const rimuoviLogo = () => {
+    localStorage.removeItem('ip_logo')
+    setLogoPreview(null)
+    notify('Logo rimosso', 'ok')
+  }
 
   return (
     <>
@@ -159,6 +189,53 @@ export default function Impostazioni() {
                   ✅ Chiave configurata — la generazione AI è attiva in Documenti e Contratti
                 </div>
               )}
+            </div>
+          </div>
+        )}
+        {tab === 'studio' && (
+          <div className="settings-section">
+            <div className="card">
+              <div className="card-header"><div className="card-title">🏢 Dati studio professionale</div></div>
+              <div className="card-body">
+                <div className="form-grid">
+                  <div className="form-col-full form-group">
+                    <label className="form-label">Nome studio / Ragione sociale</label>
+                    <input className="form-input" value={studioNome} onChange={e=>setStudioNome(e.target.value)} placeholder="Es: Procedure Gestite e Servizi S.r.l." />
+                  </div>
+                  <div className="form-col-full form-group">
+                    <label className="form-label">Indirizzo (per footer e carta intestata documenti)</label>
+                    <input className="form-input" value={studioIndirizzo} onChange={e=>setStudioIndirizzo(e.target.value)} placeholder="Es: Via Giuseppe Parini, 29 - Lecco (LC) - 23900" />
+                  </div>
+                </div>
+                <div style={{ display:'flex', justifyContent:'flex-end', marginTop:16 }}>
+                  <button className="btn btn-primary" onClick={salvaStudio}><Save size={14} /> Salva dati studio</button>
+                </div>
+              </div>
+            </div>
+            <div className="card">
+              <div className="card-header"><div className="card-title">🖼 Logo studio (intestazione documenti)</div></div>
+              <div className="card-body">
+                {logoPreview && (
+                  <div style={{ marginBottom:16 }}>
+                    <div style={{ fontSize:12, color:'var(--text3)', marginBottom:8 }}>Logo attuale:</div>
+                    <img src={logoPreview} alt="Logo" style={{ maxHeight:80, maxWidth:300, border:'1px solid var(--border)', borderRadius:6, padding:8, background:'white' }} />
+                  </div>
+                )}
+                <div style={{ display:'flex', gap:12, alignItems:'center', flexWrap:'wrap' }}>
+                  <label className="btn btn-ghost" style={{ cursor:'pointer' }}>
+                    📁 {logoPreview ? 'Cambia logo' : 'Carica logo'}
+                    <input type="file" accept="image/png,image/jpeg,image/svg+xml" onChange={handleLogo} style={{ display:'none' }} />
+                  </label>
+                  {logoPreview && (
+                    <button className="btn btn-ghost" onClick={rimuoviLogo} style={{ color:'var(--accent-r)' }}>
+                      🗑 Rimuovi logo
+                    </button>
+                  )}
+                </div>
+                <div style={{ fontSize:11, color:'var(--text3)', marginTop:8 }}>
+                  PNG, JPG o SVG. Il logo apparirà nell'intestazione di tutti i documenti generati.
+                </div>
+              </div>
             </div>
           </div>
         )}
