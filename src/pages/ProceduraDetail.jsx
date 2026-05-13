@@ -640,7 +640,7 @@ async function _genRelazioneStima(proc, opts, articoli, logoB64) {
     .replace(/\*\*/g, '')
     .replace(/valore di mercato[^\n]*(\n|$)/gi, '')
   const aiRows = (txt) => cleanAI(txt).split('\n').filter(l => l.trim()).map(l =>
-    new Paragraph({ children:[new TextRun({text:l.trim(),font:'Gadugi',size:22})], alignment:AlignmentType.JUSTIFIED, spacing:{before:60,after:60} })
+    new Paragraph({ children:[new TextRun({text:l.trim(),font:'Gadugi',size:22})], alignment:AlignmentType.JUSTIFIED, spacing:{before:60,after:60,line:276,lineRule:'auto'} })
   )
 
   // Sezioni dal testo AI
@@ -668,7 +668,7 @@ async function _genRelazioneStima(proc, opts, articoli, logoB64) {
   const BTS = { top:BT, bottom:BT, left:BT, right:BT }
   const T = (text, o={}) => new TextRun({ text:String(text||''), font:'Gadugi', size:22, ...o })
   const B = (text, size=22) => T(text, { bold:true, size })
-  const P = (ch, o={}) => new Paragraph({ children:Array.isArray(ch)?ch:[ch], alignment:AlignmentType.JUSTIFIED, spacing:{before:60,after:60}, ...o })
+  const P = (ch, o={}) => new Paragraph({ children:Array.isArray(ch)?ch:[ch], alignment:AlignmentType.JUSTIFIED, spacing:{before:60,after:60,line:276,lineRule:'auto'}, ...o })
   const PC = (ch, o={}) => new Paragraph({ children:Array.isArray(ch)?ch:[ch], alignment:AlignmentType.CENTER, ...o })
   const BR = () => new Paragraph({ children:[], spacing:{before:40,after:40} })
   const H = (text) => new Paragraph({
@@ -763,9 +763,9 @@ async function _genRelazioneStima(proc, opts, articoli, logoB64) {
        T((proc.tipo||'')+' n. '+nrg+' \u2013 '+(proc.nome||'')+', con l\u2019obiettivo di determinare in maniera puntuale e trasparente il valore complessivo dei beni mobili, macchinari e attrezzature costituenti il patrimonio aziendale della debitrice'),
        T(attivita ? ', attiva nel settore di: '+attivita+'.' : '.'),
        T(' La valutazione \u00e8 stata condotta secondo criteri di stretta prudenzialit\u00e0 e con particolare riferimento al contesto della liquidazione giudiziale, adottando parametri coerenti con le finalit\u00e0 della procedura concorsuale e con le aspettative di realizzo in sede di vendita forzata. Al fine di pervenire ad una stima quanto pi\u00f9 possibile aderente alla realt\u00e0 economica e di mercato, si \u00e8 proceduto attraverso le seguenti attivit\u00e0 tecniche:')]),
-    new Paragraph({ numbering:{ reference:'blt', level:0 }, alignment:AlignmentType.JUSTIFIED, children:[T('rilevazione fisica diretta e documentazione fotografica dei beni presenti presso la sede aziendale;')] }),
-    new Paragraph({ numbering:{ reference:'blt', level:0 }, alignment:AlignmentType.JUSTIFIED, children:[T('attribuzione del valore economico al cespite sulla base di parametri di mercato e dello stato conservativo rilevato;')] }),
-    new Paragraph({ numbering:{ reference:'blt', level:0 }, alignment:AlignmentType.JUSTIFIED, children:[T('applicazione di abbattimenti prudenziali ove ritenuto necessario in funzione delle condizioni d\u2019uso e delle prospettive di realizzo.')] }),
+    new Paragraph({ numbering:{ reference:'blt', level:0 }, alignment:AlignmentType.JUSTIFIED, spacing:{before:60,after:60,line:276,lineRule:'auto'}, children:[T('rilevazione fisica diretta e documentazione fotografica dei beni presenti presso la sede aziendale;')] }),
+    new Paragraph({ numbering:{ reference:'blt', level:0 }, alignment:AlignmentType.JUSTIFIED, spacing:{before:60,after:60,line:276,lineRule:'auto'}, children:[T('attribuzione del valore economico al cespite sulla base di parametri di mercato e dello stato conservativo rilevato;')] }),
+    new Paragraph({ numbering:{ reference:'blt', level:0 }, alignment:AlignmentType.JUSTIFIED, spacing:{before:60,after:60,line:276,lineRule:'auto'}, children:[T('applicazione di abbattimenti prudenziali ove ritenuto necessario in funzione delle condizioni d\u2019uso e delle prospettive di realizzo.')] }),
   ]
   const fb_descr = [ P(T('La debitrice svolgeva l\u2019attivit\u00e0 di cui alla presente procedura concorsuale. La struttura aziendale risultava articolata in beni strumentali funzionali all\u2019esercizio dell\u2019impresa, oggetto della presente perizia di stima.')), ...(attivita ? [P([B('Attivit\u00e0 esercitata: '), T(attivita)])] : []) ]
   const fb_beni = [ P(T('Sono stati oggetto di ricognizione e valutazione i beni mobili, macchinari e attrezzature presenti nei locali aziendali alla data del sopralluogo. Il complesso dei beni inventariati risulta coerente con la tipologia di attivit\u00e0 esercitata dalla debitrice e si configura quale essenziale per lo svolgimento dell\u2019attivit\u00e0 commerciale nella configurazione ante procedura.')) ]
