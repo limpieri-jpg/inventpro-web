@@ -1,7 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useStore } from '../store/useStore'
 import { Topbar, Modal, Empty } from '../components/layout'
-import { supabase } from '../lib/supabase'
 import { Download, Plus } from 'lucide-react'
 import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
          AlignmentType, BorderStyle, WidthType, ShadingType, LevelFormat,
@@ -11,10 +10,10 @@ import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
 const MW = 11906, MM = 1000, CW = MW - MM * 2
 
 const TIPI_ASTA = [
-  { id: 'asincrona_pvp',  label: 'Asincrona telematica — Portale Vendite Pubbliche (PVP)' },
-  { id: 'sincrona_pvp',   label: 'Sincrona telematica — Portale Vendite Pubbliche (PVP)' },
-  { id: 'sincrona_amag',  label: 'Sincrona telematica — AsteMagazine' },
-  { id: 'asincrona_amag', label: 'Asincrona telematica — AsteMagazine' },
+  { id: 'asincrona_pvp',  label: 'Asincrona telematica \u2014 Portale Vendite Pubbliche (PVP)' },
+  { id: 'sincrona_pvp',   label: 'Sincrona telematica \u2014 Portale Vendite Pubbliche (PVP)' },
+  { id: 'sincrona_amag',  label: 'Sincrona telematica \u2014 AsteMagazine' },
+  { id: 'asincrona_amag', label: 'Asincrona telematica \u2014 AsteMagazine' },
   { id: 'mista',          label: 'Vendita telematica mista (sincrona + asincrona)' },
 ]
 
@@ -81,9 +80,9 @@ async function genAvviso(proc, lotti, opts, logoB64) {
   const { tipoAsta, nEsperimento, dataAsta, oraAsta, dataTermine, oraTermine,
     prezzoBase, offertaMinima, rilancioMin, cauzione, modalitaCauzione,
     dirittiAsta, referente, noteFinali,
-    offertaIrrevocabile, dataOfferta, importoOfferta } = opts
+    offertaIrrevocabile, testoOfferta } = opts
 
-  const nrg        = (proc.num||'') + (proc.anno?'/'+proc.anno:'')
+  const nrg         = (proc.num||'') + (proc.anno?'/'+proc.anno:'')
   const isAsincrona = tipoAsta.includes('asincrona') || tipoAsta === 'mista'
   const isSincrona  = tipoAsta.includes('sincrona')
   const isPVP       = tipoAsta.includes('pvp')
@@ -95,7 +94,7 @@ async function genAvviso(proc, lotti, opts, logoB64) {
     : 'Portale delle Vendite Pubbliche (www.portalevenditepubbliche.it)'
   const nEsp = nEsperimento ? nEsperimento + '\u00b0 ESPERIMENTO DI VENDITA' : ''
 
-  // Tabella lotti — 5 colonne: desc | qta | prezzo base | offerta min | rilancio
+  // Tabella lotti: desc | qta | prezzo base | offerta min | rilancio
   const colW = [Math.floor(CW*0.40), Math.floor(CW*0.06), Math.floor(CW*0.18), Math.floor(CW*0.18), Math.floor(CW*0.18)]
   const tblLotti = new Table({ width:{size:CW,type:WidthType.DXA}, columnWidths:colW, borders:BTS, rows:[
     new TableRow({ children:[
@@ -106,36 +105,32 @@ async function genAvviso(proc, lotti, opts, logoB64) {
       mkCell([B('Rilancio minimo',20)],   colW[4], {fill:'244061', align:AlignmentType.RIGHT}),
     ]}),
     ...lotti.map((l,i) => {
-      const shade = i%2===0 ? 'F8F9FA' : 'FFFFFF'
+      const shade  = i%2===0 ? 'F8F9FA' : 'FFFFFF'
       const baseVal = l.base || prezzoBase
       const offMin  = l.offertaMinima || offertaMinima || baseVal
       return new TableRow({ children:[
-        mkCell([T(l.desc||'\u2014',{size:20})],         colW[0], {fill:shade}),
-        mkCell([T(String(l.qta||1),{size:20})],          colW[1], {fill:shade, align:C}),
-        mkCell([T(fmtEur(baseVal),{size:20})],           colW[2], {fill:shade, align:AlignmentType.RIGHT}),
-        mkCell([T(fmtEur(offMin),{size:20})],            colW[3], {fill:shade, align:AlignmentType.RIGHT}),
-        mkCell([T(fmtEur(l.rilancio||rilancioMin),{size:20})], colW[4], {fill:shade, align:AlignmentType.RIGHT}),
+        mkCell([T(l.desc||'\u2014',{size:20})],                        colW[0], {fill:shade}),
+        mkCell([T(String(l.qta||1),{size:20})],                        colW[1], {fill:shade, align:C}),
+        mkCell([T(fmtEur(baseVal),{size:20})],                         colW[2], {fill:shade, align:AlignmentType.RIGHT}),
+        mkCell([T(fmtEur(offMin),{size:20})],                          colW[3], {fill:shade, align:AlignmentType.RIGHT}),
+        mkCell([T(fmtEur(l.rilancio||rilancioMin),{size:20})],         colW[4], {fill:shade, align:AlignmentType.RIGHT}),
       ]})
     }),
   ]})
-
-  // Blocco offerta irrevocabile
-  const blkOfferta = offertaIrrevocabile ? [
-    BR(),
-    P([B('AVVISA'), T(' che in data '), B(fmtD(dataOfferta)),
-       T(' \u00e8 stata ricevuta un\u2019offerta irrevocabile d\u2019acquisto a lotto unico per la somma di '),
-       B(fmtEur(importoOfferta)+' OLTRE IVA SE DOVUTA E ONERI DI LEGGE'),
-       T('. Nel rispetto dei principi di competitivit\u00e0 e trasparenza si avvia una gara competitiva telematica allo scopo di permettere a eventuali interessati di partecipare presentando la propria offerta a rialzo come da rilancio minimo indicato.')]),
-  ] : []
 
   const modalita = isMista ? 'mista (sincrona e asincrona)'
     : isSincrona ? 'sincrona'
     : 'asincrona'
 
+  // Paragrafo AVVISA — include il testo dell'offerta irrevocabile se presente
+  const pAvvisa = offertaIrrevocabile && (testoOfferta||'').trim()
+    ? P([B('AVVISA'), T(' ' + testoOfferta.trim())])
+    : P([B('AVVISA'), T(' che in esecuzione del programma di liquidazione si proceder\u00e0 alla vendita telematica '),
+        B(modalita), T(' dei seguenti beni, tramite la piattaforma '), B(nomePortale), T('.')])
+
   const corpo = [
-    P([B('AVVISA'), T(' che in esecuzione del programma di liquidazione si proceder\u00e0 alla vendita telematica '),
-       B(modalita), T(' dei seguenti beni, tramite la piattaforma '), B(nomePortale), T('.')]),
-    ...blkOfferta, BR(),
+    pAvvisa,
+    BR(),
     P(B('DATI DELLA VENDITA')),
     ...(isAsincrona ? [
       P([T('Periodo di presentazione offerte: dal '), B(fmtDT(dataAsta, oraAsta)),
@@ -152,7 +147,7 @@ async function genAvviso(proc, lotti, opts, logoB64) {
     BLT([B('Diritti d\u2019asta: '), T((dirittiAsta||'2')+'% sul prezzo di aggiudicazione, oltre IVA al 22%.')]),
     BR(),
     ...(isPVP ? [
-      P(B('MODALIT\u00c0 DI PARTECIPAZIONE — PORTALE VENDITE PUBBLICHE')),
+      P(B('MODALIT\u00c0 DI PARTECIPAZIONE \u2014 PORTALE VENDITE PUBBLICHE')),
       BLT(T('La partecipazione avviene esclusivamente per via telematica tramite il Portale delle Vendite Pubbliche del Ministero della Giustizia (www.portalevenditepubbliche.it).')),
       BLT(T('L\u2019offerta irrevocabile di acquisto dovr\u00e0 essere formulata esclusivamente tramite il modulo web "Offerta Telematica" fornito dal Ministero della Giustizia.')),
       BLT([T('L\u2019offerta dovr\u00e0 essere trasmessa all\u2019indirizzo PEC del Ministero della Giustizia: '), B('offertapvp.dgsia@giustiziacert.it')]),
@@ -161,7 +156,7 @@ async function genAvviso(proc, lotti, opts, logoB64) {
       BLT([T('Causale: '), B('"Cauzione Lotto ___ \u2014 '+(proc.tipo||'')+' n. '+nrg+' \u2014 Tribunale di '+(proc.tribunale||'')+'"')]),
       BLT([T('Per tutorial e guida alla compilazione: '), T('www.progess-italia.it/video-tutorial')]),
     ] : [
-      P(B('MODALIT\u00c0 DI PARTECIPAZIONE — ASTEMAGAZINE')),
+      P(B('MODALIT\u00c0 DI PARTECIPAZIONE \u2014 ASTEMAGAZINE')),
       BLT(T('La partecipazione avviene tramite la piattaforma AsteMagazine (www.astemagazine.it).')),
       BLT(T('Le istruzioni per la partecipazione telematica sono disponibili sul portale AsteMagazine nella sezione dedicata alla presente vendita.')),
       BLT(T('Per la registrazione e il supporto tecnico contattare AsteMagazine tramite il sito o il numero verde indicato sul portale.')),
@@ -183,7 +178,7 @@ async function genAvviso(proc, lotti, opts, logoB64) {
       PC([B('TRIBUNALE DI '+(proc.tribunale||'').toUpperCase(),22)], {spacing:{before:240,after:40}}),
       PC([T((proc.tipo||'').toUpperCase()+' N. '+nrg,{size:20})]),
       PC([B('"'+(proc.nome||'')+'"',22)], {spacing:{before:20,after:20}}),
-      ...(proc.giudice ? [PC([T('Giudice Delegato: '+(proc.giudice||''),{size:20,italics:true})])] : []),
+      ...(proc.giudice  ? [PC([T('Giudice Delegato: '+(proc.giudice||''),{size:20,italics:true})])]  : []),
       ...(proc.curatore ? [PC([T('Curatore: '+(proc.curatore||''),{size:20,italics:true})])] : []),
       BR(),
       new Paragraph({ border:{ bottom:{ style:BorderStyle.SINGLE, size:6, color:'244061', space:4 } }, children:[] }),
@@ -218,30 +213,93 @@ async function genAvviso(proc, lotti, opts, logoB64) {
   return Packer.toBlob(doc)
 }
 
+// ─── Componente riga lotto — ESTRATTO fuori dal wizard per evitare re-mount ──
+// Se il componente è definito dentro WizardAvviso, React lo ricrea ad ogni render
+// e l'input perde il focus dopo ogni carattere. Estratto fuori = identità stabile.
+function LottoRow({ lotto, idx, total, onChange, onRemove }) {
+  return (
+    <div style={{background:'var(--bg2)',borderRadius:8,padding:'12px 14px'}}>
+      <div style={{display:'flex',justifyContent:'space-between',marginBottom:8}}>
+        <span style={{fontWeight:600,fontSize:13}}>Lotto {idx+1}</span>
+        {total > 1 && (
+          <button className="btn btn-ghost btn-sm" style={{color:'var(--accent-r)'}} onClick={onRemove}>✕</button>
+        )}
+      </div>
+      <div className="form-grid">
+        <div className="form-col-full form-group">
+          <label className="form-label">Descrizione lotto</label>
+          <input className="form-input" value={lotto.desc}
+            onChange={e => onChange(idx,'desc',e.target.value)}
+            placeholder="Es: Lotto 1 \u2014 macchinari officina" />
+        </div>
+        <div className="form-group">
+          <label className="form-label">Q.t\u00e0</label>
+          <input className="form-input" type="number" min="1" value={lotto.qta}
+            onChange={e => onChange(idx,'qta',e.target.value)} />
+        </div>
+        <div className="form-group">
+          <label className="form-label">Prezzo base (€) \u2014 vuoto = globale</label>
+          <input className="form-input" value={lotto.base}
+            onChange={e => onChange(idx,'base',e.target.value)}
+            placeholder="Lascia vuoto per il valore globale" />
+        </div>
+        <div className="form-group">
+          <label className="form-label">Offerta minima (€) \u2014 vuoto = prezzo base</label>
+          <input className="form-input" value={lotto.offertaMinima}
+            onChange={e => onChange(idx,'offertaMinima',e.target.value)}
+            placeholder="Lascia vuoto per il prezzo base" />
+        </div>
+        <div className="form-group">
+          <label className="form-label">Rilancio min. (€) \u2014 vuoto = globale</label>
+          <input className="form-input" value={lotto.rilancio}
+            onChange={e => onChange(idx,'rilancio',e.target.value)}
+            placeholder="Lascia vuoto per il valore globale" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Testo default offerta irrevocabile ───────────────────────────────────────
+const TESTO_OFFERTA_DEFAULT =
+  'che in esecuzione del programma di liquidazione, e a seguito di offerta irrevocabile d\u2019acquisto ' +
+  'pervenuta in data ___, si proceder\u00e0 alla vendita telematica dei seguenti beni. ' +
+  'Nel rispetto dei principi di competitivit\u00e0 e trasparenza si avvia una gara competitiva ' +
+  'telematica allo scopo di permettere a eventuali interessati di partecipare presentando ' +
+  'la propria offerta a rialzo come da rilancio minimo indicato.'
+
 // ─── Wizard ───────────────────────────────────────────────────────────────────
 function WizardAvviso({ proc, onClose, notify }) {
   const today = new Date().toISOString().slice(0,10)
-  const [tipoAsta, setTipoAsta]           = useState('asincrona_pvp')
-  const [nEsperimento, setNEsperimento]   = useState('1')
-  const [dataAsta, setDataAsta]           = useState(today)
-  const [oraAsta, setOraAsta]             = useState('12:00')
-  const [dataTermine, setDataTermine]     = useState(today)
-  const [oraTermine, setOraTermine]       = useState('12:00')
-  const [prezzoBase, setPrezzoBase]       = useState('')
-  const [offertaMinima, setOffertaMinima] = useState('')
-  const [rilancioMin, setRilancioMin]     = useState('')
-  const [cauzione, setCauzione]           = useState('10')
+  const [tipoAsta, setTipoAsta]               = useState('asincrona_pvp')
+  const [nEsperimento, setNEsperimento]       = useState('1')
+  const [dataAsta, setDataAsta]               = useState(today)
+  const [oraAsta, setOraAsta]                 = useState('12:00')
+  const [dataTermine, setDataTermine]         = useState(today)
+  const [oraTermine, setOraTermine]           = useState('12:00')
+  const [prezzoBase, setPrezzoBase]           = useState('')
+  const [offertaMinima, setOffertaMinima]     = useState('')
+  const [rilancioMin, setRilancioMin]         = useState('')
+  const [cauzione, setCauzione]               = useState('10')
   const [modalitaCauzione, setModalitaCauzione] = useState('bonifico bancario sulle coordinate indicate nel presente avviso')
-  const [dirittiAsta, setDirittiAsta]     = useState('2')
-  const [referente, setReferente]         = useState('Pro.Ges.S. Srl \u2014 procedure@progess-italia.it')
-  const [noteFinali, setNoteFinali]       = useState('')
-  const [lotti, setLotti]                 = useState([{ desc:'Lotto unico \u2014 tutti i beni inventariati', qta:1, base:'', offertaMinima:'', rilancio:'' }])
+  const [dirittiAsta, setDirittiAsta]         = useState('2')
+  const [referente, setReferente]             = useState('Pro.Ges.S. Srl \u2014 procedure@progess-italia.it')
+  const [noteFinali, setNoteFinali]           = useState('')
+  const [lotti, setLotti]                     = useState([{ desc:'Lotto unico \u2014 tutti i beni inventariati', qta:1, base:'', offertaMinima:'', rilancio:'' }])
   const [offertaIrrevocabile, setOffertaIrrevocabile] = useState(false)
-  const [dataOfferta, setDataOfferta]     = useState(today)
-  const [importoOfferta, setImportoOfferta] = useState('')
-  const [gen, setGen]                     = useState(false)
+  const [testoOfferta, setTestoOfferta]       = useState(TESTO_OFFERTA_DEFAULT)
+  const [gen, setGen]                         = useState(false)
 
   const isAsincrona = tipoAsta.includes('asincrona') || tipoAsta === 'mista'
+
+  // useCallback evita che la funzione cambi identità ad ogni render → LottoRow non si rimonta
+  const handleLottoChange = useCallback((idx, field, val) => {
+    setLotti(ls => ls.map((x, j) => j === idx ? {...x, [field]: val} : x))
+  }, [])
+
+  const handleLottoRemove = useCallback((idx) => {
+    setLotti(ls => ls.filter((_, j) => j !== idx))
+  }, [])
 
   const genera = async () => {
     setGen(true)
@@ -251,10 +309,10 @@ function WizardAvviso({ proc, onClose, notify }) {
         tipoAsta, nEsperimento, dataAsta, oraAsta, dataTermine, oraTermine,
         prezzoBase, offertaMinima, rilancioMin, cauzione, modalitaCauzione,
         dirittiAsta, referente, noteFinali,
-        offertaIrrevocabile, dataOfferta, importoOfferta,
+        offertaIrrevocabile, testoOfferta,
       }, logo)
       const nome = 'Avviso_Vendita_'+(proc.nome||'').replace(/\s+/g,'_')+'.docx'
-      const url = URL.createObjectURL(blob)
+      const url  = URL.createObjectURL(blob)
       const a = document.createElement('a'); a.href=url; a.download=nome
       document.body.appendChild(a); a.click(); document.body.removeChild(a)
       setTimeout(()=>URL.revokeObjectURL(url),3000)
@@ -264,27 +322,21 @@ function WizardAvviso({ proc, onClose, notify }) {
     finally { setGen(false) }
   }
 
-  // Input component con onChange diretto — nessun problema di focus/re-render
-  const Inp = ({label, val, set, placeholder='', type='text', full=false}) => (
+  // Inp definito FUORI dalla funzione (sopra) sarebbe ideale, ma qui usiamo
+  // un componente inline semplice con setter diretto — ok perché i setter
+  // di useState hanno identità stabile, quindi non causano re-mount
+  const Inp = ({ label, val, set, placeholder='', type='text', full=false }) => (
     <div className={full ? 'form-col-full form-group' : 'form-group'}>
       <label className="form-label">{label}</label>
-      <input
-        type={type}
-        className="form-input"
-        value={val}
-        onChange={e => set(e.target.value)}
-        placeholder={placeholder}
-      />
+      <input type={type} className="form-input" value={val}
+        onChange={e => set(e.target.value)} placeholder={placeholder} />
     </div>
   )
-
-  const updLotto = (i, field, val) =>
-    setLotti(ls => ls.map((x, j) => j === i ? {...x, [field]: val} : x))
 
   return (
     <div style={{display:'flex',flexDirection:'column',gap:16}}>
 
-      {/* Tipo + Esperimento */}
+      {/* Modalità + Esperimento */}
       <div className="card">
         <div className="card-header"><div className="card-title">📋 Modalità di vendita</div></div>
         <div className="card-body">
@@ -310,11 +362,27 @@ function WizardAvviso({ proc, onClose, notify }) {
           </label>
         </div>
         {offertaIrrevocabile && (
-          <div className="card-body">
-            <div className="form-grid">
-              <Inp label="Data ricezione offerta" val={dataOfferta} set={setDataOfferta} type="date" />
-              <Inp label="Importo offerta (€)" val={importoOfferta} set={setImportoOfferta} placeholder="Es: 3.500,00" />
+          <div className="card-body" style={{display:'flex',flexDirection:'column',gap:12}}>
+            <div className="form-group form-col-full">
+              <label className="form-label">
+                Testo paragrafo AVVISA
+                <span style={{fontWeight:400,color:'var(--text3)',marginLeft:6,fontSize:11}}>(personalizzabile — sostituisce il testo standard)</span>
+              </label>
+              <textarea
+                className="form-input"
+                value={testoOfferta}
+                onChange={e=>setTestoOfferta(e.target.value)}
+                rows={5}
+                style={{fontFamily:'inherit',fontSize:13,lineHeight:1.6}}
+              />
+              <div style={{fontSize:11,color:'var(--text3)',marginTop:4}}>
+                Il testo inizia automaticamente con <b>AVVISA</b> (in grassetto) nel documento finale.
+              </div>
             </div>
+            <button className="btn btn-ghost btn-sm" style={{alignSelf:'flex-start'}}
+              onClick={()=>setTestoOfferta(TESTO_OFFERTA_DEFAULT)}>
+              ↺ Ripristina testo predefinito
+            </button>
           </div>
         )}
       </div>
@@ -356,51 +424,21 @@ function WizardAvviso({ proc, onClose, notify }) {
       <div className="card">
         <div className="card-header">
           <div className="card-title">📦 Lotti in vendita</div>
-          <button className="btn btn-ghost btn-sm" onClick={()=>setLotti(l=>[...l,{desc:'',qta:1,base:'',offertaMinima:'',rilancio:''}])}>
+          <button className="btn btn-ghost btn-sm"
+            onClick={()=>setLotti(l=>[...l,{desc:'',qta:1,base:'',offertaMinima:'',rilancio:''}])}>
             <Plus size={13}/> Aggiungi lotto
           </button>
         </div>
         <div className="card-body" style={{display:'flex',flexDirection:'column',gap:12}}>
-          {lotti.map((l,i)=>(
-            <div key={i} style={{background:'var(--bg2)',borderRadius:8,padding:'12px 14px'}}>
-              <div style={{display:'flex',justifyContent:'space-between',marginBottom:8}}>
-                <span style={{fontWeight:600,fontSize:13}}>Lotto {i+1}</span>
-                {lotti.length>1 && (
-                  <button className="btn btn-ghost btn-sm" style={{color:'var(--accent-r)'}} onClick={()=>setLotti(ls=>ls.filter((_,j)=>j!==i))}>✕</button>
-                )}
-              </div>
-              <div className="form-grid">
-                <div className="form-col-full form-group">
-                  <label className="form-label">Descrizione lotto</label>
-                  <input className="form-input" value={l.desc}
-                    onChange={e=>updLotto(i,'desc',e.target.value)}
-                    placeholder="Es: Lotto 1 — macchinari officina" />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Q.tà</label>
-                  <input className="form-input" type="number" min="1" value={l.qta}
-                    onChange={e=>updLotto(i,'qta',e.target.value)} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Prezzo base (€) — vuoto = globale</label>
-                  <input className="form-input" value={l.base}
-                    onChange={e=>updLotto(i,'base',e.target.value)}
-                    placeholder="Lascia vuoto per usare il prezzo globale" />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Offerta minima (€) — vuoto = prezzo base</label>
-                  <input className="form-input" value={l.offertaMinima}
-                    onChange={e=>updLotto(i,'offertaMinima',e.target.value)}
-                    placeholder="Lascia vuoto per usare il prezzo base" />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Rilancio min. (€) — vuoto = globale</label>
-                  <input className="form-input" value={l.rilancio}
-                    onChange={e=>updLotto(i,'rilancio',e.target.value)}
-                    placeholder="Lascia vuoto per usare il rilancio globale" />
-                </div>
-              </div>
-            </div>
+          {lotti.map((l,i) => (
+            <LottoRow
+              key={i}
+              lotto={l}
+              idx={i}
+              total={lotti.length}
+              onChange={handleLottoChange}
+              onRemove={() => handleLottoRemove(i)}
+            />
           ))}
         </div>
       </div>
@@ -413,7 +451,8 @@ function WizardAvviso({ proc, onClose, notify }) {
             <Inp label="Referente per informazioni e visite" val={referente} set={setReferente} full />
             <div className="form-col-full form-group">
               <label className="form-label">Note finali (facoltativo)</label>
-              <textarea className="form-input" value={noteFinali} onChange={e=>setNoteFinali(e.target.value)} rows={3}
+              <textarea className="form-input" value={noteFinali}
+                onChange={e=>setNoteFinali(e.target.value)} rows={3}
                 placeholder="Es: La vendita è soggetta all'imposta di registro..." />
             </div>
           </div>
@@ -440,7 +479,8 @@ export default function Aste() {
     <>
       <Topbar title="Aste e Vendite" subtitle="Seleziona una procedura" />
       <div style={{flex:1,overflowY:'auto',padding:24}}>
-        <Empty icon="\u2696\ufe0f" title="Nessuna procedura selezionata" sub="Seleziona una procedura dalla sezione Procedure per generare gli avvisi di vendita" />
+        <Empty icon="\u2696\ufe0f" title="Nessuna procedura selezionata"
+          sub="Seleziona una procedura dalla sezione Procedure per generare gli avvisi di vendita" />
       </div>
     </>
   )
