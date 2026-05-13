@@ -1,6 +1,16 @@
 <!DOCTYPE html>
 <html lang="it">
   <head>
+<script>
+  (function() {
+    var p = window.location.search.match(/[?&]p=([^&]+)/);
+    if (p) {
+      var decoded = decodeURIComponent(p[1]);
+      window.history.replaceState(null, null,
+        window.location.pathname.replace(/\/$/, '') + '/' + decoded);
+    }
+  })();
+</script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>InventPro — Inventari Concorsuali</title>
