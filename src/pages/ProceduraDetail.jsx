@@ -903,7 +903,7 @@ function TabRelazioneStima({ proc }) {
         const res = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
           headers: { 'Content-Type':'application/json', 'x-api-key':apiKey, 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
-          body: JSON.stringify({ model:'claude-sonnet-4-5-20250929', max_tokens:3000, messages:[{ role:'user', content:prompt }] })
+          body: JSON.stringify({ model:'claude-sonnet-4-5', max_tokens:3000, messages:[{ role:'user', content:prompt }] })
         })
         const data = await res.json()
         testoAI = data.content?.[0]?.text || ''
