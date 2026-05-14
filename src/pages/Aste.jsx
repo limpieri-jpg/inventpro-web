@@ -8,7 +8,16 @@ import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
          ImageRun, Header, Footer } from 'docx'
 
 // ─── Costanti ─────────────────────────────────────────────────────────────────
-const MW = 11906, MM = 1000, CW = MW - MM * 2
+// Misure pagina in twips — margini dal modello reale
+const MW   = 11906                      // larghezza A4
+const ML   = 912                        // margine sx (1.61cm)
+const MR   = 878                        // margine dx (1.55cm)
+const CW   = MW - ML - MR              // area testo utile
+
+// Font e dimensioni dal modello: Times New Roman, 11pt corpo
+const FNT  = 'Times New Roman'
+const SZ   = 22                         // 11pt = 22 half-points
+const SZT  = 24                         // 12pt = 24 half-points (titoli AVVISO)
 
 const TIPI_ASTA = [
   { id: 'asincrona_pvp',  label: 'Asincrona telematica \u2014 Portale Vendite Pubbliche (PVP)' },
@@ -20,61 +29,91 @@ const TIPI_ASTA = [
 
 // ─── Helpers docx ─────────────────────────────────────────────────────────────
 const fmtEur = (n) => {
-  const p = parseFloat((n||'0').toString().replace(',','.') || 0).toFixed(2).split('.')
-  p[0] = p[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.')
-  return 'Euro\u00a0' + p[0] + ',' + p[1]
+  const s = (n||'').toString().trim()
+  if (!s) return '_______________'
+  const parsed = parseFloat(s.replace(/\./g,'').replace(',','.'))
+  if (isNaN(parsed)) return s
+  const parts = parsed.toFixed(2).split('.')
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+  return 'Euro\u00a0' + parts[0] + ',' + parts[1]
 }
 const fmtD = (d) => {
   if (!d) return '_______________'
+  if (d.includes('/')) return d        // già in formato gg/mm/aaaa
   const dt = new Date(d)
+  if (isNaN(dt)) return d
   return String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0')+'/'+dt.getFullYear()
 }
 const fmtDT = (d, h) => fmtD(d) + (h ? ' alle ore ' + h : '')
 
+// Bordi
 const BN  = { style:BorderStyle.NONE, size:0, color:'FFFFFF' }
 const BNS = { top:BN, bottom:BN, left:BN, right:BN }
-const BT  = { style:BorderStyle.SINGLE, size:1, color:'AAAAAA' }
+const BT  = { style:BorderStyle.SINGLE, size:4, color:'000000' }
 const BTS = { top:BT, bottom:BT, left:BT, right:BT }
 const J   = AlignmentType.JUSTIFIED
 const C   = AlignmentType.CENTER
+const L   = AlignmentType.LEFT
 
-const T   = (text, o={}) => new TextRun({ text:String(text||''), font:'Gadugi', size:22, ...o })
-const B   = (text, s=22) => T(text, { bold:true, size:s })
-const P   = (ch, o={}) => new Paragraph({ children:Array.isArray(ch)?ch:[ch], alignment:J, spacing:{before:80,after:80,line:276,lineRule:'auto'}, ...o })
-const PC  = (ch, o={}) => new Paragraph({ children:Array.isArray(ch)?ch:[ch], alignment:C, spacing:{before:60,after:60}, ...o })
-const BR  = () => new Paragraph({ children:[], spacing:{before:60,after:60} })
-const BLT = (ch) => new Paragraph({ numbering:{reference:'blt',level:0}, alignment:J, spacing:{before:40,after:40,line:276,lineRule:'auto'}, children:Array.isArray(ch)?ch:[ch] })
-const numConf = { config:[{ reference:'blt', levels:[{ level:0, format:LevelFormat.BULLET, text:'-', alignment:AlignmentType.LEFT, style:{ paragraph:{ indent:{ left:360, hanging:360 } } } }] }] }
+// Spacing fedele al modello: 1.15 righe intestazione, 1.5 corpo
+const SP_HDR    = { line:276, lineRule:'auto', before:0,   after:0   }
+const SP_AVVISO = { line:276, lineRule:'auto', before:120, after:120 }  // ~6pt come nel modello
+const SP_BODY   = { line:360, lineRule:'auto', before:0,   after:80  }  // 1.5 corpo
+const SP_SEC    = { line:276, lineRule:'auto', before:160, after:60  }  // titoli sezione
+const SP_BR     = { line:276, lineRule:'auto', before:120, after:120 }
+
+// TextRun helpers — Times New Roman
+const T  = (text, o={}) => new TextRun({ text:String(text||''), font:FNT, size:SZ, ...o })
+const B  = (text, s=SZ) => T(text, { bold:true, size:s })
+
+// Paragraph helpers
+const P   = (ch, o={}) => new Paragraph({ alignment:J, spacing:SP_BODY,   children:Array.isArray(ch)?ch:[ch], ...o })
+const PC  = (ch, o={}) => new Paragraph({ alignment:C, spacing:SP_HDR,    children:Array.isArray(ch)?ch:[ch], ...o })
+const PCA = (ch, o={}) => new Paragraph({ alignment:C, spacing:SP_AVVISO, children:Array.isArray(ch)?ch:[ch], ...o })
+const PL  = (ch, o={}) => new Paragraph({ alignment:L, spacing:SP_BODY,   children:Array.isArray(ch)?ch:[ch], ...o })
+const PS  = (ch, o={}) => new Paragraph({ alignment:L, spacing:SP_SEC,    children:Array.isArray(ch)?ch:[ch], ...o })
+const PSC = (ch, o={}) => new Paragraph({ alignment:C, spacing:SP_SEC,    children:Array.isArray(ch)?ch:[ch], ...o })
+const BR  = () => new Paragraph({ children:[], spacing:SP_BR })
+const BLT = (ch) => new Paragraph({
+  numbering:{ reference:'blt', level:0 },
+  alignment:J,
+  spacing:{ line:360, lineRule:'auto', before:0, after:60 },
+  children:Array.isArray(ch)?ch:[ch]
+})
+const numConf = { config:[{ reference:'blt', levels:[{ level:0, format:LevelFormat.BULLET, text:'-',
+  alignment:L, style:{ paragraph:{ indent:{ left:360, hanging:360 } } } }] }] }
 
 const mkCell = (ch, w, opts={}) => new TableCell({
   borders: opts.nb ? BNS : BTS,
   width:{ size:w, type:WidthType.DXA },
   shading: opts.fill ? { fill:opts.fill, type:ShadingType.CLEAR } : undefined,
-  margins:{ top:80, bottom:80, left:120, right:120 },
+  margins:{ top:60, bottom:60, left:100, right:100 },
   columnSpan: opts.span,
-  children:[new Paragraph({ children:Array.isArray(ch)?ch:[ch], alignment:opts.align||J })]
+  children:[new Paragraph({ children:Array.isArray(ch)?ch:[ch], alignment:opts.align||J,
+    spacing:{ line:276, lineRule:'auto', before:0, after:0 } })]
 })
 
-function mkHdr(logoB64) {
-  const lr = logoB64 ? new ImageRun({ data:logoB64.split(',')[1], transformation:{width:150,height:50}, type:'png' }) : null
-  return new Header({ children:[
-    new Paragraph({ children:lr?[lr]:[B('PROCEDURE GESTITE E SERVIZI S.R.L.',20)], alignment:AlignmentType.LEFT }),
-    new Paragraph({ border:{ bottom:{ style:BorderStyle.SINGLE, size:6, color:'244061', space:1 } }, children:[] })
-  ]})
+// Header VUOTO — nessuna carta intestata negli avvisi di vendita
+function mkHdr() {
+  return new Header({ children:[ new Paragraph({ children:[] }) ] })
 }
+
+// Footer con dati Pro.Ges.S.
 function mkFtr() {
   return new Footer({ children:[new Paragraph({
     alignment:C,
-    border:{ top:{ style:BorderStyle.SINGLE, size:4, color:'AAAAAA', space:1 } },
+    border:{ top:{ style:BorderStyle.SINGLE, size:4, color:'000000', space:4 } },
+    spacing:{ before:120 },
     children:[
-      B('Procedure Gestite E Servizi S.r.l.',18),
-      new TextRun({text:'',break:1}),
-      T('Via Giuseppe Parini, 29 - LECCO (LC) - 23900',{size:16}),
-      new TextRun({text:'',break:1}),
-      T('procedure@progess-italia.it | progess@arubapec.it | C.F. e P.IVA 03546380134',{size:16}),
+      T('Pro.Ges.S. S.r.l. \u2013 Procedure Gestite e Servizi', { size:18 }),
+      new TextRun({ text:'', break:1 }),
+      T('Via Giuseppe Parini, 29 \u2013 23900 Lecco (LC)', { size:18 }),
+      new TextRun({ text:'', break:1 }),
+      T('Tel. 0341.593511 \u2013 procedure@progess-italia.it \u2013 progess@arubapec.it', { size:18 }),
     ]
   })]})
 }
+
 
 // ─── Generatore avviso ────────────────────────────────────────────────────────
 async function genAvviso(proc, lotti, opts, logoB64) {
@@ -344,28 +383,29 @@ async function genAvviso(proc, lotti, opts, logoB64) {
     ? (isAsin && !isMista ? 'SENZA INCANTO CON MODALIT\u00c0 COMPETITIVA TELEMATICA' : 'SENZA INCANTO CON MODALIT\u00c0 SINCRONA TELEMATICA ASTEMAGAZINE')
     : (isAsin && !isMista ? 'CON MODALIT\u00c0 ASINCRONA TELEMATICA' : isMista ? 'SENZA INCANTO CON MODALIT\u00c0 SINCRONA MISTA' : 'CON MODALIT\u00c0 SINCRONA TELEMATICA')
 
+  // Margini fedeli al modello: sx 1.61cm=912, dx 1.55cm=878, top 2.25cm=1276, bottom 2.00cm=1134
   const doc = new Document({ numbering:numConf, sections:[{
-    properties:{ page:{ size:{width:MW,height:16838}, margin:{top:1200,right:MM,bottom:1400,left:MM} } },
-    headers:{ default:mkHdr(logoB64) },
+    properties:{ page:{ size:{width:MW,height:16838}, margin:{top:1276,right:MR,bottom:1134,left:ML} } },
+    headers:{ default:mkHdr() },
     footers:{ default:mkFtr() },
     children:[
-      PC([B('TRIBUNALE DI '+(proc.tribunale||'').toUpperCase(),22)], {spacing:{before:240,after:40}}),
-      PC([T((proc.sezione ? 'SEZIONE '+proc.sezione.toUpperCase()+' \u2013 ' : '')+(proc.tipo||'').toUpperCase(),{size:20})]),
-      PC([B('"'+(proc.nome||'')+'"',22)], {spacing:{before:20,after:20}}),
-      PC([T('RG NR./ANNO ' + nrg,{size:20})]),
-      ...(proc.giudice  ? [PC([T('GIUDICE DELEGATO: '+(proc.giudice||'').toUpperCase(),{size:20})])]  : []),
-      ...(proc.curatore ? [PC([T('CURATORE: '+(proc.curatore||'').toUpperCase(),{size:20})])] : []),
+      // Intestazione procedura: bold, centrata, Times New Roman 11pt, spacing 1.15
+      PC([B('TRIBUNALE DI '+(proc.tribunale||'').toUpperCase())]),
+      ...(proc.sezione ? [PC([B('SEZIONE '+(proc.sezione||'').toUpperCase())])] : []),
+      PC([B((proc.tipo||'').toUpperCase())]),
+      PC([B('\u201c'+(proc.nome||'')+'\u201d')]),
+      PC([B('NR./ANNO ' + nrg)]),
+      ...(proc.giudice  ? [PC([B('GIUDICE DELEGATO: '+(proc.giudice||'').toUpperCase())])] : []),
+      ...(proc.curatore ? [PC([B('CURATORE: '+(proc.curatore||'').toUpperCase())])]        : []),
+      // Separatore e titoli AVVISO: bold centrati 12pt, spacing 6pt come nel modello
+      PCA([B('* * * * * * * * *', SZT)]),
+      PCA([B('AVVISO DI VENDITA', SZT)]),
+      PCA([B(titoloModalita, SZT)]),
+      ...(nEsp ? [PCA([B(nEsp, SZT)])] : []),
       BR(),
-      new Paragraph({ border:{ bottom:{ style:BorderStyle.SINGLE, size:6, color:'244061', space:4 } }, children:[] }),
-      BR(),
-      PC([B('AVVISO DI VENDITA',28)], {spacing:{before:80,after:40}}),
-      PC([B(titoloModalita,20)]),
-      ...(nEsp ? [PC([B(nEsp,20)], {spacing:{before:20}})] : []),
-      BR(),
-      new Paragraph({ border:{ bottom:{ style:BorderStyle.SINGLE, size:2, color:'AAAAAA', space:4 } }, children:[] }),
-      BR(),
+      // Corpo: justify, Times New Roman 11pt, spacing 1.5
       P([T('Il/La sottoscritto/a ', {italics:true}), T(proc.curatore||'', {italics:true}),
-         T(', nella sua qualit\u00e0 di '+(proc.tipo||'')+' della procedura n. '+nrg+
+         T(', nella sua qualit\u00e0 di '+(proc.tipo||'')+' della Procedura n. '+nrg+
            (proc.nome ? ' denominata \u201c'+proc.nome+'\u201d' : '')+
            ' dichiarata dal Tribunale di '+(proc.tribunale||'')+
            (proc.giudice ? ', Giudice Delegato '+(proc.giudice||'') : '')+',')]),
