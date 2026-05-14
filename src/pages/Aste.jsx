@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { getGenereTermini } from '../lib/genere'
 import { supabase } from '../lib/supabase'
 import { useStore } from '../store/useStore'
 import { Topbar, Modal, Empty } from '../components/layout'
@@ -126,6 +127,8 @@ async function genAvviso(proc, lotti, opts, logoB64) {
     offertaIrrevocabile, offertaIrrevData, offertaIrrevImporto, testoOfferta } = opts
 
   const nrg      = (proc.num||'') + (proc.anno?'/'+proc.anno:'')
+  const g        = getGenereTermini(proc.cf_curatore || '')
+  const ruolo    = g.qualita(proc.tipo)
   const isPVP    = tipoAsta.includes('pvp')
   const isAMag   = tipoAsta.includes('amag')
   const isMista  = tipoAsta === 'mista'
@@ -142,11 +145,16 @@ async function genAvviso(proc, lotti, opts, logoB64) {
   const BANCA_PGS = _bancaCau || 'Deutsche Bank \u2014 Filiale di Lecco, Agenzia di Castello'
   const BANCA_DIR = _bancaDir || BANCA_PGS
 
+  // Numero lotto: usa il numero del primo lotto selezionato, o 'UNICO' se uno solo
+  const nLotto = lotti.length === 1
+    ? (lotti[0].nome || lotti[0].desc || 'UNICO')
+    : lotti.map((l,i) => l.nome || l.desc || (i+1)).join('/')
   const causale = (tipo) => {
     const base = (proc.tipo||'') + ' n. ' + nrg + ' \u2014 Tribunale di ' + (proc.tribunale||'')
-    return tipo === 'cau' ? 'Cauzione Lotto ___ \u2014 ' + base
-         : tipo === 'dir' ? 'Diritti d\u2019asta Lotto ___ \u2014 ' + base
-         : 'Saldo Lotto ___ \u2014 ' + base
+    const lbl  = 'Lotto ' + nLotto
+    return tipo === 'cau' ? 'Cauzione ' + lbl + ' \u2014 ' + base
+         : tipo === 'dir' ? 'Diritti d\u2019asta ' + lbl + ' \u2014 ' + base
+         : 'Saldo ' + lbl + ' \u2014 ' + base
   }
 
 
@@ -230,7 +238,7 @@ async function genAvviso(proc, lotti, opts, logoB64) {
   if (isAMag) {
     sezioneOfferte = [
       BR(),
-      P(B('MODALIT\u00c0 DI PRESENTAZIONE DELLE OFFERTE E VERSAMENTO DELLA CAUZIONE')),
+      PSC([B('MODALIT\u00c0 DI PRESENTAZIONE DELLE OFFERTE E VERSAMENTO DELLA CAUZIONE')]),
       P(T('Gli interessati potranno presentare le offerte secondo le seguenti modalit\u00e0:')),
       BR(),
       P(T('Saranno considerate ammissibili esclusivamente le offerte TELEMATICHE che rispettano i requisiti riportati sul presente avviso di vendita, fermo che in caso di mere irregolarit\u00e0 formali, l\u2019offerente potr\u00e0 essere invitato a regolarizzare l\u2019offerta.')),
@@ -242,7 +250,7 @@ async function genAvviso(proc, lotti, opts, logoB64) {
       BLT(T('Il partecipante all\u2019asta, regolarmente registrato e che intende agire in rappresentanza di terzi, dovr\u00e0 essere obbligatoriamente dotato di procura riportante i riferimenti dei soggetti nonch\u00e9 del lotto in vendita per il quale intende procedere. Dovr\u00e0 trasmettere suddetta procura a mezzo PEC all\u2019indirizzo PEC della procedura e in c.c. a progess@arubapec.it specificando ID ASTA, RG numero, anno e Tribunale di riferimento.')),
       BLT(T('Non saranno accettate partecipazioni con deleghe generiche \u201cper persona da nominare\u201d.')),
       BR(),
-      P(B('DEPOSITO CAUZIONALE')),
+      PSC([B('DEPOSITO CAUZIONALE')]),
       P([T('Il deposito cauzionale nella misura pari al '), B(cau + '%'), T(' del prezzo offerto, necessario per l\u2019iscrizione alla gara, dovr\u00e0 essere versato sul conto corrente del soggetto specializzato alla vendita:')]),
       BR(),
       P(B('Pro.Ges.S. S.r.l.')),
@@ -255,18 +263,18 @@ async function genAvviso(proc, lotti, opts, logoB64) {
   } else if (isMista) {
     sezioneOfferte = [
       BR(),
-      P(B('CONDIZIONI DELLA VENDITA')),
+      PSC([B('CONDIZIONI DELLA VENDITA')]),
       P(T('La vendita avr\u00e0 luogo avvalendosi del Gestore della Vendita Telematica \u2013 Pro.Ges.S. S.r.l. \u2013 Procedure Gestite e Servizi, con sede in Lecco (Lc) Via Giuseppe Parini, 29.')),
       P(T("La vendita avverr\u00e0 nello stato di fatto e di diritto in cui i beni si trovano. L\u2019offerente viene messo a conoscenza che: la procedura \u00e8 esonerata da ogni responsabilit\u00e0 connessa con lo stato dei beni; la vendita non \u00e8 soggetta alle norme concernenti la garanzia per vizi; l\u2019esistenza di eventuali vizi o difformit\u00e0 non potr\u00e0 dare luogo ad alcun risarcimento, indennit\u00e0 o riduzione del prezzo.")),
       BR(),
-      P(B('MODALIT\u00c0 DI PRESENTAZIONE DELLE OFFERTE E VERSAMENTO DELLA CAUZIONE')),
+      PSC([B('MODALIT\u00c0 DI PRESENTAZIONE DELLE OFFERTE E VERSAMENTO DELLA CAUZIONE')]),
       P(T('Saranno considerate ammissibili esclusivamente le offerte depositate in modalit\u00e0 cartacea o telematica e che rispettano i requisiti riportati sul presente avviso di vendita.')),
       BR(),
-      P(B('OFFERTA CARTACEA:')),
+      PSC([B('OFFERTA CARTACEA:')]),
       P([T("L'offerta dovr\u00e0 essere presentata presso la sede del Soggetto Specializzato alla Vendita \u201cPro.Ges.S. S.r.l.\u201d \u2013 Lecco (Lc) Via Giuseppe Parini n. 29, nei giorni feriali, escluso il sabato, dalle ore 9:00 alle ore 13:00 e dalle ore 14:30 alle ore 18:30, entro e non oltre le ore 12:00 del secondo giorno lavorativo precedente la data di vendita ("), B(fmtD(dataAsta)), T("), in busta chiusa sigillata, distintamente per ciascun Lotto, e controfirmata sul lembo di chiusura.")]),
       P(T("L'offerta dovr\u00e0 essere redatta in bollo da euro 16,00 e dovr\u00e0 contenere: le generalit\u00e0 complete dell'offerente (o i dati societari e del legale rappresentante se persona giuridica); copia del documento d'identit\u00e0 in corso di validit\u00e0; il certificato di matrimonio se coniugato; la dichiarazione di accettazione del presente avviso; l'assegno circolare intestato alla procedura a titolo di cauzione. Non sono ammesse offerte per persona da nominare.")),
       BR(),
-      P(B('OFFERTA TELEMATICA:')),
+      PSC([B('OFFERTA TELEMATICA:')]),
       BLT(T("dovr\u00e0 essere formulata esclusivamente tramite il modulo web \u201cOfferta Telematica\u201d del Ministero della Giustizia, accessibile dal portale www.progess-italia.it o dal portale ministeriale http://venditepubbliche.giustizia.it;")),
       BLT(T("dovr\u00e0 essere inviata con le modalit\u00e0 previste dall'art. 12 del DM 32/2015;")),
       BLT([T("dovr\u00e0 essere trasmessa all'indirizzo PEC del Ministero della Giustizia "), B('offertapvp.dgsia@giustiziacert.it'), T('.')]),
@@ -280,8 +288,8 @@ async function genAvviso(proc, lotti, opts, logoB64) {
       BR(),
       P([T('Tutorial per la compilazione PVP: '), T('https://www.progess-italia.it/video-tutorial')]),
       BR(),
-      P(B('SVOLGIMENTO DELLA PROCEDURA COMPETITIVA')),
-      P([T('La procedura si svolger\u00e0 con modalit\u00e0 SINCRONA MISTA. Il giorno '), B(fmtDT(dataAsta, oraAsta)), T(' si proceder\u00e0 all\u2019apertura delle buste presso la sala d\u2019aste di Pro.Ges.S. S.r.l. \u2013 Via Giuseppe Parini n. 29 \u2013 Lecco (Lc), alla presenza del Curatore.')]),
+      PSC([B('SVOLGIMENTO DELLA PROCEDURA COMPETITIVA')]),
+      P([T('La procedura si svolger\u00e0 con modalit\u00e0 SINCRONA MISTA. Il giorno '), B(fmtDT(dataAsta, oraAsta)), T(' si proceder\u00e0 all\u2019apertura delle buste presso la sala d\u2019aste di Pro.Ges.S. S.r.l. \u2013 Via Giuseppe Parini n. 29 \u2013 Lecco (Lc), alla presenza '+g.delDella+' '+ruolo+'.')]),
       P(T('Almeno 30 minuti prima dell\u2019inizio, gli offerenti telematici riceveranno dal Gestore le credenziali per accedere all\u2019area riservata dell\u2019asta. Le offerte cartacee saranno inserite manualmente nel portale www.progess-italia.it.')),
       P(T('In caso di unica offerta efficace si procede all\u2019aggiudicazione anche in assenza dell\u2019offerente. In caso di pi\u00f9 offerte valide si d\u00e0 corso alla gara partendo dall\u2019offerta pi\u00f9 alta, con i rilanci minimi fissati. Trascorso 1 (uno) minuto dall\u2019ultimo rilancio, il Lotto \u00e8 aggiudicato al miglior offerente.')),
       P(T('La cauzione dell\u2019aggiudicatario \u00e8 imputata in acconto sul prezzo. La cauzione dei non aggiudicatari \u00e8 restituita entro 7 giorni lavorativi, dedotte commissioni bancarie pari a \u20ac 5,00.')),
@@ -289,15 +297,15 @@ async function genAvviso(proc, lotti, opts, logoB64) {
   } else {
     sezioneOfferte = [
       BR(),
-      P(B('CONDIZIONI DELLA VENDITA')),
+      PSC([B('CONDIZIONI DELLA VENDITA')]),
       P(T('La vendita avr\u00e0 luogo avvalendosi del Gestore della Vendita Telematica \u2013 Pro.Ges.S. S.r.l. \u2013 Procedure Gestite e Servizi, con sede in Lecco (Lc) Via Giuseppe Parini, 29, sulla piattaforma di gara www.progess-italia.it.')),
       P(T('La vendita avverr\u00e0 nello stato di fatto e di diritto in cui i beni si trovano, con tutte le eventuali pertinenze, accessioni, ragioni ed azioni, servit\u00f9 attive e passive; la vendita avverr\u00e0 a corpo e non a misura. Ai sensi dell\u2019art. 2922 c.c., la vendita forzata non \u00e8 soggetta alle norme concernenti la garanzia per vizi o per mancanza di qualit\u00e0. L\u2019esistenza di eventuali vizi o difformit\u00e0, anche se occulti, non potranno dare luogo ad alcun risarcimento, indennit\u00e0 o riduzione di prezzo.')),
       P(T('Si precisa che, ai sensi dell\u2019art. 217, comma 1, CCII, il Giudice Delegato potr\u00e0 in ogni momento sospendere le operazioni di vendita qualora ricorrano gravi e giustificati motivi, ovvero qualora il prezzo risulti notevolmente inferiore a quello ritenuto congruo.')),
       BR(),
-      P(B('MODALIT\u00c0 DI PRESENTAZIONE DELLE OFFERTE E VERSAMENTO DELLA CAUZIONE')),
+      PSC([B('MODALIT\u00c0 DI PRESENTAZIONE DELLE OFFERTE E VERSAMENTO DELLA CAUZIONE')]),
       P(T('Saranno considerate ammissibili esclusivamente le offerte depositate in modalit\u00e0 telematica e che rispettino i requisiti riportati nel presente avviso di vendita.')),
       BR(),
-      P(B('OFFERTA TELEMATICA:')),
+      PSC([B('OFFERTA TELEMATICA:')]),
       P([T("L'offerta irrevocabile di acquisto dovr\u00e0 essere formulata entro il giorno "), B(isAsin ? fmtD(dataTermine) : fmtD(dataAsta)), T(" esclusivamente tramite il modulo web \u201cOfferta Telematica\u201d fornito dal Ministero della Giustizia, scaricabile dal portale ministeriale http://venditepubbliche.giustizia.it. L\u2019accesso potr\u00e0 avvenire anche attraverso www.progess-italia.it.")]),
       P([T("L'offerta dovr\u00e0 essere inviata con le modalit\u00e0 previste dall'art. 12 del DM 32/2015 e trasmessa all'indirizzo PEC del Ministero della Giustizia "), B('offertapvp.dgsia@giustiziacert.it'), T('. Una volta trasmessa, non sar\u00e0 pi\u00f9 possibile modificare o cancellare l\u2019offerta.')]),
       P([T('La cauzione, nella misura del '), B(cau + '%'), T(" del prezzo offerto, dovr\u00e0 essere versata ai sensi dell'art. 12 DM 32/2015, mediante bonifico bancario, con accredito almeno entro le ore 12:00 del secondo giorno lavorativo antecedente l\u2019esperimento sul seguente conto corrente:")]),
@@ -310,7 +318,7 @@ async function genAvviso(proc, lotti, opts, logoB64) {
       P(T('Il mancato tempestivo accredito della cauzione \u00e8 causa di nullit\u00e0 ed inefficacia dell\u2019offerta. La copia della contabile del versamento deve essere allegata nella busta telematica contenente l\u2019offerta.')),
       P([T('Tutorial: https://www.progess-italia.it/video-tutorial \u2013 Guida PDF: https://www.progess-italia.it/download/Guida%20per%20la%20formulazione%20di%20offerte%20sul%20PVP.pdf')]),
       BR(),
-      P(B('SVOLGIMENTO DELLA PROCEDURA COMPETITIVA')),
+      PSC([B('SVOLGIMENTO DELLA PROCEDURA COMPETITIVA')]),
       P([T('La procedura competitiva si svolger\u00e0 con modalit\u00e0 '), B(isAsin ? 'ASINCRONA TELEMATICA' : 'SINCRONA TELEMATICA'), T(' sul sito di Progess Italia \u2013 www.progess-italia.it.')]),
       ...(isAsin ? [
         P([T('La gara \u00e8 fissata dal '), B(fmtDT(dataAsta, oraAsta)), T(' al '), B(fmtDT(dataTermine, oraTermine)), T('. Almeno 30 minuti prima dell\u2019inizio, gli offerenti riceveranno le credenziali per accedere all\u2019area riservata.')]),
@@ -325,7 +333,7 @@ async function genAvviso(proc, lotti, opts, logoB64) {
   // ── Sezione: Saldo e diritti d'asta ──────────────────────────────────────
   const sezioneSaldo = isAMag ? [
     BR(),
-    P(B('TERMINE DELLA GARA E AGGIUDICAZIONE')),
+    PSC([B('TERMINE DELLA GARA E AGGIUDICAZIONE')]),
     BLT(T('Al termine della gara verr\u00e0 dichiarato aggiudicatario provvisorio il soggetto che avr\u00e0 presentato la migliore offerta valida entro il termine di fine gara.')),
     BLT(T("All'esito della gara, il soggetto specializzato alla vendita invierà una Relazione finale (report) all'indirizzo E-mail/PEC della procedura con le generalit\u00e0 complete dell'aggiudicatario e tutta la documentazione annessa.")),
     BLT(T('La restituzione delle cauzioni ai soggetti non aggiudicatari verr\u00e0 effettuata dal Soggetto specializzato \u2013 Pro.Ges.S. \u2013 entro sette giorni lavorativi dal termine della gara.')),
@@ -341,7 +349,7 @@ async function genAvviso(proc, lotti, opts, logoB64) {
     BLT([T('Le eventuali offerte migliorative per un importo non inferiore al 10% del prezzo di aggiudicazione a norma dell\u2019art. 584 c.p.c. dovranno pervenire a mezzo PEC all\u2019indirizzo della procedura e in c.c. a '), B('progess@arubapec.it'), T(', entro 10 giorni dall\u2019aggiudicazione provvisoria.')]),
   ] : [
     BR(),
-    P(B('PAGAMENTO DEL SALDO PREZZO \u2013 ONERI FISCALI \u2013 DIRITTI D\u2019ASTA')),
+    PSC([B('PAGAMENTO DEL SALDO PREZZO \u2013 ONERI FISCALI \u2013 DIRITTI D\u2019ASTA')]),
     P([T('Entro il termine di '), B(saldo + ' giorni'), T(' dalla data di aggiudicazione, oppure nel minor termine contenuto nell\u2019offerta irrevocabile (termine migliorativo), l\u2019aggiudicatario dovr\u00e0 provvedere al versamento integrale del saldo prezzo dovuto (oltre oneri di Legge ove dovuti), dedotta la cauzione gi\u00e0 versata, a mezzo bonifico bancario sul c/c intestato a:')]),
     BR(),
     P([B('Beneficiario: '), T((intestazioneProcedura || proc.nome || '').toUpperCase())]),
@@ -361,7 +369,7 @@ async function genAvviso(proc, lotti, opts, logoB64) {
   // ── Sezione: Condizioni generali AsteMagazine ─────────────────────────────
   const sezioneCondizioniAMag = isAMag ? [
     BR(),
-    P(B('CONDIZIONI DELLA VENDITA')),
+    PSC([B('CONDIZIONI DELLA VENDITA')]),
     BLT(T('Il Curatore si riserva di valutare nell\u2019esclusivo interesse della procedura la facolt\u00e0 di sospendere la vendita.')),
     BLT(T('La vendita avviene nello stato di fatto e di diritto in cui i beni si trovano.')),
     BLT(T('I beni sono posti in vendita nella consistenza indicata nella perizia redatta dallo stimatore e pubblicata sui siti www.progess-italia.it e www.astemagazine.com.')),
@@ -375,7 +383,7 @@ async function genAvviso(proc, lotti, opts, logoB64) {
   // ── Sezione: Pubblicità ───────────────────────────────────────────────────
   const sezionePubblicita = [
     BR(),
-    P(B('PUBBLICIT\u00c0')),
+    PSC([B('PUBBLICIT\u00c0')]),
     ...(isAMag ? [
       BLT(T('Copia del presente avviso sar\u00e0 pubblicato all\u2019interno del Portale delle Vendite Pubbliche a norma dell\u2019art. 490 I comma c.p.c.')),
       BLT([T('Copia del presente avviso sar\u00e0 pubblicata e visionabile sui siti autorizzati dal D.M. 31/10/2006: '), B('www.progess-italia.it'), T(', oltre che sul sito '), B('www.astemagazine.com'), T('.')]),
@@ -389,14 +397,14 @@ async function genAvviso(proc, lotti, opts, logoB64) {
       BLT(B('www.idealista.it')),
     ]),
     BR(),
-    P(B('VARIE')),
+    PSC([B('VARIE')]),
     P([T('I beni posti in vendita potranno essere visionati, previo appuntamento con il Gestore della Vendita Pro.Ges.S., al numero '), B('0341.593511'), T(' oppure all\u2019indirizzo e-mail: '), B('info@progess-italia.it'), T('.')]),
     P([T('Ogni ulteriore informazione potr\u00e0 essere chiesta a Pro.Ges.S. S.r.l. all\u2019indirizzo e-mail info@progess-italia.it \u2013 Tel. 0341.593511 \u2013 oppure al '), T(referente || 'Curatore della procedura'), T('.')]),
     BR(),
-    P(B('FORO DI COMPETENZA')),
+    PSC([B('FORO DI COMPETENZA')]),
     P([T('Per qualsivoglia controversia comunque riferibile al presente Regolamento di vendita, sar\u00e0 competente in via esclusiva il Tribunale di '), B(proc.tribunale || '__________'), T('.')]),
     BR(),
-    P(B('DISPOSIZIONI FINALI')),
+    PSC([B('DISPOSIZIONI FINALI')]),
     P(T('Il presente Regolamento di vendita sostituisce ogni precedente regolamento eventualmente pubblicato.')),
     ...(noteFinali ? [BR(), P(T(noteFinali))] : []),
   ]
@@ -417,7 +425,7 @@ async function genAvviso(proc, lotti, opts, logoB64) {
       ...(proc.sezione ? [PC([B('SEZIONE '+(proc.sezione||'').toUpperCase())])] : []),
       PC([B((proc.tipo||'').toUpperCase())]),
       PC([B('\u201c'+(proc.nome||'')+'\u201d')]),
-      PC([B('NR./ANNO ' + nrg)]),
+
       ...(proc.giudice  ? [PC([B('GIUDICE DELEGATO: '+(proc.giudice||'').toUpperCase())])] : []),
       ...(proc.curatore ? [PC([B('CURATORE: '+(proc.curatore||'').toUpperCase())])]        : []),
       // Separatore e titoli AVVISO: bold centrati 12pt, spacing 6pt come nel modello
@@ -427,8 +435,8 @@ async function genAvviso(proc, lotti, opts, logoB64) {
       ...(nEsp ? [PCA([B(nEsp, SZT)])] : []),
       BR(),
       // Corpo: justify, Times New Roman 11pt, spacing 1.5
-      P([T('Il/La sottoscritto/a ', {italics:true}), T(proc.curatore||'', {italics:true}),
-         T(', nella sua qualit\u00e0 di '+(proc.tipo||'')+' della Procedura n. '+nrg+
+      P([T(g.apertura+' ', {italics:true}), T(proc.curatore||'', {italics:true}),
+         T(', nella sua qualit\u00e0 di '+ruolo+' della Procedura n. '+nrg+
            (proc.nome ? ' denominata \u201c'+proc.nome+'\u201d' : '')+
            ' dichiarata dal Tribunale di '+(proc.tribunale||'')+
            (proc.giudice ? ', Giudice Delegato '+(proc.giudice||'') : '')+',')]),
@@ -442,7 +450,7 @@ async function genAvviso(proc, lotti, opts, logoB64) {
       BR(), BR(),
       P([T((proc.tribunale ? proc.tribunale.charAt(0).toUpperCase()+proc.tribunale.slice(1) : 'Lecco') + ', ' + fmtD(new Date().toISOString().slice(0,10)))]),
       BR(),
-      P([T('\t\t\t\t\t'), B('Il '+(proc.tipo||'Curatore'))]),
+      P([T('\t\t\t\t\t'), B(g.ilLa+' '+ruolo)]),
       P([T('\t\t\t\t\t'), T(proc.curatore||'')]),
       BR(), P(T('________________________________')),
       BR(),
