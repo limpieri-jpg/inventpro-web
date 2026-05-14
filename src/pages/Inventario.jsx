@@ -132,9 +132,14 @@ Rispondi SOLO con JSON valido (no markdown, no commenti):
   "modello": "modello se visibile, stringa vuota se non visibile",
   "anno_prod": "anno se stimabile, stringa vuota altrimenti",
   "stato": "Ottimo|Buono|Discreto|Deteriorato|Non funzionante",
-  "danni": "descrizione danni visibili (graffi, ammaccature, parti mancanti, ecc.), stringa vuota se nessun danno",
-  "val_mercato": numero intero euro (valore mercato realistico per bene usato di questo tipo),
-  "val_giud": numero intero euro (valore vendita giudiziaria, tipicamente 60-75% del valore mercato)
+  "danni": "descrizione danni visibili, stringa vuota se nessun danno",
+  "val_mercato": numero intero euro (valore mercato realistico per bene usato),
+  "val_giud": numero intero euro (vendita giudiziaria, tipicamente 60-75% del mercato),
+  "targa": "se veicolo, stringa vuota altrimenti",
+  "telaio": "VIN se veicolo, stringa vuota altrimenti",
+  "km": "chilometraggio se veicolo, stringa vuota altrimenti",
+  "colore": "colore se veicolo, stringa vuota altrimenti",
+  "alimentazione": "Benzina|Diesel|Ibrido|Elettrico|GPL|Metano|Altro se veicolo, stringa vuota altrimenti"
 }` }
       ]
 
@@ -165,8 +170,14 @@ Rispondi SOLO con JSON valido (no markdown, no commenti):
         danni:       json.danni    || f.danni          || '',
         val_mercato: json.val_mercato || f.val_mercato,
         val_giud:    json.val_giud    || f.val_giud,
+        // campi veicolo
+        ...(json.targa        && {targa:        json.targa}),
+        ...(json.telaio       && {telaio:       json.telaio}),
+        ...(json.km           && {km:           json.km}),
+        ...(json.colore       && {colore:       json.colore}),
+        ...(json.alimentazione && {alimentazione: json.alimentazione}),
       }))
-      if (json.danni) setTab('danni')
+      // tab rimane su 'dati' dopo l'analisi
       notify('Analisi AI completata — verifica i valori generati', 'ok', 5000)
     } catch (e) { notify('Errore AI: ' + e.message, 'err') }
     finally { setAnalyzing(false) }
@@ -281,10 +292,84 @@ Rispondi SOLO con JSON valido (no markdown, no commenti):
                   <textarea className="form-input" value={form.desc_estesa||''} onChange={e=>set('desc_estesa',e.target.value)} rows={3} placeholder="Dettagli tecnici per verbale di inventario…"/>
                 </div>
                 <div className="form-section" style={{gridColumn:'1/-1'}}>Identificazione</div>
+
+                {/* Campi comuni */}
                 <div className="form-group"><label className="form-label">Marca</label><input className="form-input" value={form.marca||''} onChange={e=>set('marca',e.target.value)}/></div>
                 <div className="form-group"><label className="form-label">Modello</label><input className="form-input" value={form.modello||''} onChange={e=>set('modello',e.target.value)}/></div>
-                <div className="form-group"><label className="form-label">Anno produzione</label><input className="form-input" value={form.anno_prod||''} onChange={e=>set('anno_prod',e.target.value)} placeholder="Es. 2018"/></div>
+                <div className="form-group"><label className="form-label">Anno</label><input className="form-input" value={form.anno_prod||''} onChange={e=>set('anno_prod',e.target.value)} placeholder="Es. 2018"/></div>
                 <div className="form-group"><label className="form-label">Matricola / S/N</label><input className="form-input" value={form.matricola||''} onChange={e=>set('matricola',e.target.value)}/></div>
+
+                {/* ── BENE MOBILE REGISTRATO ── */}
+                {form.tipologia_siecic === 'BENE MOBILE REGISTRATO' && (<>
+                  <div className="form-group"><label className="form-label">Targa</label><input className="form-input" value={form.targa||''} onChange={e=>set('targa',e.target.value)} placeholder="Es. AB123CD" style={{textTransform:'uppercase'}}/></div>
+                  <div className="form-group"><label className="form-label">N. Telaio (VIN)</label><input className="form-input" value={form.telaio||''} onChange={e=>set('telaio',e.target.value)} style={{fontFamily:'monospace'}}/></div>
+                  <div className="form-group"><label className="form-label">Km / Ore lavoro</label><input className="form-input" value={form.km||''} onChange={e=>set('km',e.target.value)} placeholder="Es. 120.000"/></div>
+                  <div className="form-group"><label className="form-label">Colore</label><input className="form-input" value={form.colore||''} onChange={e=>set('colore',e.target.value)}/></div>
+                  <div className="form-group"><label className="form-label">Alimentazione</label>
+                    <select className="form-input" value={form.alimentazione||''} onChange={e=>set('alimentazione',e.target.value)}>
+                      {['','Benzina','Diesel','Ibrido','Elettrico','GPL','Metano','Altro'].map(a=><option key={a}>{a}</option>)}
+                    </select>
+                  </div>
+                  <div className="form-group"><label className="form-label">Cilindrata (cc)</label><input className="form-input" value={form.cilindrata||''} onChange={e=>set('cilindrata',e.target.value)} placeholder="Es. 1600"/></div>
+                  <div className="form-group"><label className="form-label">Potenza (kW/CV)</label><input className="form-input" value={form.potenza||''} onChange={e=>set('potenza',e.target.value)} placeholder="Es. 85 kW / 115 CV"/></div>
+                  <div className="form-group"><label className="form-label">Data immatricolazione</label><input className="form-input" value={form.data_immat||''} onChange={e=>set('data_immat',e.target.value)} placeholder="gg/mm/aaaa"/></div>
+                  <div className="form-group"><label className="form-label">Revisione scadenza</label><input className="form-input" value={form.revisione||''} onChange={e=>set('revisione',e.target.value)} placeholder="gg/mm/aaaa"/></div>
+                  <div className="form-group"><label className="form-label">N. posti</label><input className="form-input" value={form.n_posti||''} onChange={e=>set('n_posti',e.target.value)}/></div>
+                </>)}
+
+                {/* ── BENE IMMOBILE ── */}
+                {form.tipologia_siecic === 'BENE IMMOBILE' && (<>
+                  <div className="form-section" style={{gridColumn:'1/-1'}}>Dati catastali</div>
+                  <div className="form-group"><label className="form-label">Comune catastale</label><input className="form-input" value={form.comune_catastale||''} onChange={e=>set('comune_catastale',e.target.value)}/></div>
+                  <div className="form-group"><label className="form-label">Foglio</label><input className="form-input" value={form.foglio||''} onChange={e=>set('foglio',e.target.value)}/></div>
+                  <div className="form-group"><label className="form-label">Particella / Mappale</label><input className="form-input" value={form.mappale||''} onChange={e=>set('mappale',e.target.value)}/></div>
+                  <div className="form-group"><label className="form-label">Subalterno</label><input className="form-input" value={form.subalterno||''} onChange={e=>set('subalterno',e.target.value)}/></div>
+                  <div className="form-group"><label className="form-label">Categoria catastale</label><input className="form-input" value={form.categoria_catastale||''} onChange={e=>set('categoria_catastale',e.target.value)} placeholder="Es. A/2, C/1, D/7"/></div>
+                  <div className="form-group"><label className="form-label">Classe</label><input className="form-input" value={form.classe_catastale||''} onChange={e=>set('classe_catastale',e.target.value)}/></div>
+                  <div className="form-group"><label className="form-label">Rendita catastale (€)</label><input className="form-input" value={form.rendita||''} onChange={e=>set('rendita',e.target.value)}/></div>
+                  <div className="form-group"><label className="form-label">Vani / Consistenza</label><input className="form-input" value={form.vani||''} onChange={e=>set('vani',e.target.value)} placeholder="Es. 5 vani / 120 mq"/></div>
+                  <div className="form-section" style={{gridColumn:'1/-1'}}>Ubicazione e caratteristiche</div>
+                  <div className="form-col-full form-group"><label className="form-label">Indirizzo</label><input className="form-input" value={form.indirizzo_immobile||''} onChange={e=>set('indirizzo_immobile',e.target.value)} placeholder="Via, n., Comune (PR)"/></div>
+                  <div className="form-group"><label className="form-label">Piano</label><input className="form-input" value={form.piano||''} onChange={e=>set('piano',e.target.value)} placeholder="Es. 2° / Terra"/></div>
+                  <div className="form-group"><label className="form-label">Superficie (mq)</label><input className="form-input" value={form.superficie||''} onChange={e=>set('superficie',e.target.value)}/></div>
+                  <div className="form-group"><label className="form-label">Anno costruzione</label><input className="form-input" value={form.anno_costruzione||''} onChange={e=>set('anno_costruzione',e.target.value)}/></div>
+                  <div className="form-group"><label className="form-label">Stato conservazione</label>
+                    <select className="form-input" value={form.stato_conservazione||''} onChange={e=>set('stato_conservazione',e.target.value)}>
+                      {['','Ottimo','Buono','Discreto','Da ristrutturare','Fatiscente'].map(s=><option key={s}>{s}</option>)}
+                    </select>
+                  </div>
+                  <div className="form-group"><label className="form-label">Classe energetica</label>
+                    <select className="form-input" value={form.classe_energetica||''} onChange={e=>set('classe_energetica',e.target.value)}>
+                      {['','A4','A3','A2','A1','B','C','D','E','F','G'].map(s=><option key={s}>{s}</option>)}
+                    </select>
+                  </div>
+                  <div className="form-col-full form-group"><label className="form-label">Pertinenze e accessori</label><textarea className="form-input" value={form.pertinenze||''} onChange={e=>set('pertinenze',e.target.value)} rows={2} placeholder="Es. Garage, cantina, posto auto..."/></div>
+                  <div className="form-col-full form-group"><label className="form-label">Iscrizioni e trascrizioni pregiudizievoli</label><textarea className="form-input" value={form.iscrizioni||''} onChange={e=>set('iscrizioni',e.target.value)} rows={2} placeholder="Es. Ipoteca volontaria, pignoramento..."/></div>
+                </>)}
+
+                {/* ── CREDITO ── */}
+                {form.tipologia_siecic === 'CREDITO' && (<>
+                  <div className="form-group"><label className="form-label">Debitore</label><input className="form-input" value={form.debitore||''} onChange={e=>set('debitore',e.target.value)}/></div>
+                  <div className="form-group"><label className="form-label">CF / P.IVA debitore</label><input className="form-input" value={form.cf_debitore||''} onChange={e=>set('cf_debitore',e.target.value)}/></div>
+                  <div className="form-group"><label className="form-label">Importo nominale (€)</label><input className="form-input" value={form.importo_nominale||''} onChange={e=>set('importo_nominale',e.target.value)}/></div>
+                  <div className="form-group"><label className="form-label">Data scadenza</label><input className="form-input" value={form.data_scadenza||''} onChange={e=>set('data_scadenza',e.target.value)} placeholder="gg/mm/aaaa"/></div>
+                  <div className="form-group"><label className="form-label">Titolo (fattura, sentenza…)</label><input className="form-input" value={form.titolo_credito||''} onChange={e=>set('titolo_credito',e.target.value)}/></div>
+                  <div className="form-group"><label className="form-label">Esigibilità stimata</label>
+                    <select className="form-input" value={form.esigibilita||''} onChange={e=>set('esigibilita',e.target.value)}>
+                      {['','Alta','Media','Bassa','Incerta','Inesigibile'].map(s=><option key={s}>{s}</option>)}
+                    </select>
+                  </div>
+                </>)}
+
+                {/* ── PARTECIPAZIONE ── */}
+                {form.tipologia_siecic === 'PARTECIPAZIONE' && (<>
+                  <div className="form-group"><label className="form-label">Società</label><input className="form-input" value={form.societa||''} onChange={e=>set('societa',e.target.value)}/></div>
+                  <div className="form-group"><label className="form-label">CF / P.IVA società</label><input className="form-input" value={form.cf_societa||''} onChange={e=>set('cf_societa',e.target.value)}/></div>
+                  <div className="form-group"><label className="form-label">Quota (%)</label><input className="form-input" value={form.quota_perc||''} onChange={e=>set('quota_perc',e.target.value)} placeholder="Es. 50%"/></div>
+                  <div className="form-group"><label className="form-label">N. azioni / quote</label><input className="form-input" value={form.n_azioni||''} onChange={e=>set('n_azioni',e.target.value)}/></div>
+                  <div className="form-group"><label className="form-label">Valore nominale (€)</label><input className="form-input" value={form.val_nominale||''} onChange={e=>set('val_nominale',e.target.value)}/></div>
+                  <div className="form-group"><label className="form-label">Sede società</label><input className="form-input" value={form.sede_societa||''} onChange={e=>set('sede_societa',e.target.value)}/></div>
+                </>)}
                 <div className="form-section" style={{gridColumn:'1/-1'}}>Classificazione</div>
                 <div className="form-group">
                   <label className="form-label">Tipologia SIECIC</label>
