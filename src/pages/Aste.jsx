@@ -149,29 +149,6 @@ async function genAvviso(proc, lotti, opts, logoB64) {
          : 'Saldo Lotto ___ \u2014 ' + base
   }
 
-  // ── Tabella lotti ─────────────────────────────────────────────────────────
-  const colW = [Math.floor(CW*0.40), Math.floor(CW*0.06), Math.floor(CW*0.18), Math.floor(CW*0.18), Math.floor(CW*0.18)]
-  const tblLotti = new Table({ width:{size:CW,type:WidthType.DXA}, columnWidths:colW, borders:BTS, rows:[
-    new TableRow({ children:[
-      mkCell([B('Descrizione lotto',20)], colW[0], {fill:'244061', align:AlignmentType.LEFT}),
-      mkCell([B('Q.t\u00e0',20)],         colW[1], {fill:'244061', align:C}),
-      mkCell([B('Prezzo base',20)],       colW[2], {fill:'244061', align:AlignmentType.RIGHT}),
-      mkCell([B('Offerta minima',20)],    colW[3], {fill:'244061', align:AlignmentType.RIGHT}),
-      mkCell([B('Rilancio minimo',20)],   colW[4], {fill:'244061', align:AlignmentType.RIGHT}),
-    ]}),
-    ...lotti.map((l,i) => {
-      const shade   = i%2===0 ? 'F8F9FA' : 'FFFFFF'
-      const baseVal = l.base || prezzoBase
-      const offMin  = l.offertaMinima || offertaMinima || baseVal
-      return new TableRow({ children:[
-        mkCell([T(l.desc||'\u2014',{size:20})],                        colW[0], {fill:shade}),
-        mkCell([T(String(l.qta||1),{size:20})],                        colW[1], {fill:shade, align:C}),
-        mkCell([T(fmtEur(baseVal),{size:20})],                         colW[2], {fill:shade, align:AlignmentType.RIGHT}),
-        mkCell([T(fmtEur(offMin),{size:20})],                          colW[3], {fill:shade, align:AlignmentType.RIGHT}),
-        mkCell([T(fmtEur(l.rilancio||rilancioMin),{size:20})],         colW[4], {fill:shade, align:AlignmentType.RIGHT}),
-      ]})
-    }),
-  ]})
 
   // ── Paragrafo AVVISA ──────────────────────────────────────────────────────
   let pAvvisa
@@ -195,11 +172,57 @@ async function genAvviso(proc, lotti, opts, logoB64) {
     ])
   }
 
-  // ── Tabella lotti nel corpo del documento ────────────────────────────────
+  // ── Sezione descrizione lotti con elenco articoli ────────────────────────
+  const descrizioneLotto = (l, idx) => {
+    const nomeLotto = l.nome || l.desc || ('Lotto ' + (idx + 1))
+    const baseVal   = l.base || prezzoBase
+    const offMin    = l.offertaMinima || offertaMinima || baseVal
+    const rilancio  = l.rilancio || rilancioMin
+    const arts      = l.articoli || []
+
+    // Riga descrizione articolo: "n. Marca Modello — desc_breve (matricola: X)"
+    const rigaArticolo = (a) => {
+      const parti = []
+      if (a.quantita && a.quantita !== '1') parti.push(a.quantita + (a.unita_misura ? ' ' + a.unita_misura : '') + ' x')
+      if (a.marca)     parti.push(a.marca)
+      if (a.modello)   parti.push(a.modello)
+      if (a.desc_breve && a.desc_breve !== a.modello) parti.push('— ' + a.desc_breve)
+      if (a.matricola) parti.push('(matr. ' + a.matricola + ')')
+      if (a.anno)      parti.push('(' + a.anno + ')')
+      return parti.join(' ') || a.desc_breve || '—'
+    }
+
+    return [
+      BR(),
+      PSC([B(nomeLotto.toUpperCase())]),
+      ...(l.descrizione && l.descrizione !== nomeLotto
+        ? [P([T(l.descrizione)])]
+        : []),
+      // Elenco articoli (solo se presenti e modalità DB)
+      ...(arts.length > 0 ? [
+        BR(),
+        PL([B('Composizione del lotto:')]),
+        ...arts.map((a, i) => PL([
+          B(String(i + 1) + '. '),
+          T(rigaArticolo(a))
+        ])),
+      ] : []),
+      BR(),
+      // Valori economici: bold, allineati a sinistra come nel modello
+      PL([B('PREZZO BASE: '), T(fmtEur(baseVal))]),
+      PL([B('OFFERTA MINIMA AMMISSIBILE: '), T(fmtEur(offMin))]),
+      PL([B('RILANCI MINIMI in caso di GARA: '), T(fmtEur(rilancio))]),
+      PL([B('DEPOSITO CAUZIONALE: '), T(cau + '% del prezzo offerto')]),
+      PL([B('DIRITTI D’ASTA: '), T(dir + '% oltre IVA al 22%, da calcolarsi sul prezzo di aggiudicazione')]),
+    ]
+  }
+
   const sezioneDescrizioneLotti = [
     BR(),
-    P(B('DESCRIZIONE DEI BENI POSTI IN VENDITA E PREZZI')),
-    BR(), tblLotti, BR(),
+    PSC([B('DESCRIZIONE DEI BENI POSTI IN VENDITA E PREZZI')]),
+    BR(),
+    ...lotti.flatMap((l, i) => descrizioneLotto(l, i)),
+    BR(),
   ]
 
   // ── Sezione: Modalità offerte ─────────────────────────────────────────────
@@ -490,7 +513,7 @@ function LottoRow({ lotto, idx, total, onChange, onRemove }) {
 // ─── Testo default offerta irrevocabile ───────────────────────────────────────
 const mkTestoOfferta = (data, importo) => {
   const d = data || '___'
-  const i = importo ? 'Euro ' + importo + ' OLTRE IVA SE DOVUTA E ONERI DI LEGGE SE E NELLA QUOTA DOVUTA' : 'Euro ___'
+  const i = importo ? 'Euro ' + importo + ' OLTRE IVA SE DOVUTA E ONERI DI LEGGE' : 'Euro ___'
   return 'che in data ' + d + ' è stata ricevuta un’offerta irrevocabile d’acquisto a lotto unico per la somma di ' + i + '. ' +
     'Nel rispetto dei principi di competitività e trasparenza si avvia una gara competitiva telematica ' +
     'allo scopo di permettere a eventuali interessati di partecipare presentando la propria offerta ' +
@@ -576,9 +599,26 @@ function WizardAvviso({ proc, onClose, notify }) {
     if (lottiMode !== 'db') return
     const load = async () => {
       setLoadingLotti(true)
-      const { data } = await supabase.from('lotti').select('*').eq('proc_id', proc.id).order('numero')
-      setLottiDb(data || [])
-      setLottiDbSel((data || []).map(l => l.id))
+      // Carica lotti con articoli collegati
+      const { data: lottiRaw } = await supabase
+        .from('lotti')
+        .select('*, lotti_articoli(articolo_id)')
+        .eq('proc_id', proc.id)
+        .order('numero')
+      if (!lottiRaw) { setLoadingLotti(false); return }
+      // Per ogni lotto carica i dati degli articoli
+      const lottiConArticoli = await Promise.all(lottiRaw.map(async (l) => {
+        const ids = (l.lotti_articoli || []).map(la => la.articolo_id)
+        if (ids.length === 0) return { ...l, articoli: [] }
+        const { data: arts } = await supabase
+          .from('articoli')
+          .select('id, desc_breve, marca, modello, matricola, anno, quantita, unita_misura, note')
+          .in('id', ids)
+          .order('sort_order', { ascending: true })
+        return { ...l, articoli: arts || [] }
+      }))
+      setLottiDb(lottiConArticoli)
+      setLottiDbSel(lottiConArticoli.map(l => l.id))
       setLoadingLotti(false)
     }
     load()
@@ -596,7 +636,9 @@ function WizardAvviso({ proc, onClose, notify }) {
   // Lotti effettivi da passare a genAvviso
   const lottiEffettivi = lottiMode === 'db'
     ? lottiDb.filter(l => lottiDbSel.includes(l.id)).map(l => ({
-        desc: l.nome || l.descrizione || '\u2014',
+        nome: l.nome || l.descrizione || '\u2014',
+        descrizione: l.descrizione || '',
+        articoli: l.articoli || [],
         qta: 1,
         base: l.prezzo_base || '',
         offertaMinima: l.offerta_minima || '',
