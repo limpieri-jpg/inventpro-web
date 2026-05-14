@@ -127,7 +127,13 @@ async function genAvviso(proc, lotti, opts, logoB64) {
     offertaIrrevocabile, offertaIrrevData, offertaIrrevImporto, testoOfferta } = opts
 
   const nrg      = (proc.num||'') + (proc.anno?'/'+proc.anno:'')
-  const g        = getGenereTermini(proc.cf_curatore || '')
+  // Genere: dal CF se disponibile, altrimenti dal titolo (Dott.ssa = F)
+  const _cfCur = proc.cf_curatore || ''
+  const _nomeCur = (proc.curatore || '').toLowerCase()
+  const _isF = _cfCur
+    ? (parseInt((_cfCur).substring(9,11),10) > 40)
+    : (_nomeCur.includes('.ssa') || _nomeCur.includes('dott.ssa') || _nomeCur.includes('avv.ssa') || _nomeCur.includes('ssa '))
+  const g = getGenereTermini(_isF ? 'AAABBB85P65A123K' : 'AAABBB85L01A123K')
   const ruolo    = g.qualita(proc.tipo)
   const isPVP    = tipoAsta.includes('pvp')
   const isAMag   = tipoAsta.includes('amag')
@@ -161,7 +167,7 @@ async function genAvviso(proc, lotti, opts, logoB64) {
   // ── Paragrafo AVVISA ──────────────────────────────────────────────────────
   let pAvvisa
   if (offertaIrrevocabile && (testoOfferta||'').trim()) {
-    pAvvisa = P([B('AVVISA'), T(' ' + testoOfferta.trim())])
+    pAvvisa = P([T(' ' + testoOfferta.trim())])
   } else if (isAMag) {
     pAvvisa = P([
       B('AVVISA'),
@@ -425,7 +431,7 @@ async function genAvviso(proc, lotti, opts, logoB64) {
       ...(proc.sezione ? [PC([B('SEZIONE '+(proc.sezione||'').toUpperCase())])] : []),
       PC([B((proc.tipo||'').toUpperCase())]),
       PC([B('\u201c'+(proc.nome||'')+'\u201d')]),
-
+      PC([B('RG ' + nrg)]),
       ...(proc.giudice  ? [PC([B('GIUDICE DELEGATO: '+(proc.giudice||'').toUpperCase())])] : []),
       ...(proc.curatore ? [PC([B('CURATORE: '+(proc.curatore||'').toUpperCase())])]        : []),
       // Separatore e titoli AVVISO: bold centrati 12pt, spacing 6pt come nel modello
@@ -441,6 +447,7 @@ async function genAvviso(proc, lotti, opts, logoB64) {
            ' dichiarata dal Tribunale di '+(proc.tribunale||'')+
            (proc.giudice ? ', Giudice Delegato '+(proc.giudice||'') : '')+',')]),
       BR(),
+      PCA([B('AVVISA')]),
       pAvvisa,
       ...sezioneDescrizioneLotti,
       ...sezioneOfferte,
