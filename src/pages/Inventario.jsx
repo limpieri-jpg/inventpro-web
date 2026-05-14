@@ -283,27 +283,67 @@ Rispondi SOLO con JSON valido (no markdown, no commenti):
             <div className="card-header"><div className="card-title">📋 Dati articolo</div></div>
             <div className="card-body">
               <div className="form-grid">
+
+                {/* ── CLASSIFICAZIONE ── */}
+                <div className="form-section" style={{gridColumn:'1/-1'}}>Classificazione</div>
+                <div className="form-group">
+                  <label className="form-label">Tipologia SIECIC</label>
+                  <select className="form-input" value={form.tipologia_siecic||'BENE MOBILE'} onChange={e=>{set('tipologia_siecic',e.target.value);set('sottocategoria',SOTTOCATEGORIE[e.target.value]?.[0]||'')}}>
+                    {TIPOLOGIE_SIECIC.map(t=><option key={t}>{t}</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Sottocategoria</label>
+                  <select className="form-input" value={form.sottocategoria||''} onChange={e=>set('sottocategoria',e.target.value)}>
+                    {(SOTTOCATEGORIE[form.tipologia_siecic]||SOTTOCATEGORIE['ALTRO']).map(s=><option key={s}>{s}</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Quantità</label>
+                  <input type="number" className="form-input" value={form.qta??1} onChange={e=>set('qta',e.target.value)} min="0" step="1"/>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Unità di misura</label>
+                  <select className="form-input" value={form.unita_misura||'UN'} onChange={e=>set('unita_misura',e.target.value)}>
+                    {UM_LIST.map(u=><option key={u}>{u}</option>)}
+                  </select>
+                </div>
+
+                {/* ── DESCRIZIONE ── */}
+                <div className="form-section" style={{gridColumn:'1/-1'}}>Descrizione</div>
                 <div className="form-col-full form-group">
                   <label className="form-label">Descrizione breve *</label>
                   <input className="form-input" value={form.desc_breve} onChange={e=>set('desc_breve',e.target.value)} placeholder="Es. Tornio parallelo CNC Mazak"/>
                 </div>
                 <div className="form-col-full form-group">
                   <label className="form-label">Descrizione estesa</label>
-                  <textarea className="form-input" value={form.desc_estesa||''} onChange={e=>set('desc_estesa',e.target.value)} rows={3} placeholder="Dettagli tecnici per verbale di inventario…"/>
+                  <textarea className="form-input" value={form.desc_estesa||''} onChange={e=>set('desc_estesa',e.target.value)} rows={3} placeholder="Dettagli per verbale di inventario…"/>
                 </div>
-                <div className="form-section" style={{gridColumn:'1/-1'}}>Identificazione</div>
 
-                {/* Campi comuni */}
-                <div className="form-group"><label className="form-label">Marca</label><input className="form-input" value={form.marca||''} onChange={e=>set('marca',e.target.value)}/></div>
-                <div className="form-group"><label className="form-label">Modello</label><input className="form-input" value={form.modello||''} onChange={e=>set('modello',e.target.value)}/></div>
-                <div className="form-group"><label className="form-label">Anno</label><input className="form-input" value={form.anno_prod||''} onChange={e=>set('anno_prod',e.target.value)} placeholder="Es. 2018"/></div>
-                <div className="form-group"><label className="form-label">Matricola / S/N</label><input className="form-input" value={form.matricola||''} onChange={e=>set('matricola',e.target.value)}/></div>
+                {/* ══ BENE MOBILE ══ */}
+                {(form.tipologia_siecic==='BENE MOBILE'||form.tipologia_siecic==='ALTRO') && (<>
+                  <div className="form-section" style={{gridColumn:'1/-1'}}>Identificazione</div>
+                  <div className="form-group"><label className="form-label">Marca</label><input className="form-input" value={form.marca||''} onChange={e=>set('marca',e.target.value)}/></div>
+                  <div className="form-group"><label className="form-label">Modello</label><input className="form-input" value={form.modello||''} onChange={e=>set('modello',e.target.value)}/></div>
+                  <div className="form-group"><label className="form-label">Anno produzione</label><input className="form-input" value={form.anno_prod||''} onChange={e=>set('anno_prod',e.target.value)} placeholder="Es. 2018"/></div>
+                  <div className="form-group"><label className="form-label">Matricola / S/N</label><input className="form-input" value={form.matricola||''} onChange={e=>set('matricola',e.target.value)}/></div>
+                  <div className="form-group"><label className="form-label">Stato</label>
+                    <select className="form-input" value={form.stato||'Buono'} onChange={e=>set('stato',e.target.value)}>
+                      {['Ottimo','Buono','Discreto','Deteriorato','Non funzionante'].map(s=><option key={s}>{s}</option>)}
+                    </select>
+                  </div>
+                </>)}
 
-                {/* ── BENE MOBILE REGISTRATO ── */}
-                {form.tipologia_siecic === 'BENE MOBILE REGISTRATO' && (<>
+                {/* ══ BENE MOBILE REGISTRATO ══ */}
+                {form.tipologia_siecic==='BENE MOBILE REGISTRATO' && (<>
+                  <div className="form-section" style={{gridColumn:'1/-1'}}>Dati veicolo</div>
+                  <div className="form-group"><label className="form-label">Marca</label><input className="form-input" value={form.marca||''} onChange={e=>set('marca',e.target.value)}/></div>
+                  <div className="form-group"><label className="form-label">Modello</label><input className="form-input" value={form.modello||''} onChange={e=>set('modello',e.target.value)}/></div>
                   <div className="form-group"><label className="form-label">Targa</label><input className="form-input" value={form.targa||''} onChange={e=>set('targa',e.target.value)} placeholder="Es. AB123CD" style={{textTransform:'uppercase'}}/></div>
                   <div className="form-group"><label className="form-label">N. Telaio (VIN)</label><input className="form-input" value={form.telaio||''} onChange={e=>set('telaio',e.target.value)} style={{fontFamily:'monospace'}}/></div>
                   <div className="form-group"><label className="form-label">Km / Ore lavoro</label><input className="form-input" value={form.km||''} onChange={e=>set('km',e.target.value)} placeholder="Es. 120.000"/></div>
+                  <div className="form-group"><label className="form-label">Anno immatricolazione</label><input className="form-input" value={form.anno_prod||''} onChange={e=>set('anno_prod',e.target.value)} placeholder="Es. 2018"/></div>
+                  <div className="form-group"><label className="form-label">Data immatricolazione</label><input className="form-input" value={form.data_immat||''} onChange={e=>set('data_immat',e.target.value)} placeholder="gg/mm/aaaa"/></div>
                   <div className="form-group"><label className="form-label">Colore</label><input className="form-input" value={form.colore||''} onChange={e=>set('colore',e.target.value)}/></div>
                   <div className="form-group"><label className="form-label">Alimentazione</label>
                     <select className="form-input" value={form.alimentazione||''} onChange={e=>set('alimentazione',e.target.value)}>
@@ -312,13 +352,17 @@ Rispondi SOLO con JSON valido (no markdown, no commenti):
                   </div>
                   <div className="form-group"><label className="form-label">Cilindrata (cc)</label><input className="form-input" value={form.cilindrata||''} onChange={e=>set('cilindrata',e.target.value)} placeholder="Es. 1600"/></div>
                   <div className="form-group"><label className="form-label">Potenza (kW/CV)</label><input className="form-input" value={form.potenza||''} onChange={e=>set('potenza',e.target.value)} placeholder="Es. 85 kW / 115 CV"/></div>
-                  <div className="form-group"><label className="form-label">Data immatricolazione</label><input className="form-input" value={form.data_immat||''} onChange={e=>set('data_immat',e.target.value)} placeholder="gg/mm/aaaa"/></div>
-                  <div className="form-group"><label className="form-label">Revisione scadenza</label><input className="form-input" value={form.revisione||''} onChange={e=>set('revisione',e.target.value)} placeholder="gg/mm/aaaa"/></div>
                   <div className="form-group"><label className="form-label">N. posti</label><input className="form-input" value={form.n_posti||''} onChange={e=>set('n_posti',e.target.value)}/></div>
+                  <div className="form-group"><label className="form-label">Revisione scadenza</label><input className="form-input" value={form.revisione||''} onChange={e=>set('revisione',e.target.value)} placeholder="gg/mm/aaaa"/></div>
+                  <div className="form-group"><label className="form-label">Stato</label>
+                    <select className="form-input" value={form.stato||'Buono'} onChange={e=>set('stato',e.target.value)}>
+                      {['Ottimo','Buono','Discreto','Deteriorato','Non funzionante'].map(s=><option key={s}>{s}</option>)}
+                    </select>
+                  </div>
                 </>)}
 
-                {/* ── BENE IMMOBILE ── */}
-                {form.tipologia_siecic === 'BENE IMMOBILE' && (<>
+                {/* ══ BENE IMMOBILE ══ */}
+                {form.tipologia_siecic==='BENE IMMOBILE' && (<>
                   <div className="form-section" style={{gridColumn:'1/-1'}}>Dati catastali</div>
                   <div className="form-group"><label className="form-label">Comune catastale</label><input className="form-input" value={form.comune_catastale||''} onChange={e=>set('comune_catastale',e.target.value)}/></div>
                   <div className="form-group"><label className="form-label">Foglio</label><input className="form-input" value={form.foglio||''} onChange={e=>set('foglio',e.target.value)}/></div>
@@ -347,8 +391,9 @@ Rispondi SOLO con JSON valido (no markdown, no commenti):
                   <div className="form-col-full form-group"><label className="form-label">Iscrizioni e trascrizioni pregiudizievoli</label><textarea className="form-input" value={form.iscrizioni||''} onChange={e=>set('iscrizioni',e.target.value)} rows={2} placeholder="Es. Ipoteca volontaria, pignoramento..."/></div>
                 </>)}
 
-                {/* ── CREDITO ── */}
-                {form.tipologia_siecic === 'CREDITO' && (<>
+                {/* ══ CREDITO ══ */}
+                {form.tipologia_siecic==='CREDITO' && (<>
+                  <div className="form-section" style={{gridColumn:'1/-1'}}>Dati credito</div>
                   <div className="form-group"><label className="form-label">Debitore</label><input className="form-input" value={form.debitore||''} onChange={e=>set('debitore',e.target.value)}/></div>
                   <div className="form-group"><label className="form-label">CF / P.IVA debitore</label><input className="form-input" value={form.cf_debitore||''} onChange={e=>set('cf_debitore',e.target.value)}/></div>
                   <div className="form-group"><label className="form-label">Importo nominale (€)</label><input className="form-input" value={form.importo_nominale||''} onChange={e=>set('importo_nominale',e.target.value)}/></div>
@@ -361,8 +406,9 @@ Rispondi SOLO con JSON valido (no markdown, no commenti):
                   </div>
                 </>)}
 
-                {/* ── PARTECIPAZIONE ── */}
-                {form.tipologia_siecic === 'PARTECIPAZIONE' && (<>
+                {/* ══ PARTECIPAZIONE ══ */}
+                {form.tipologia_siecic==='PARTECIPAZIONE' && (<>
+                  <div className="form-section" style={{gridColumn:'1/-1'}}>Dati partecipazione</div>
                   <div className="form-group"><label className="form-label">Società</label><input className="form-input" value={form.societa||''} onChange={e=>set('societa',e.target.value)}/></div>
                   <div className="form-group"><label className="form-label">CF / P.IVA società</label><input className="form-input" value={form.cf_societa||''} onChange={e=>set('cf_societa',e.target.value)}/></div>
                   <div className="form-group"><label className="form-label">Quota (%)</label><input className="form-input" value={form.quota_perc||''} onChange={e=>set('quota_perc',e.target.value)} placeholder="Es. 50%"/></div>
@@ -370,39 +416,34 @@ Rispondi SOLO con JSON valido (no markdown, no commenti):
                   <div className="form-group"><label className="form-label">Valore nominale (€)</label><input className="form-input" value={form.val_nominale||''} onChange={e=>set('val_nominale',e.target.value)}/></div>
                   <div className="form-group"><label className="form-label">Sede società</label><input className="form-input" value={form.sede_societa||''} onChange={e=>set('sede_societa',e.target.value)}/></div>
                 </>)}
-                <div className="form-section" style={{gridColumn:'1/-1'}}>Classificazione</div>
-                <div className="form-group">
-                  <label className="form-label">Tipologia SIECIC</label>
-                  <select className="form-input" value={form.tipologia_siecic||'BENE MOBILE'} onChange={e=>{set('tipologia_siecic',e.target.value);set('sottocategoria',SOTTOCATEGORIE[e.target.value]?.[0]||'')}}>
-                    {TIPOLOGIE_SIECIC.map(t=><option key={t}>{t}</option>)}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Sottocategoria</label>
-                  <select className="form-input" value={form.sottocategoria||''} onChange={e=>set('sottocategoria',e.target.value)}>
-                    {(SOTTOCATEGORIE[form.tipologia_siecic]||SOTTOCATEGORIE['ALTRO']).map(s=><option key={s}>{s}</option>)}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Stato</label>
-                  <select className="form-input" value={form.stato||'Buono'} onChange={e=>set('stato',e.target.value)}>
-                    {['Ottimo','Buono','Discreto','Deteriorato','Non funzionante'].map(s=><option key={s}>{s}</option>)}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Unità di misura</label>
-                  <select className="form-input" value={form.unita_misura||'UN'} onChange={e=>set('unita_misura',e.target.value)}>
-                    {UM_LIST.map(u=><option key={u}>{u}</option>)}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Quantità</label>
-                  <input type="number" className="form-input" value={form.qta??1} onChange={e=>set('qta',e.target.value)} min="0" step="1"/>
-                </div>
+
+                {/* ══ BENE IMMATERIALE ══ */}
+                {form.tipologia_siecic==='BENE IMMATERIALE' && (<>
+                  <div className="form-section" style={{gridColumn:'1/-1'}}>Dati bene immateriale</div>
+                  <div className="form-group"><label className="form-label">Titolare</label><input className="form-input" value={form.titolare||''} onChange={e=>set('titolare',e.target.value)}/></div>
+                  <div className="form-group"><label className="form-label">N. registrazione</label><input className="form-input" value={form.n_registrazione||''} onChange={e=>set('n_registrazione',e.target.value)}/></div>
+                  <div className="form-group"><label className="form-label">Data deposito</label><input className="form-input" value={form.data_deposito||''} onChange={e=>set('data_deposito',e.target.value)} placeholder="gg/mm/aaaa"/></div>
+                  <div className="form-group"><label className="form-label">Scadenza</label><input className="form-input" value={form.data_scadenza||''} onChange={e=>set('data_scadenza',e.target.value)} placeholder="gg/mm/aaaa"/></div>
+                  <div className="form-group"><label className="form-label">Territorio di tutela</label><input className="form-input" value={form.territorio||''} onChange={e=>set('territorio',e.target.value)} placeholder="Es. Italia, UE"/></div>
+                </>)}
+
+                {/* ══ AZIENDA / RAMO D'AZIENDA ══ */}
+                {form.tipologia_siecic==="AZIENDA/RAMO D'AZIENDA" && (<>
+                  <div className="form-section" style={{gridColumn:'1/-1'}}>Dati azienda</div>
+                  <div className="form-group"><label className="form-label">Ragione sociale</label><input className="form-input" value={form.rag_soc||''} onChange={e=>set('rag_soc',e.target.value)}/></div>
+                  <div className="form-group"><label className="form-label">CF / P.IVA</label><input className="form-input" value={form.cf_societa||''} onChange={e=>set('cf_societa',e.target.value)}/></div>
+                  <div className="form-group"><label className="form-label">Sede legale</label><input className="form-input" value={form.sede_societa||''} onChange={e=>set('sede_societa',e.target.value)}/></div>
+                  <div className="form-group"><label className="form-label">Settore ATECO</label><input className="form-input" value={form.ateco||''} onChange={e=>set('ateco',e.target.value)} placeholder="Es. 28.41"/></div>
+                  <div className="form-group"><label className="form-label">N. dipendenti</label><input className="form-input" value={form.n_dipendenti||''} onChange={e=>set('n_dipendenti',e.target.value)}/></div>
+                  <div className="form-group"><label className="form-label">Fatturato ultimo esercizio (€)</label><input className="form-input" value={form.fatturato||''} onChange={e=>set('fatturato',e.target.value)}/></div>
+                </>)}
+
+                {/* ── Note (sempre) ── */}
                 <div className="form-col-full form-group">
                   <label className="form-label">Note</label>
                   <textarea className="form-input" value={form.note||''} onChange={e=>set('note',e.target.value)} rows={2} placeholder="Informazioni aggiuntive…"/>
                 </div>
+
               </div>
             </div>
           </div>
