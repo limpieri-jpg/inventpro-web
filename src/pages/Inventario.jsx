@@ -8,11 +8,6 @@ import * as XLSX from 'xlsx'
 
 function fmtEur(n) { return n ? '€ ' + Number(n).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—' }
 
-const CATEGORIE = [
-  'Macchinari e impianti', 'Attrezzature', 'Arredi e ufficio', 'Veicoli e mezzi',
-  'Informatica ed elettronica', 'Materie prime e scorte', 'Titoli e quote societarie', 'Altro'
-]
-const UM_LIST = ['UN', 'KG', 'MT', 'MQ', 'LT', 'SET', 'LOTTO']
 
 const TIPOLOGIE_SIECIC = [
   'BENE MOBILE', 'BENE MOBILE REGISTRATO', 'BENE IMMOBILE',
@@ -615,7 +610,7 @@ export default function Inventario() {
           </div>
           <select className="filter-select" value={catFilter} onChange={e => { setCatFilter(e.target.value); setPage(0) }}>
             <option value="">Tutte le categorie</option>
-            {CATEGORIE.map(c => <option key={c}>{c}</option>)}
+            {TIPOLOGIE_SIECIC.map(c => <option key={c}>{c}</option>)}
           </select>
         </div>
         <div className="table-card">
