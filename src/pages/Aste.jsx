@@ -1,4 +1,5 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { supabase } from '../lib/supabase'
 import { useStore } from '../store/useStore'
 import { Topbar, Modal, Empty } from '../components/layout'
 import { Download, Plus } from 'lucide-react'
@@ -79,8 +80,11 @@ function mkFtr() {
 async function genAvviso(proc, lotti, opts, logoB64) {
   const { tipoAsta, nEsperimento, dataAsta, oraAsta, dataTermine, oraTermine,
     prezzoBase, offertaMinima, rilancioMin, cauzione, dirittiAsta,
-    termSaldo, ibanProcedura, intestazioneProcedura, referente, noteFinali,
-    offertaIrrevocabile, testoOfferta } = opts
+    termSaldo, ibanProcedura, intestazioneProcedura,
+    ibanCauzione: _ibanCau, bancaCauzione: _bancaCau,
+    ibanDiritti: _ibanDir, bancaDiritti: _bancaDir,
+    referente, noteFinali,
+    offertaIrrevocabile, offertaIrrevData, offertaIrrevImporto, testoOfferta } = opts
 
   const nrg      = (proc.num||'') + (proc.anno?'/'+proc.anno:'')
   const isPVP    = tipoAsta.includes('pvp')
@@ -93,10 +97,11 @@ async function genAvviso(proc, lotti, opts, logoB64) {
   const saldo    = termSaldo || '120'
   const nEsp     = nEsperimento ? nEsperimento + '\u00b0 ESPERIMENTO DI VENDITA' : ''
 
-  // IBAN fissi Pro.Ges.S.
-  const IBAN_CAU  = 'IT63 Y031 0422 9030 0000 0400 014'
-  const IBAN_DIR  = 'IT63 J031 0422 9030 0000 0820 981'
-  const BANCA_PGS = 'Deutsche Bank \u2014 Filiale di Lecco, Agenzia di Castello'
+  // IBAN da settings (fallback ai valori hardcoded)
+  const IBAN_CAU  = _ibanCau  || 'IT63 Y031 0422 9030 0000 0400 014'
+  const IBAN_DIR  = _ibanDir  || 'IT63 J031 0422 9030 0000 0820 981'
+  const BANCA_PGS = _bancaCau || 'Deutsche Bank \u2014 Filiale di Lecco, Agenzia di Castello'
+  const BANCA_DIR = _bancaDir || BANCA_PGS
 
   const causale = (tipo) => {
     const base = (proc.tipo||'') + ' n. ' + nrg + ' \u2014 Tribunale di ' + (proc.tribunale||'')
@@ -286,7 +291,7 @@ async function genAvviso(proc, lotti, opts, logoB64) {
     P([T('Entro 30 giorni dalla data di aggiudicazione, l\u2019aggiudicatario dovr\u00e0 versare i diritti d\u2019asta dovuti a Pro.Ges.S. S.r.l., nella misura del '), B(dir + '%'), T(' calcolato sul prezzo di aggiudicazione, oltre IVA al 22%, a mezzo bonifico a:')]),
     BR(),
     P(B('Beneficiario: Pro.Ges.S. S.r.l.')),
-    P([B('Banca beneficiario: ' + BANCA_PGS)]),
+    P([B('Banca beneficiario: ' + BANCA_DIR)]),
     P([B('IBAN: ' + IBAN_DIR)]),
     P([B('Causale: \u201c'), T(causale('dir')), B('\u201d')]),
   ]
@@ -411,22 +416,31 @@ function LottoRow({ lotto, idx, total, onChange, onRemove }) {
             onChange={e => onChange(idx,'qta',e.target.value)} />
         </div>
         <div className="form-group">
-          <label className="form-label">Prezzo base (€) \u2014 vuoto = globale</label>
-          <input className="form-input" value={lotto.base}
-            onChange={e => onChange(idx,'base',e.target.value)}
-            placeholder="Lascia vuoto per il valore globale" />
+          <label className="form-label">Prezzo base (€) — vuoto = globale</label>
+          <div style={{position:'relative'}}>
+            <input className="form-input" defaultValue={lotto.base}
+              onBlur={e => onChange(idx,'base',e.target.value)}
+              placeholder="Es: 5.000,00" style={{paddingLeft:28}} />
+            <span style={{position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:'var(--text3)',fontSize:13,pointerEvents:'none'}}>€</span>
+          </div>
         </div>
         <div className="form-group">
-          <label className="form-label">Offerta minima (€) \u2014 vuoto = prezzo base</label>
-          <input className="form-input" value={lotto.offertaMinima}
-            onChange={e => onChange(idx,'offertaMinima',e.target.value)}
-            placeholder="Lascia vuoto per il prezzo base" />
+          <label className="form-label">Offerta minima (€) — vuoto = prezzo base</label>
+          <div style={{position:'relative'}}>
+            <input className="form-input" defaultValue={lotto.offertaMinima}
+              onBlur={e => onChange(idx,'offertaMinima',e.target.value)}
+              placeholder="Es: 4.500,00" style={{paddingLeft:28}} />
+            <span style={{position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:'var(--text3)',fontSize:13,pointerEvents:'none'}}>€</span>
+          </div>
         </div>
         <div className="form-group">
-          <label className="form-label">Rilancio min. (€) \u2014 vuoto = globale</label>
-          <input className="form-input" value={lotto.rilancio}
-            onChange={e => onChange(idx,'rilancio',e.target.value)}
-            placeholder="Lascia vuoto per il valore globale" />
+          <label className="form-label">Rilancio min. (€) — vuoto = globale</label>
+          <div style={{position:'relative'}}>
+            <input className="form-input" defaultValue={lotto.rilancio}
+              onBlur={e => onChange(idx,'rilancio',e.target.value)}
+              placeholder="Es: 250,00" style={{paddingLeft:28}} />
+            <span style={{position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:'var(--text3)',fontSize:13,pointerEvents:'none'}}>€</span>
+          </div>
         </div>
       </div>
     </div>
@@ -445,6 +459,7 @@ const TESTO_OFFERTA_DEFAULT =
 function WizardAvviso({ proc, onClose, notify }) {
   const today = new Date().toISOString().slice(0,10)
   const [tipoAsta, setTipoAsta]               = useState('asincrona_pvp')
+  const [tipoBene, setTipoBene]               = useState('mobile')
   const [nEsperimento, setNEsperimento]       = useState('1')
   const [dataAsta, setDataAsta]               = useState(today)
   const [oraAsta, setOraAsta]                 = useState('12:00')
@@ -458,14 +473,67 @@ function WizardAvviso({ proc, onClose, notify }) {
   const [termSaldo, setTermSaldo]             = useState('120')
   const [ibanProcedura, setIbanProcedura]     = useState('')
   const [intestazioneProcedura, setIntestazioneProcedura] = useState('')
+  const [ibanCauzione, setIbanCauzione]       = useState('')
+  const [bancaCauzione, setBancaCauzione]     = useState('')
+  const [ibanDiritti, setIbanDiritti]         = useState('')
+  const [bancaDiritti, setBancaDiritti]       = useState('')
   const [referente, setReferente]             = useState('Pro.Ges.S. Srl \u2014 procedure@progess-italia.it')
   const [noteFinali, setNoteFinali]           = useState('')
+  // Lotti: 'manual' | 'db'
+  const [lottiMode, setLottiMode]             = useState('manual')
+  const [lottiDb, setLottiDb]                 = useState([])
+  const [lottiDbSel, setLottiDbSel]           = useState([])
+  const [loadingLotti, setLoadingLotti]       = useState(false)
   const [lotti, setLotti]                     = useState([{ desc:'Lotto unico \u2014 tutti i beni inventariati', qta:1, base:'', offertaMinima:'', rilancio:'' }])
+  // Offerta irrevocabile
   const [offertaIrrevocabile, setOffertaIrrevocabile] = useState(false)
-  const [testoOfferta, setTestoOfferta]       = useState(TESTO_OFFERTA_DEFAULT)
+  const [offertaIrrevGg,    setOffertaIrrevGg]    = useState('')
+  const [offertaIrrevMm,    setOffertaIrrevMm]    = useState('')
+  const [offertaIrrevAa,    setOffertaIrrevAa]    = useState('')
+  const [offertaIrrevImporto, setOffertaIrrevImporto] = useState('')
+  // computa data formattata gg/mm/aaaa
+  const offertaIrrevData = [offertaIrrevGg, offertaIrrevMm, offertaIrrevAa].filter(Boolean).join('/')
+  const [testoOfferta, setTestoOfferta]       = useState('')
+  const [savingTesto, setSavingTesto]         = useState(false)
   const [gen, setGen]                         = useState(false)
 
   const isAsincrona = tipoAsta.includes('asincrona') || tipoAsta === 'mista'
+
+  // Carica IBAN da settings e testo AVVISA dal DB all'apertura
+  useEffect(() => {
+    const load = async () => {
+      // IBAN da settings
+      const { data: s } = await supabase.from('settings').select('iban_cauzione,banca_cauzione,iban_diritti,banca_diritti').maybeSingle()
+      if (s) {
+        setIbanCauzione(s.iban_cauzione || 'IT63 Y031 0422 9030 0000 0400 014')
+        setBancaCauzione(s.banca_cauzione || 'Deutsche Bank \u2014 Filiale di Lecco, Agenzia di Castello')
+        setIbanDiritti(s.iban_diritti || 'IT63 J031 0422 9030 0000 0820 981')
+        setBancaDiritti(s.banca_diritti || 'Deutsche Bank \u2014 Filiale di Lecco, Agenzia di Castello')
+      } else {
+        setIbanCauzione('IT63 Y031 0422 9030 0000 0400 014')
+        setBancaCauzione('Deutsche Bank \u2014 Filiale di Lecco, Agenzia di Castello')
+        setIbanDiritti('IT63 J031 0422 9030 0000 0820 981')
+        setBancaDiritti('Deutsche Bank \u2014 Filiale di Lecco, Agenzia di Castello')
+      }
+      // Testo AVVISA personalizzato (ultimo avviso della procedura)
+      const { data: av } = await supabase.from('avvisi').select('testo_avvisa').eq('proc_id', proc.id).order('updated_at', { ascending: false }).limit(1).maybeSingle()
+      setTestoOfferta(av?.testo_avvisa || TESTO_OFFERTA_DEFAULT)
+    }
+    load()
+  }, [proc.id])
+
+  // Carica lotti dal DB quando si passa a modalità DB
+  useEffect(() => {
+    if (lottiMode !== 'db') return
+    const load = async () => {
+      setLoadingLotti(true)
+      const { data } = await supabase.from('lotti').select('*').eq('proc_id', proc.id).order('numero')
+      setLottiDb(data || [])
+      setLottiDbSel((data || []).map(l => l.id))
+      setLoadingLotti(false)
+    }
+    load()
+  }, [lottiMode, proc.id])
 
   // useCallback evita che la funzione cambi identità ad ogni render → LottoRow non si rimonta
   const handleLottoChange = useCallback((idx, field, val) => {
@@ -476,15 +544,41 @@ function WizardAvviso({ proc, onClose, notify }) {
     setLotti(ls => ls.filter((_, j) => j !== idx))
   }, [])
 
+  // Lotti effettivi da passare a genAvviso
+  const lottiEffettivi = lottiMode === 'db'
+    ? lottiDb.filter(l => lottiDbSel.includes(l.id)).map(l => ({
+        desc: l.nome || l.descrizione || '\u2014',
+        qta: 1,
+        base: l.prezzo_base || '',
+        offertaMinima: l.offerta_minima || '',
+        rilancio: l.rilancio_min || '',
+      }))
+    : lotti
+
+  const salvaTestoAvvisa = async () => {
+    setSavingTesto(true)
+    try {
+      await supabase.from('avvisi').upsert({
+        proc_id: proc.id,
+        modalita: tipoAsta,
+        testo_avvisa: testoOfferta,
+      }, { onConflict: 'proc_id,modalita' })
+      notify('Testo AVVISA salvato', 'ok')
+    } catch(e) { notify('Errore salvataggio: '+e.message, 'err') }
+    finally { setSavingTesto(false) }
+  }
+
   const genera = async () => {
     setGen(true)
     try {
       const logo = localStorage.getItem('ip_logo') || null
-      const blob = await genAvviso(proc, lotti, {
-        tipoAsta, nEsperimento, dataAsta, oraAsta, dataTermine, oraTermine,
+      const blob = await genAvviso(proc, lottiEffettivi, {
+        tipoAsta, tipoBene, nEsperimento, dataAsta, oraAsta, dataTermine, oraTermine,
         prezzoBase, offertaMinima, rilancioMin, cauzione, dirittiAsta,
-        termSaldo, ibanProcedura, intestazioneProcedura, referente, noteFinali,
-        offertaIrrevocabile, testoOfferta,
+        termSaldo, ibanProcedura, intestazioneProcedura,
+        ibanCauzione, bancaCauzione, ibanDiritti, bancaDiritti,
+        referente, noteFinali,
+        offertaIrrevocabile, offertaIrrevData, offertaIrrevImporto, testoOfferta,
       }, logo)
       const nome = 'Avviso_Vendita_'+(proc.nome||'').replace(/\s+/g,'_')+'.docx'
       const url  = URL.createObjectURL(blob)
@@ -503,15 +597,32 @@ function WizardAvviso({ proc, onClose, notify }) {
   const Inp = ({ label, val, set, placeholder='', type='text', full=false }) => (
     <div className={full ? 'form-col-full form-group' : 'form-group'}>
       <label className="form-label">{label}</label>
-      <input type={type} className="form-input" value={val}
-        onChange={e => set(e.target.value)} placeholder={placeholder} />
+      <input type={type} className="form-input"
+        defaultValue={val}
+        onBlur={e => set(e.target.value)}
+        placeholder={placeholder} />
+    </div>
+  )
+
+  // Input importo italiano — defaultValue + onBlur per evitare ogni problema di focus
+  const InpEur = ({ label, val, set, placeholder='Es: 5.000,00', full=false }) => (
+    <div className={full ? 'form-col-full form-group' : 'form-group'}>
+      <label className="form-label">{label}</label>
+      <div style={{position:'relative'}}>
+        <input className="form-input"
+          defaultValue={val}
+          onBlur={e => set(e.target.value)}
+          placeholder={placeholder}
+          style={{paddingLeft:28}} />
+        <span style={{position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:'var(--text3)',fontSize:13,pointerEvents:'none'}}>€</span>
+      </div>
     </div>
   )
 
   return (
     <div style={{display:'flex',flexDirection:'column',gap:16}}>
 
-      {/* Modalità + Esperimento */}
+      {/* Modalità + Tipo bene + Esperimento */}
       <div className="card">
         <div className="card-header"><div className="card-title">📋 Modalità di vendita</div></div>
         <div className="card-body">
@@ -520,6 +631,13 @@ function WizardAvviso({ proc, onClose, notify }) {
               <label className="form-label">Tipo di vendita</label>
               <select className="form-input" value={tipoAsta} onChange={e=>setTipoAsta(e.target.value)}>
                 {TIPI_ASTA.map(t=><option key={t.id} value={t.id}>{t.label}</option>)}
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Tipo di bene</label>
+              <select className="form-input" value={tipoBene} onChange={e=>setTipoBene(e.target.value)}>
+                <option value="mobile">Beni mobili</option>
+                <option value="immobile">Beni immobili</option>
               </select>
             </div>
             <Inp label="N° esperimento di vendita" val={nEsperimento} set={setNEsperimento} placeholder="Es: 1" />
@@ -538,10 +656,32 @@ function WizardAvviso({ proc, onClose, notify }) {
         </div>
         {offertaIrrevocabile && (
           <div className="card-body" style={{display:'flex',flexDirection:'column',gap:12}}>
+            <div className="form-grid">
+              <div className="form-group">
+                <label className="form-label">Data ricezione offerta irrevocabile</label>
+                <div style={{display:'flex',gap:6}}>
+                  <input className="form-input" value={offertaIrrevGg} onChange={e=>setOffertaIrrevGg(e.target.value)}
+                    placeholder="GG" maxLength={2} style={{width:56,textAlign:'center'}} />
+                  <input className="form-input" value={offertaIrrevMm} onChange={e=>setOffertaIrrevMm(e.target.value)}
+                    placeholder="MM" maxLength={2} style={{width:56,textAlign:'center'}} />
+                  <input className="form-input" value={offertaIrrevAa} onChange={e=>setOffertaIrrevAa(e.target.value)}
+                    placeholder="AAAA" maxLength={4} style={{width:72,textAlign:'center'}} />
+                </div>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Importo offerta irrevocabile (€)</label>
+                <div style={{position:'relative'}}>
+                  <input className="form-input" value={offertaIrrevImporto}
+                    onChange={e=>setOffertaIrrevImporto(e.target.value)}
+                    placeholder="Es: 50.000,00" style={{paddingLeft:28}} />
+                  <span style={{position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:'var(--text3)',fontSize:13,pointerEvents:'none'}}>€</span>
+                </div>
+              </div>
+            </div>
             <div className="form-group form-col-full">
               <label className="form-label">
                 Testo paragrafo AVVISA
-                <span style={{fontWeight:400,color:'var(--text3)',marginLeft:6,fontSize:11}}>(personalizzabile — sostituisce il testo standard)</span>
+                <span style={{fontWeight:400,color:'var(--text3)',marginLeft:6,fontSize:11}}>(personalizzabile — salvato nel database)</span>
               </label>
               <textarea
                 className="form-input"
@@ -554,10 +694,14 @@ function WizardAvviso({ proc, onClose, notify }) {
                 Il testo inizia automaticamente con <b>AVVISA</b> (in grassetto) nel documento finale.
               </div>
             </div>
-            <button className="btn btn-ghost btn-sm" style={{alignSelf:'flex-start'}}
-              onClick={()=>setTestoOfferta(TESTO_OFFERTA_DEFAULT)}>
-              ↺ Ripristina testo predefinito
-            </button>
+            <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+              <button className="btn btn-ghost btn-sm" onClick={()=>setTestoOfferta(TESTO_OFFERTA_DEFAULT)}>
+                ↺ Ripristina testo predefinito
+              </button>
+              <button className="btn btn-ghost btn-sm" onClick={salvaTestoAvvisa} disabled={savingTesto}>
+                💾 {savingTesto ? 'Salvataggio…' : 'Salva testo nel database'}
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -585,9 +729,9 @@ function WizardAvviso({ proc, onClose, notify }) {
         <div className="card-header"><div className="card-title">💶 Prezzi e condizioni</div></div>
         <div className="card-body">
           <div className="form-grid">
-            <Inp label="Prezzo base (€)" val={prezzoBase} set={setPrezzoBase} placeholder="Es: 5.000,00" />
-            <Inp label="Offerta minima ammissibile (€)" val={offertaMinima} set={setOffertaMinima} placeholder="Vuoto = uguale al prezzo base" />
-            <Inp label="Rilancio minimo (€)" val={rilancioMin} set={setRilancioMin} placeholder="Es: 250,00" />
+            <InpEur label="Prezzo base (€)" val={prezzoBase} set={setPrezzoBase} />
+            <InpEur label="Offerta minima ammissibile (€)" val={offertaMinima} set={setOffertaMinima} placeholder="Vuoto = uguale al prezzo base" />
+            <InpEur label="Rilancio minimo (€)" val={rilancioMin} set={setRilancioMin} placeholder="Es: 250,00" />
             <Inp label="Deposito cauzionale (%)" val={cauzione} set={setCauzione} placeholder="10" />
             <Inp label="Diritti d'asta (%)" val={dirittiAsta} set={setDirittiAsta} placeholder="2" />
             <Inp label="Termine saldo prezzo (giorni)" val={termSaldo} set={setTermSaldo} placeholder="120 (PVP) / 30 (AsteMagazine)" />
@@ -601,22 +745,52 @@ function WizardAvviso({ proc, onClose, notify }) {
       <div className="card">
         <div className="card-header">
           <div className="card-title">📦 Lotti in vendita</div>
-          <button className="btn btn-ghost btn-sm"
-            onClick={()=>setLotti(l=>[...l,{desc:'',qta:1,base:'',offertaMinima:'',rilancio:''}])}>
-            <Plus size={13}/> Aggiungi lotto
-          </button>
+          <div style={{display:'flex',gap:6}}>
+            <button className="btn btn-ghost btn-sm" style={{fontWeight: lottiMode==='manual'?700:'normal'}}
+              onClick={()=>setLottiMode('manual')}>✏️ Manuale</button>
+            <button className="btn btn-ghost btn-sm" style={{fontWeight: lottiMode==='db'?700:'normal'}}
+              onClick={()=>setLottiMode('db')}>🗄 Da procedura</button>
+          </div>
         </div>
         <div className="card-body" style={{display:'flex',flexDirection:'column',gap:12}}>
-          {lotti.map((l,i) => (
-            <LottoRow
-              key={i}
-              lotto={l}
-              idx={i}
-              total={lotti.length}
-              onChange={handleLottoChange}
-              onRemove={() => handleLottoRemove(i)}
-            />
-          ))}
+          {lottiMode === 'manual' ? (<>
+            {lotti.map((l,i) => (
+              <LottoRow key={i} lotto={l} idx={i} total={lotti.length}
+                onChange={handleLottoChange} onRemove={() => handleLottoRemove(i)} />
+            ))}
+            <button className="btn btn-ghost btn-sm" style={{alignSelf:'flex-start'}}
+              onClick={()=>setLotti(l=>[...l,{desc:'',qta:1,base:'',offertaMinima:'',rilancio:''}])}>
+              <Plus size={13}/> Aggiungi lotto
+            </button>
+          </>) : loadingLotti ? (
+            <div style={{textAlign:'center',padding:20,color:'var(--text3)'}}>Caricamento lotti…</div>
+          ) : lottiDb.length === 0 ? (
+            <div style={{textAlign:'center',padding:20,color:'var(--text3)'}}>Nessun lotto trovato per questa procedura</div>
+          ) : (
+            <div style={{display:'flex',flexDirection:'column',gap:8}}>
+              <div style={{fontSize:12,color:'var(--text3)',marginBottom:4}}>
+                Seleziona i lotti da includere nell&apos;avviso. I prezzi non compilati useranno i valori globali sotto.
+              </div>
+              {lottiDb.map(l => (
+                <label key={l.id} style={{display:'flex',alignItems:'flex-start',gap:10,background:'var(--bg2)',borderRadius:8,padding:'10px 14px',cursor:'pointer'}}>
+                  <input type="checkbox" style={{marginTop:2}} checked={lottiDbSel.includes(l.id)}
+                    onChange={e => setLottiDbSel(s => e.target.checked ? [...s,l.id] : s.filter(x=>x!==l.id))} />
+                  <div style={{flex:1}}>
+                    <div style={{fontWeight:600,fontSize:13}}>Lotto {l.numero} — {l.nome||l.descrizione||'—'}</div>
+                    {l.descrizione && l.nome && <div style={{fontSize:12,color:'var(--text3)',marginTop:2}}>{l.descrizione}</div>}
+                    <div style={{display:'flex',gap:16,marginTop:6,fontSize:12,flexWrap:'wrap'}}>
+                      {l.prezzo_base    && <span>Base: <b>€ {l.prezzo_base}</b></span>}
+                      {l.offerta_minima && <span>Min: <b>€ {l.offerta_minima}</b></span>}
+                      {l.rilancio_min   && <span>Rilancio: <b>€ {l.rilancio_min}</b></span>}
+                    </div>
+                  </div>
+                </label>
+              ))}
+              <div style={{fontSize:11,color:'var(--text3)',marginTop:4}}>
+                I prezzi non presenti nei lotti verranno sostituiti dai valori globali inseriti nella sezione Prezzi.
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
