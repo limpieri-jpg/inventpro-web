@@ -4,6 +4,7 @@ import { useStore } from '../store/useStore'
 import { Topbar, Spinner, Modal, Empty } from '../components/layout'
 import { supabase } from '../lib/supabase'
 import { Plus, Edit, Trash2, FileText, Sparkles, Download } from 'lucide-react'
+import { getGenereTermini } from '../lib/genere'
 
 const TIPI_DOC = [
   { id: 'relazione',      label: 'Relazione particolareggiata', art: 'Art. 130 CCII', icon: '📋', sezioni: [
@@ -45,9 +46,12 @@ function DocumentoForm({ tipo, procId, documento, onSave, onClose }) {
     setLoading(l => ({ ...l, [sez.id]: true }))
     try {
       const proc = (await supabase.from('procedure').select('*').eq('id', procId).single()).data || {}
+      const genere = getGenereTermini(proc.cf_curatore || '')
+      const ruoloPro = genere.qualita(proc.tipo)
       const prompt = `Sei un esperto di diritto concorsuale italiano con ventennale esperienza nella redazione di atti giudiziali.
 ${[
   'STILE OBBLIGATORIO: italiano forense formale e tecnico-giuridico.',
+  `GENERE DEL PROFESSIONISTA: ${genere.sesso === 'F' ? 'FEMMINA — usa forme femminili: la sottoscritta, nominata, la Curatrice/Commissaria/Liquidatrice' : 'MASCHIO — usa forme maschili: il sottoscritto, nominato, il Curatore/Commissario/Liquidatore'}. Accordare SEMPRE tutti gli aggettivi e participi al genere corretto.`,
   'Usa: "si è proceduto a", "è stato accertato che", "si evidenzia che", "ai sensi di", "alla luce di".',
   'Frasi complete con subordinate. Niente telegrafismo.',
   'Cita norme pertinenti con articolo e fonte precisi (es. art. 130 CCII, art. 2392 c.c.).',
@@ -56,7 +60,7 @@ ${[
 ].join('\n')}
 
 PROCEDURA: ${proc.tipo || ''} "${proc.nome || ''}" n. ${proc.num || ''}/${proc.anno || ''}, Tribunale di ${proc.tribunale || ''}
-CURATORE: ${proc.curatore || ''}
+${ruoloPro.toUpperCase()}: ${proc.curatore || ''}
 SEZIONE DA REDIGERE: ${sez.label} (${tipo.art})
 ISTRUZIONI SPECIFICHE: ${sez.hint}
 ${sezioni[sez.id] ? 'BOZZA PRECEDENTE (migliora e arricchisci): ' + sezioni[sez.id].substring(0, 500) : ''}`
