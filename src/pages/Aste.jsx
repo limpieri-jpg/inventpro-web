@@ -170,19 +170,17 @@ async function genAvviso(proc, lotti, opts, logoB64) {
     pAvvisa = P([T(' ' + testoOfferta.trim())])
   } else if (isAMag) {
     pAvvisa = P([
-      B('AVVISA'),
       T(isAsin && !isMista
-        ? ' del farsi luogo alla vendita dei beni di pertinenza della procedura in epigrafe, con modalit\u00e0 di vendita \u201casincrona telematica\u201d, nonch\u00e9 \u201casta a tempo\u201d, con apertura della gara dal giorno ' + fmtDT(dataAsta, oraAsta) + ' al giorno ' + fmtDT(dataTermine, oraTermine) + ', accessibile sul sito di gara del Soggetto Specializzato alla Vendita Procedure Gestite e Servizi S.r.l. \u2013 PRO.GES.S. \u2013 www.astemagazine.com, oltre che sul sito www.progess-italia.it, dei seguenti lotti:'
-        : ' del farsi luogo alla vendita dei beni di pertinenza della procedura in epigrafe, con modalit\u00e0 di vendita \u201csincrona telematica\u201d, per il giorno ' + fmtDT(dataAsta, oraAsta) + ' accessibile sul sito di gara del Soggetto Specializzato alla Vendita Procedure Gestite e Servizi S.r.l. \u2013 PRO.GES.S. \u2013 www.astemagazine.com, oltre che sul sito www.progess-italia.it.')
+        ? 'Del farsi luogo alla vendita dei beni di pertinenza della procedura in epigrafe, con modalit\u00e0 di vendita \u201casincrona telematica\u201d, nonch\u00e9 \u201casta a tempo\u201d, con apertura della gara dal giorno ' + fmtDT(dataAsta, oraAsta) + ' al giorno ' + fmtDT(dataTermine, oraTermine) + ', accessibile sul sito di gara del Soggetto Specializzato alla Vendita Procedure Gestite e Servizi S.r.l. \u2013 PRO.GES.S. \u2013 www.astemagazine.com, oltre che sul sito www.progess-italia.it, dei seguenti lotti:'
+        : 'Del farsi luogo alla vendita dei beni di pertinenza della procedura in epigrafe, con modalit\u00e0 di vendita \u201csincrona telematica\u201d, per il giorno ' + fmtDT(dataAsta, oraAsta) + ' accessibile sul sito di gara del Soggetto Specializzato alla Vendita Procedure Gestite e Servizi S.r.l. \u2013 PRO.GES.S. \u2013 www.astemagazine.com, oltre che sul sito www.progess-italia.it.')
     ])
   } else {
     pAvvisa = P([
-      B('AVVISA'),
       T(isAsin && !isMista
-        ? ' del farsi luogo alla vendita dei beni di pertinenza della procedura in epigrafe, con modalit\u00e0 di vendita \u201cASINCRONA TELEMATICA\u201d, tramite la piattaforma di gara \u201cProgess Italia\u201d autorizzata dal Ministero della Giustizia PGT n. 51 del 15/05/2019 \u2013 www.progess-italia.it. La gara si terr\u00e0 dal giorno ' + fmtDT(dataAsta, oraAsta) + ' al giorno ' + fmtDT(dataTermine, oraTermine) + '.'
+        ? 'Del farsi luogo alla vendita dei beni di pertinenza della procedura in epigrafe, con modalit\u00e0 di vendita \u201cASINCRONA TELEMATICA\u201d, tramite la piattaforma di gara \u201cProgess Italia\u201d autorizzata dal Ministero della Giustizia PGT n. 51 del 15/05/2019 \u2013 www.progess-italia.it. La gara si terr\u00e0 dal giorno ' + fmtDT(dataAsta, oraAsta) + ' al giorno ' + fmtDT(dataTermine, oraTermine) + '.'
         : isMista
-        ? ' del farsi luogo alla vendita dei beni di pertinenza della procedura in epigrafe, con modalit\u00e0 di vendita \u201cSINCRONA MISTA\u201d come meglio oltre descritti, nei lotti e con i prezzi base di seguito indicati, nonch\u00e9 con le seguenti modalit\u00e0 e condizioni, per il giorno ' + fmtDT(dataAsta, oraAsta) + ' presso la sala d\u2019aste del Soggetto Specializzato alla Vendita \u201cPro.Ges.S. S.r.l.\u201d \u2013 Via Giuseppe Parini n.ro 29 \u2013 Lecco (Lc).'
-        : ' del farsi luogo alla vendita dei beni di pertinenza della procedura in epigrafe, con modalit\u00e0 di vendita \u201cSINCRONA TELEMATICA\u201d, per il giorno ' + fmtDT(dataAsta, oraAsta) + ' tramite la piattaforma di gara \u201cProgess Italia\u201d autorizzata dal Ministero della Giustizia PGT n. 51 del 15/05/2019 \u2013 www.progess-italia.it.')
+        ? 'Del farsi luogo alla vendita dei beni di pertinenza della procedura in epigrafe, con modalit\u00e0 di vendita \u201cSINCRONA MISTA\u201d come meglio oltre descritti, nei lotti e con i prezzi base di seguito indicati, nonch\u00e9 con le seguenti modalit\u00e0 e condizioni, per il giorno ' + fmtDT(dataAsta, oraAsta) + ' presso la sala d\u2019aste del Soggetto Specializzato alla Vendita \u201cPro.Ges.S. S.r.l.\u201d \u2013 Via Giuseppe Parini n.ro 29 \u2013 Lecco (Lc).'
+        : 'Del farsi luogo alla vendita dei beni di pertinenza della procedura in epigrafe, con modalit\u00e0 di vendita \u201cSINCRONA TELEMATICA\u201d, per il giorno ' + fmtDT(dataAsta, oraAsta) + ' tramite la piattaforma di gara \u201cProgess Italia\u201d autorizzata dal Ministero della Giustizia PGT n. 51 del 15/05/2019 \u2013 www.progess-italia.it.')
     ])
   }
 
@@ -206,25 +204,55 @@ async function genAvviso(proc, lotti, opts, logoB64) {
       return parti.join(' ') || a.desc_breve || '—'
     }
 
+    // ── Descrizione lotto: immobile vs mobile ──────────────────────────────
+    // Immobile: descrizione estesa (testo libero o da AI) + dati catastali
+    // Mobile: elenco articoli con qta e desc_breve, nessun prezzo
+    const isImmobile = (l.tipoBene || tipoBene) === 'immobile' ||
+      (l.nome||'').toLowerCase().includes('immobil') ||
+      (l.nome||'').toLowerCase().includes('villa') ||
+      (l.nome||'').toLowerCase().includes('appart') ||
+      (l.nome||'').toLowerCase().includes('terren') ||
+      (l.nome||'').toLowerCase().includes('fabbric') ||
+      arts.some(a => (a.tipologia_siecic||'').includes('IMMOBILE'))
+
+    // Dati catastali dell'immobile (da primo articolo o dal lotto)
+    const primoImmobile = arts.find(a => (a.tipologia_siecic||'').includes('IMMOBILE')) || {}
+    const rigaCatastale = [
+      primoImmobile.comune_catastale && ('Comune: ' + primoImmobile.comune_catastale),
+      primoImmobile.foglio           && ('Foglio ' + primoImmobile.foglio),
+      primoImmobile.mappale          && ('Mappale ' + primoImmobile.mappale),
+      primoImmobile.subalterno       && ('Sub. ' + primoImmobile.subalterno),
+      primoImmobile.categoria_catastale && ('Cat. ' + primoImmobile.categoria_catastale),
+      primoImmobile.rendita          && ('Rendita € ' + primoImmobile.rendita),
+      primoImmobile.superficie       && ('Sup. ' + primoImmobile.superficie + ' mq'),
+    ].filter(Boolean).join(' — ')
+
     return [
       BR(),
       PSC([B(nomeLotto.toUpperCase())]),
+      // Descrizione testuale sempre presente
       ...(l.descrizione && l.descrizione !== nomeLotto
         ? [P([T(l.descrizione)])]
         : []),
-      // Elenco articoli (solo se presenti e modalità DB)
-      ...(arts.length > 0 ? [
+      // Immobile: dati catastali sintetici
+      ...(isImmobile && rigaCatastale ? [
+        P([B('Dati catastali: '), T(rigaCatastale)])
+      ] : []),
+      // Mobile: elenco articoli con qta + desc_breve (no prezzi)
+      ...(!isImmobile && arts.length > 0 ? [
         BR(),
         PL([B('Composizione del lotto:')]),
-        ...arts.map((a, i) => PL([
-          B(String(i + 1) + '. '),
-          T(rigaArticolo(a))
-        ])),
+        ...arts.map((a, i) => {
+          const qta = (a.qta && a.qta != 1) ? String(a.qta) + (a.unita_misura ? ' ' + a.unita_misura : '') + ' x ' : ''
+          const marca = [a.marca, a.modello].filter(Boolean).join(' ')
+          const desc = [marca, a.desc_breve].filter(Boolean).filter((v,i,arr) => arr.indexOf(v)===i).join(' — ')
+          return PL([B(String(i + 1) + '. '), T(qta + (desc || '—'))])
+        }),
       ] : []),
       BR(),
       // Valori economici: bold, allineati a sinistra come nel modello
-      PL([B('PREZZO BASE: '), T(fmtEur(baseVal))]),
-      PL([B('OFFERTA MINIMA AMMISSIBILE: '), T(fmtEur(offMin))]),
+      PL([B('PREZZO BASE: '), T(fmtEur(baseVal) + (tipoBene === 'immobile' ? ' oltre IVA se dovuta / oneri di legge' : ' OLTRE IVA SE DOVUTA E ONERI DI LEGGE'))]),
+      PL([B('OFFERTA MINIMA AMMISSIBILE: '), T(fmtEur(offMin) + (tipoBene === 'immobile' ? ' oltre IVA se dovuta / oneri di legge' : ' OLTRE IVA SE DOVUTA E ONERI DI LEGGE'))]),
       PL([B('RILANCI MINIMI in caso di GARA: '), T(fmtEur(rilancio))]),
       PL([B('DEPOSITO CAUZIONALE: '), T(cau + '% del prezzo offerto')]),
       PL([B('DIRITTI D’ASTA: '), T(dir + '% oltre IVA al 22%, da calcolarsi sul prezzo di aggiudicazione')]),
