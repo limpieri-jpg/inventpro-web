@@ -448,12 +448,15 @@ function LottoRow({ lotto, idx, total, onChange, onRemove }) {
 }
 
 // ─── Testo default offerta irrevocabile ───────────────────────────────────────
-const TESTO_OFFERTA_DEFAULT =
-  'che in esecuzione del programma di liquidazione, e a seguito di offerta irrevocabile d\u2019acquisto ' +
-  'pervenuta in data ___, si proceder\u00e0 alla vendita telematica dei seguenti beni. ' +
-  'Nel rispetto dei principi di competitivit\u00e0 e trasparenza si avvia una gara competitiva ' +
-  'telematica allo scopo di permettere a eventuali interessati di partecipare presentando ' +
-  'la propria offerta a rialzo come da rilancio minimo indicato.'
+const mkTestoOfferta = (data, importo) => {
+  const d = data || '___'
+  const i = importo ? 'Euro ' + importo + ' OLTRE IVA SE DOVUTA E ONERI DI LEGGE SE E NELLA QUOTA DOVUTA' : 'Euro ___'
+  return 'che in data ' + d + ' è stata ricevuta un’offerta irrevocabile d’acquisto a lotto unico per la somma di ' + i + '. ' +
+    'Nel rispetto dei principi di competitività e trasparenza si avvia una gara competitiva telematica ' +
+    'allo scopo di permettere a eventuali interessati di partecipare presentando la propria offerta ' +
+    'a rialzo come da rilancio minimo indicato.'
+}
+const TESTO_OFFERTA_DEFAULT = mkTestoOfferta('', '')
 
 // ─── Wizard ───────────────────────────────────────────────────────────────────
 function WizardAvviso({ proc, onClose, notify }) {
@@ -493,6 +496,12 @@ function WizardAvviso({ proc, onClose, notify }) {
   const [offertaIrrevImporto, setOffertaIrrevImporto] = useState('')
   // computa data formattata gg/mm/aaaa
   const offertaIrrevData = [offertaIrrevGg, offertaIrrevMm, offertaIrrevAa].filter(Boolean).join('/')
+
+  // Aggiorna automaticamente il testo AVVISA quando cambiano data o importo
+  useEffect(() => {
+    if (!offertaIrrevocabile) return
+    setTestoOfferta(mkTestoOfferta(offertaIrrevData, offertaIrrevImporto))
+  }, [offertaIrrevData, offertaIrrevImporto, offertaIrrevocabile])
   const [testoOfferta, setTestoOfferta]       = useState('')
   const [savingTesto, setSavingTesto]         = useState(false)
   const [gen, setGen]                         = useState(false)
@@ -695,7 +704,7 @@ function WizardAvviso({ proc, onClose, notify }) {
               </div>
             </div>
             <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-              <button className="btn btn-ghost btn-sm" onClick={()=>setTestoOfferta(TESTO_OFFERTA_DEFAULT)}>
+              <button className="btn btn-ghost btn-sm" onClick={()=>setTestoOfferta(mkTestoOfferta(offertaIrrevData, offertaIrrevImporto))}>
                 ↺ Ripristina testo predefinito
               </button>
               <button className="btn btn-ghost btn-sm" onClick={salvaTestoAvvisa} disabled={savingTesto}>
