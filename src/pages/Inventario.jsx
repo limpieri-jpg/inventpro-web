@@ -1,9 +1,9 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore'
 import { Topbar, Spinner, Modal, Empty } from '../components/layout'
 import { supabase } from '../lib/supabase'
-import { Plus, Search, X, Trash2, Camera, FileDown } from 'lucide-react'
+import { Plus, Search, X, Trash2, Camera, FileDown, Sparkles, AlertTriangle } from 'lucide-react'
 import * as XLSX from 'xlsx'
 
 function fmtEur(n) { return n ? '€ ' + Number(n).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—' }
@@ -14,47 +14,74 @@ const CATEGORIE = [
 ]
 const UM_LIST = ['UN', 'KG', 'MT', 'MQ', 'LT', 'SET', 'LOTTO']
 
+const TIPOLOGIE_SIECIC = [
+  'BENE MOBILE', 'BENE MOBILE REGISTRATO', 'BENE IMMOBILE',
+  'CREDITO', 'PARTECIPAZIONE', 'BENE IMMATERIALE', 'AZIENDA/RAMO D\'AZIENDA', 'ALTRO'
+]
+const SOTTOCATEGORIE = {
+  'BENE MOBILE': ['Macchinari industriali','Attrezzature','Arredi','Informatica','Elettronica','Veicoli','Materie prime','Altro'],
+  'BENE MOBILE REGISTRATO': ['Autovettura','Autocarro','Motoveicolo','Natante','Aeromobile','Altro'],
+  'BENE IMMOBILE': ['Fabbricato civile','Fabbricato industriale','Terreno','Altro'],
+  'CREDITO': ['Credito commerciale','Credito tributario','Credito da revocatoria','Altro'],
+  'PARTECIPAZIONE': ['Quota SRL','Azioni','Altro'],
+  'BENE IMMATERIALE': ['Marchio','Brevetto','Software','Avviamento','Altro'],
+  'AZIENDA/RAMO D\'AZIENDA': ['Azienda intera','Ramo d\'azienda'],
+  'ALTRO': ['Altro']
+}
+const UM_LIST = ['UN','KG','MT','MQ','LT','SET','LOTTO']
+
 function ArticoloForm({ articolo, procId, onSave, onClose }) {
   const { notify } = useStore()
+  const [tab, setTab] = useState('dati')
   const [form, setForm] = useState({
-    desc_breve: '', desc_estesa: '', marca: '', modello: '', categoria: 'Macchinari e impianti',
-    unita_misura: 'UN', qta: 1, val_mercato: 0, val_giud: 0,
-    stato: 'buono', note: '', matricola: '', anno_prod: '',
+    desc_breve:'', desc_estesa:'', marca:'', modello:'', anno_prod:'', matricola:'',
+    tipologia_siecic:'BENE MOBILE', sottocategoria:'Macchinari industriali',
+    unita_misura:'UN', qta:1, stato:'Buono',
+    val_mercato:0, val_giud:0, danni:'', note:'',
     ...articolo
   })
-  const [photos, setPhotos] = useState([])
+  const [photos, setPhotos]       = useState([])
   const [uploading, setUploading] = useState(false)
-  const [saving, setSaving] = useState(false)
+  const [saving, setSaving]       = useState(false)
+  const [analyzing, setAnalyzing] = useState(false)
+  // ID temporaneo per caricare foto prima del salvataggio
+  const [artId] = useState(() => articolo?.id || ('tmp-' + Date.now()))
 
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
-  const inp = (k, type = 'text') => ({ value: form[k] ?? '', type, onChange: e => set(k, e.target.value), className: 'form-input' })
+  const set = (k,v) => setForm(f => ({...f,[k]:v}))
 
+  // Carica foto esistenti
   useEffect(() => {
-    if (articolo?.id) {
-      supabase.from('foto').select('*').eq('articolo_id', articolo.id).order('sort_order')
-        .then(({ data }) => { if (data) setPhotos(data) })
-    }
+    const id = articolo?.id
+    if (!id) return
+    supabase.from('foto').select('*').eq('articolo_id', id).order('sort_order')
+      .then(({data}) => { if (data) setPhotos(data) })
   }, [articolo?.id])
 
+  // Upload foto — funziona anche prima del salvataggio (usa artId temporaneo)
   const handlePhotoUpload = async (e) => {
     const files = Array.from(e.target.files)
     if (!files.length) return
     setUploading(true)
     try {
+      const newPhotos = []
       for (const file of files) {
         const ext = file.name.split('.').pop()
-        const path = `${procId}/${articolo?.id || 'new'}/${Date.now()}.${ext}`
-        const { error: upErr } = await supabase.storage.from('foto-inventario').upload(path, file)
+        const path = `${procId}/${artId}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
+        const {error: upErr} = await supabase.storage.from('foto-inventario').upload(path, file)
         if (upErr) throw upErr
-        const { data: { publicUrl } } = supabase.storage.from('foto-inventario').getPublicUrl(path)
+        const {data:{publicUrl}} = supabase.storage.from('foto-inventario').getPublicUrl(path)
+        // Se articolo già salvato, inserisci in DB; altrimenti tieni in memoria
         if (articolo?.id) {
-          await supabase.from('foto').insert({ articolo_id: articolo.id, proc_id: procId, storage_path: path, url: publicUrl, sort_order: photos.length })
+          const {data} = await supabase.from('foto').insert({
+            articolo_id: articolo.id, proc_id: procId,
+            storage_path: path, url: publicUrl, sort_order: photos.length + newPhotos.length
+          }).select().single()
+          if (data) newPhotos.push(data)
+        } else {
+          newPhotos.push({ id: path, url: publicUrl, storage_path: path, _temp: true })
         }
       }
-      if (articolo?.id) {
-        const { data } = await supabase.from('foto').select('*').eq('articolo_id', articolo.id).order('sort_order')
-        setPhotos(data || [])
-      }
+      setPhotos(p => [...p, ...newPhotos])
       notify('Foto caricate', 'ok')
     } catch (err) { notify('Errore upload: ' + err.message, 'err') }
     finally { setUploading(false) }
@@ -62,25 +89,125 @@ function ArticoloForm({ articolo, procId, onSave, onClose }) {
 
   const deletePhoto = async (foto) => {
     await supabase.storage.from('foto-inventario').remove([foto.storage_path])
-    await supabase.from('foto').delete().eq('id', foto.id)
+    if (!foto._temp) await supabase.from('foto').delete().eq('id', foto.id)
     setPhotos(p => p.filter(f => f.id !== foto.id))
+  }
+
+  // Analisi AI — invia le foto e i dati già compilati
+  const analizzaConAI = async () => {
+    const apiKey = localStorage.getItem('ip_apikey') || ''
+    if (!apiKey) { notify('Inserisci la chiave API in Impostazioni', 'warn'); return }
+    if (photos.length === 0) { notify('Carica almeno una foto prima di analizzare', 'warn'); return }
+    setAnalyzing(true)
+    try {
+      // Converti la prima foto (o le prime 3) in base64
+      const fotoUrls = photos.slice(0,3).map(f => f.url)
+      const toBase64 = async (url) => {
+        const res = await fetch(url)
+        const blob = await res.blob()
+        return new Promise(resolve => {
+          const r = new FileReader()
+          r.onload = () => resolve({ b64: r.result.split(',')[1], mt: blob.type })
+          r.readAsDataURL(blob)
+        })
+      }
+      const imgs = await Promise.all(fotoUrls.map(toBase64))
+
+      const datiNoti = [
+        form.marca && `Marca: ${form.marca}`,
+        form.modello && `Modello: ${form.modello}`,
+        form.anno_prod && `Anno: ${form.anno_prod}`,
+        form.matricola && `Matricola: ${form.matricola}`,
+        form.stato && `Stato dichiarato: ${form.stato}`,
+        form.note && `Note: ${form.note}`,
+      ].filter(Boolean).join('\n')
+
+      const content = [
+        ...imgs.map(({b64,mt}) => ({ type:'image', source:{type:'base64', media_type:mt, data:b64} })),
+        { type:'text', text:`Analizza questo bene per un inventario di procedura concorsuale italiana.
+${datiNoti ? 'Dati già noti:\n'+datiNoti : ''}
+
+Rispondi SOLO con JSON valido (no markdown, no commenti):
+{
+  "tipologia_siecic": "BENE MOBILE|BENE MOBILE REGISTRATO|BENE IMMOBILE|CREDITO|PARTECIPAZIONE|BENE IMMATERIALE|AZIENDA/RAMO D'AZIENDA|ALTRO",
+  "sottocategoria": "sottocategoria specifica",
+  "desc_breve": "descrizione breve max 12 parole, tecnica e precisa",
+  "desc_estesa": "descrizione dettagliata 2-3 frasi per verbale di inventario",
+  "marca": "marca se visibile, stringa vuota se non visibile",
+  "modello": "modello se visibile, stringa vuota se non visibile",
+  "anno_prod": "anno se stimabile, stringa vuota altrimenti",
+  "stato": "Ottimo|Buono|Discreto|Deteriorato|Non funzionante",
+  "danni": "descrizione danni visibili (graffi, ammaccature, parti mancanti, ecc.), stringa vuota se nessun danno",
+  "val_mercato": numero intero euro (valore mercato realistico per bene usato di questo tipo),
+  "val_giud": numero intero euro (valore vendita giudiziaria, tipicamente 60-75% del valore mercato)
+}` }
+      ]
+
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method:'POST',
+        headers:{
+          'Content-Type':'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version':'2023-06-01',
+          'anthropic-dangerous-direct-browser-access':'true'
+        },
+        body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:1000, messages:[{role:'user', content}] })
+      })
+      const data = await res.json()
+      const text = data.content?.[0]?.text || ''
+      const json = JSON.parse(text.replace(/```json|```/g,'').trim())
+
+      setForm(f => ({
+        ...f,
+        tipologia_siecic: json.tipologia_siecic || f.tipologia_siecic,
+        sottocategoria:   json.sottocategoria   || f.sottocategoria,
+        desc_breve:  f.desc_breve  || json.desc_breve  || '',
+        desc_estesa: f.desc_estesa || json.desc_estesa || '',
+        marca:       f.marca       || json.marca       || '',
+        modello:     f.modello     || json.modello     || '',
+        anno_prod:   f.anno_prod   || json.anno_prod   || '',
+        stato:       json.stato    || f.stato,
+        danni:       json.danni    || f.danni          || '',
+        val_mercato: json.val_mercato || f.val_mercato,
+        val_giud:    json.val_giud    || f.val_giud,
+      }))
+      if (json.danni) setTab('danni')
+      notify('Analisi AI completata — verifica i valori generati', 'ok', 5000)
+    } catch (e) { notify('Errore AI: ' + e.message, 'err') }
+    finally { setAnalyzing(false) }
   }
 
   const handleSave = async () => {
     if (!form.desc_breve) { notify('Inserisci la descrizione', 'warn'); return }
     setSaving(true)
     try {
+      const {id:_id, created_at, updated_at, prima_foto_path, prima_foto_url, n_foto, ...payload} = form
       let saved
       if (articolo?.id) {
-        const { data, error } = await supabase.from('articoli').update(form).eq('id', articolo.id).select().single()
+        const {data, error} = await supabase.from('articoli').update(payload).eq('id', articolo.id).select().single()
         if (error) throw error
         saved = data
       } else {
-        const { data: { user } } = await supabase.auth.getUser()
-        const { data, error } = await supabase.from('articoli').insert({ ...form, proc_id: procId, owner_id: user.id }).select().single()
+        const {data:{user}} = await supabase.auth.getUser()
+        const {data, error} = await supabase.from('articoli').insert({...payload, proc_id:procId, owner_id:user.id}).select().single()
         if (error) throw error
         saved = data
-        if (photos.length > 0) notify('Articolo creato. Riapri per caricare le foto.', 'info', 4000)
+        // Sposta le foto temporanee al nuovo ID reale
+        if (photos.length > 0) {
+          for (let i=0; i<photos.length; i++) {
+            const foto = photos[i]
+            const newPath = foto.storage_path.replace(artId, saved.id)
+            try {
+              await supabase.storage.from('foto-inventario').move(foto.storage_path, newPath)
+              await supabase.from('foto').insert({
+                articolo_id: saved.id, proc_id: procId,
+                storage_path: newPath,
+                url: supabase.storage.from('foto-inventario').getPublicUrl(newPath).data.publicUrl,
+                sort_order: i
+              })
+            } catch(_) {}
+          }
+        }
       }
       notify('Articolo salvato', 'ok')
       onSave(saved)
@@ -88,89 +215,182 @@ function ArticoloForm({ articolo, procId, onSave, onClose }) {
     finally { setSaving(false) }
   }
 
+  const TABS = [
+    { id:'dati',   label:'📷 Foto & Dati' },
+    { id:'valori', label:'💶 Valori' },
+    { id:'danni',  label:`⚠️ Danni${form.danni ? ' ●' : ''}` },
+  ]
+
   return (
-    <>
-      <div className="form-grid">
-        <div className="form-section">Descrizione</div>
-        <div className="form-col-full form-group">
-          <label className="form-label">Descrizione breve *</label>
-          <input {...inp('desc_breve')} placeholder="Es. Tornio parallelo CNC" />
-        </div>
-        <div className="form-col-full form-group">
-          <label className="form-label">Descrizione estesa</label>
-          <textarea className="form-input" value={form.desc_estesa || ''} onChange={e => set('desc_estesa', e.target.value)} rows={3} placeholder="Dettagli aggiuntivi…" />
-        </div>
-        <div className="form-section">Identificazione</div>
-        <div className="form-group"><label className="form-label">Marca</label><input {...inp('marca')} /></div>
-        <div className="form-group"><label className="form-label">Modello</label><input {...inp('modello')} /></div>
-        <div className="form-group"><label className="form-label">Anno produzione</label><input {...inp('anno_prod')} /></div>
-        <div className="form-group"><label className="form-label">Matricola / Serial N.</label><input {...inp('matricola')} /></div>
-        <div className="form-section">Classificazione e quantità</div>
-        <div className="form-group">
-          <label className="form-label">Categoria</label>
-          <select className="form-input" value={form.categoria || ''} onChange={e => set('categoria', e.target.value)}>
-            {CATEGORIE.map(c => <option key={c}>{c}</option>)}
-          </select>
-        </div>
-        <div className="form-group">
-          <label className="form-label">Stato</label>
-          <select className="form-input" value={form.stato || ''} onChange={e => set('stato', e.target.value)}>
-            {['ottimo', 'buono', 'discreto', 'da revisionare', 'non funzionante'].map(s => <option key={s}>{s}</option>)}
-          </select>
-        </div>
-        <div className="form-group">
-          <label className="form-label">Unità di misura</label>
-          <select className="form-input" value={form.unita_misura || 'UN'} onChange={e => set('unita_misura', e.target.value)}>
-            {UM_LIST.map(u => <option key={u}>{u}</option>)}
-          </select>
-        </div>
-        <div className="form-group">
-          <label className="form-label">Quantità</label>
-          <input type="number" className="form-input" value={form.qta ?? 1} onChange={e => set('qta', e.target.value)} min="0" step="0.01" />
-        </div>
-        <div className="form-section">Valutazione</div>
-        <div className="form-group">
-          <label className="form-label">Valore di mercato (€)</label>
-          <input type="number" className="form-input" value={form.val_mercato ?? 0} onChange={e => set('val_mercato', e.target.value)} min="0" step="0.01" />
-        </div>
-        <div className="form-group">
-          <label className="form-label">Valore giudiziario (€)</label>
-          <input type="number" className="form-input" value={form.val_giud ?? 0} onChange={e => set('val_giud', e.target.value)} min="0" step="0.01" />
-        </div>
-        <div className="form-col-full form-group">
-          <label className="form-label">Note</label>
-          <textarea className="form-input" value={form.note || ''} onChange={e => set('note', e.target.value)} rows={2} />
-        </div>
-        {articolo?.id && (
-          <>
-            <div className="form-section">Fotografie</div>
-            <div className="form-col-full">
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
-                {photos.map(f => (
-                  <div key={f.id} style={{ position: 'relative', width: 100, height: 80 }}>
-                    <img src={f.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 6, border: '1px solid var(--border)' }} />
-                    <button onClick={() => deletePhoto(f)} style={{ position: 'absolute', top: 2, right: 2, background: 'rgba(255,77,106,0.9)', border: 'none', borderRadius: '50%', width: 20, height: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <X size={11} color="#fff" />
-                    </button>
-                  </div>
-                ))}
-                <label style={{ width: 100, height: 80, border: '2px dashed var(--border)', borderRadius: 6, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text3)', gap: 4 }}>
-                  <Camera size={20} />
-                  <span style={{ fontSize: 11 }}>{uploading ? 'Carico…' : 'Aggiungi'}</span>
-                  <input type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={handlePhotoUpload} disabled={uploading} />
-                </label>
+    <div>
+      {/* Tab bar */}
+      <div className="tabs" style={{marginBottom:20}}>
+        {TABS.map(t => (
+          <div key={t.id} className={`tab ${tab===t.id?'active':''}`} onClick={()=>setTab(t.id)}>{t.label}</div>
+        ))}
+      </div>
+
+      {/* ── TAB: Foto & Dati ───────────────────────────────────────────── */}
+      {tab==='dati' && (
+        <div style={{display:'flex',flexDirection:'column',gap:16}}>
+
+          {/* Sezione foto */}
+          <div className="card">
+            <div className="card-header">
+              <div className="card-title">📷 Fotografie</div>
+              <label className="btn btn-ghost btn-sm" style={{cursor:'pointer'}}>
+                <Camera size={13}/> {uploading ? 'Carico…' : 'Aggiungi foto'}
+                <input type="file" accept="image/*" multiple style={{display:'none'}} onChange={handlePhotoUpload} disabled={uploading}/>
+              </label>
+            </div>
+            <div className="card-body">
+              {photos.length === 0 ? (
+                <div style={{textAlign:'center',padding:'24px 0',color:'var(--text3)'}}>
+                  <Camera size={32} style={{opacity:0.3,marginBottom:8}}/>
+                  <div style={{fontSize:13}}>Nessuna foto — carica le foto per avviare l'analisi AI</div>
+                </div>
+              ) : (
+                <div style={{display:'flex',flexWrap:'wrap',gap:10}}>
+                  {photos.map(f => (
+                    <div key={f.id} style={{position:'relative',width:110,height:90}}>
+                      <img src={f.url} alt="" style={{width:'100%',height:'100%',objectFit:'cover',borderRadius:6,border:'1px solid var(--border)'}}/>
+                      <button onClick={()=>deletePhoto(f)} style={{position:'absolute',top:3,right:3,background:'rgba(255,50,80,0.9)',border:'none',borderRadius:'50%',width:20,height:20,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                        <X size={11} color="#fff"/>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {photos.length > 0 && (
+                <div style={{marginTop:14,display:'flex',justifyContent:'flex-end'}}>
+                  <button className="btn btn-primary" onClick={analizzaConAI} disabled={analyzing}>
+                    <Sparkles size={13}/>
+                    {analyzing ? 'Analisi in corso…' : 'Analizza con AI'}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Dati articolo */}
+          <div className="card">
+            <div className="card-header"><div className="card-title">📋 Dati articolo</div></div>
+            <div className="card-body">
+              <div className="form-grid">
+                <div className="form-col-full form-group">
+                  <label className="form-label">Descrizione breve *</label>
+                  <input className="form-input" value={form.desc_breve} onChange={e=>set('desc_breve',e.target.value)} placeholder="Es. Tornio parallelo CNC Mazak"/>
+                </div>
+                <div className="form-col-full form-group">
+                  <label className="form-label">Descrizione estesa</label>
+                  <textarea className="form-input" value={form.desc_estesa||''} onChange={e=>set('desc_estesa',e.target.value)} rows={3} placeholder="Dettagli tecnici per verbale di inventario…"/>
+                </div>
+                <div className="form-section" style={{gridColumn:'1/-1'}}>Identificazione</div>
+                <div className="form-group"><label className="form-label">Marca</label><input className="form-input" value={form.marca||''} onChange={e=>set('marca',e.target.value)}/></div>
+                <div className="form-group"><label className="form-label">Modello</label><input className="form-input" value={form.modello||''} onChange={e=>set('modello',e.target.value)}/></div>
+                <div className="form-group"><label className="form-label">Anno produzione</label><input className="form-input" value={form.anno_prod||''} onChange={e=>set('anno_prod',e.target.value)} placeholder="Es. 2018"/></div>
+                <div className="form-group"><label className="form-label">Matricola / S/N</label><input className="form-input" value={form.matricola||''} onChange={e=>set('matricola',e.target.value)}/></div>
+                <div className="form-section" style={{gridColumn:'1/-1'}}>Classificazione</div>
+                <div className="form-group">
+                  <label className="form-label">Tipologia SIECIC</label>
+                  <select className="form-input" value={form.tipologia_siecic||'BENE MOBILE'} onChange={e=>{set('tipologia_siecic',e.target.value);set('sottocategoria',SOTTOCATEGORIE[e.target.value]?.[0]||'')}}>
+                    {TIPOLOGIE_SIECIC.map(t=><option key={t}>{t}</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Sottocategoria</label>
+                  <select className="form-input" value={form.sottocategoria||''} onChange={e=>set('sottocategoria',e.target.value)}>
+                    {(SOTTOCATEGORIE[form.tipologia_siecic]||SOTTOCATEGORIE['ALTRO']).map(s=><option key={s}>{s}</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Stato</label>
+                  <select className="form-input" value={form.stato||'Buono'} onChange={e=>set('stato',e.target.value)}>
+                    {['Ottimo','Buono','Discreto','Deteriorato','Non funzionante'].map(s=><option key={s}>{s}</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Unità di misura</label>
+                  <select className="form-input" value={form.unita_misura||'UN'} onChange={e=>set('unita_misura',e.target.value)}>
+                    {UM_LIST.map(u=><option key={u}>{u}</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Quantità</label>
+                  <input type="number" className="form-input" value={form.qta??1} onChange={e=>set('qta',e.target.value)} min="0" step="1"/>
+                </div>
+                <div className="form-col-full form-group">
+                  <label className="form-label">Note</label>
+                  <textarea className="form-input" value={form.note||''} onChange={e=>set('note',e.target.value)} rows={2} placeholder="Informazioni aggiuntive…"/>
+                </div>
               </div>
             </div>
-          </>
-        )}
-      </div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
+          </div>
+        </div>
+      )}
+
+      {/* ── TAB: Valori ────────────────────────────────────────────────── */}
+      {tab==='valori' && (
+        <div className="card">
+          <div className="card-header"><div className="card-title">💶 Valutazione economica</div></div>
+          <div className="card-body">
+            <div style={{fontSize:12,color:'var(--text3)',marginBottom:16}}>
+              I valori vengono generati automaticamente dall'AI in base alle foto e ai dati dell'articolo, oppure possono essere inseriti manualmente.
+            </div>
+            <div className="form-grid">
+              <div className="form-group">
+                <label className="form-label">Valore di mercato (€)</label>
+                <input type="number" className="form-input" value={form.val_mercato??0} onChange={e=>set('val_mercato',e.target.value)} min="0" step="1"
+                  style={{fontSize:16,fontWeight:600}}/>
+                <div style={{fontSize:11,color:'var(--text3)',marginTop:4}}>Valore commerciale realistico per bene usato</div>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Valore giudiziario (€)</label>
+                <input type="number" className="form-input" value={form.val_giud??0} onChange={e=>set('val_giud',e.target.value)} min="0" step="1"
+                  style={{fontSize:16,fontWeight:600,color:'var(--accent)'}}/>
+                <div style={{fontSize:11,color:'var(--text3)',marginTop:4}}>Prezzo base per vendita giudiziaria (tipicamente 60-75% del mercato)</div>
+              </div>
+            </div>
+            {(form.val_mercato > 0 && form.val_giud > 0) && (
+              <div style={{marginTop:12,padding:'10px 14px',background:'var(--bg2)',borderRadius:8,fontSize:13}}>
+                Abbattimento: <strong>{Math.round((1 - form.val_giud/form.val_mercato)*100)}%</strong> rispetto al valore di mercato
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── TAB: Danni ─────────────────────────────────────────────────── */}
+      {tab==='danni' && (
+        <div className="card">
+          <div className="card-header">
+            <div className="card-title"><AlertTriangle size={14} style={{marginRight:6,color:'var(--accent-w)'}}/>Danni riscontrati</div>
+          </div>
+          <div className="card-body">
+            <div style={{fontSize:12,color:'var(--text3)',marginBottom:12}}>
+              Descrivi eventuali danni, difetti o anomalie riscontrate. Questo campo viene incluso nella relazione di stima e nella scheda di inventario.
+            </div>
+            <textarea className="form-input" value={form.danni||''} onChange={e=>set('danni',e.target.value)} rows={6}
+              placeholder="Es: Graffi sulla carrozzeria lato destro, perdita olio dal paraolio anteriore, display con pixel danneggiati…"
+              style={{width:'100%'}}/>
+            {!form.danni && (
+              <div style={{marginTop:8,fontSize:12,color:'var(--accent-g)'}}>✓ Nessun danno rilevato</div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Azioni */}
+      <div style={{display:'flex',justifyContent:'flex-end',gap:10,marginTop:20}}>
         <button className="btn btn-ghost" onClick={onClose}>Annulla</button>
-        <button className="btn btn-primary" onClick={handleSave} disabled={saving}>{saving ? 'Salvataggio…' : articolo?.id ? 'Aggiorna' : 'Crea articolo'}</button>
+        <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
+          {saving ? 'Salvataggio…' : articolo?.id ? 'Aggiorna articolo' : 'Crea articolo'}
+        </button>
       </div>
-    </>
+    </div>
   )
 }
+
 
 export default function Inventario() {
   const { currentProc, notify } = useStore()
