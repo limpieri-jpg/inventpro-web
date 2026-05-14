@@ -1,0 +1,1 @@
+const fs=require('fs');let c=fs.readFileSync('src/pages/Inventario.jsx','utf8');c=c.replace("'Quota %': a.quota_pct || '',","'Quota %': (a.titolo==='piena_propri%u00e4'||!a.titolo)?'100':(a.quota_pct||''),");fs.writeFileSync('src/pages/Inventario.jsx',c);console.log('OK');
