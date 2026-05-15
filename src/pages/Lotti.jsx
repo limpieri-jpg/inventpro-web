@@ -20,6 +20,43 @@ function LottoForm({ lotto, procId, articoliDisponibili, onSave, onClose }) {
   const [form, setForm] = useState({ numero: '', nome: '', descrizione: '', note: '', prezzo_base: '', offerta_minima: '', rilancio_min: '', ...lotto })
   const [selArticoli, setSelArticoli] = useState([])
   const [saving, setSaving] = useState(false)
+  const [generandoDesc, setGenerandoDesc] = useState(false)
+
+  const generaDescrizione = async () => {
+    const apiKey = localStorage.getItem('ip_apikey') || ''
+    if (!apiKey) { notify('Inserisci la chiave API in Impostazioni', 'warn'); return }
+    const arts = articoliDisponibili.filter(a => selArticoli.includes(a.id))
+    if (arts.length === 0) { notify('Seleziona prima gli articoli del lotto', 'warn'); return }
+    setGenerandoDesc(true)
+    try {
+      const isImmobile = arts.some(a => (a.tipologia_siecic||'').includes('IMMOBILE'))
+      const contenuto = arts.map(a => {
+        if ((a.tipologia_siecic||'').includes('IMMOBILE')) {
+          return [a.desc_breve, a.comune_catastale&&('Comune: '+a.comune_catastale),
+            a.foglio&&('Foglio: '+a.foglio), a.mappale&&('Mappale: '+a.mappale),
+            a.subalterno&&('Sub: '+a.subalterno), a.categoria_catastale&&('Cat: '+a.categoria_catastale),
+            a.rendita&&('Rendita: €'+a.rendita), a.superficie&&('Sup: '+a.superficie+'mq'),
+            a.indirizzo_immobile&&('Ind: '+a.indirizzo_immobile), a.desc_estesa].filter(Boolean).join(' | ')
+        }
+        return (a.qta>1?a.qta+' x ':'')+[a.marca,a.modello,a.desc_breve].filter(Boolean).join(' ')
+      }).join(' / ')
+      const prompt = isImmobile
+        ? 'Sei un esperto di procedure concorsuali italiane. Redigi una descrizione sintetica del lotto immobiliare per un avviso di vendita giudiziaria. Includi dati catastali essenziali, tipologia, superficie e ubicazione. Max 80 parole, stile formale. Dati: '+contenuto
+        : 'Sei un esperto di procedure concorsuali italiane. Redigi una descrizione sintetica del lotto di beni mobili per un avviso di vendita giudiziaria. Elenca i beni principali, max 60 parole, stile formale. Beni: '+contenuto
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        body: JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:300,messages:[{role:'user',content:prompt}]})
+      })
+      const data = await res.json()
+      const testo = data.content?.[0]?.text || ''
+      if (!testo) throw new Error('Risposta AI vuota')
+      setForm(f => ({...f, descrizione: testo.trim()}))
+      notify('Descrizione generata', 'ok')
+    } catch(e) { notify('Errore AI: '+e.message, 'err') }
+    finally { setGenerandoDesc(false) }
+  }
+
 
   useEffect(() => {
     if (lotto?.id) {
