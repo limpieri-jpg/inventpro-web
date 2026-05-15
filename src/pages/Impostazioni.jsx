@@ -8,10 +8,7 @@ export default function Impostazioni() {
   const { profile, notify, fetchProfile } = useStore()
   const [tab, setTab] = useState('profilo')
   const [profilo, setProfilo] = useState({})
-  const [apiKey, setApiKey] = useState('')
-  const [showKey, setShowKey] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [testingKey, setTestingKey] = useState(false)
   const [studioNome, setStudioNome] = useState(localStorage.getItem('ip_studio_nome') || '')
   const [studioIndirizzo, setStudioIndirizzo] = useState(localStorage.getItem('ip_studio_indirizzo') || '')
   const [logoPreview, setLogoPreview] = useState(localStorage.getItem('ip_logo') || null)
@@ -20,7 +17,6 @@ export default function Impostazioni() {
   useEffect(() => {
     if (profile) {
       setProfilo({ ...profile })
-      setApiKey(localStorage.getItem('ip_apikey') || '')
     }
   }, [profile])
 
@@ -39,32 +35,6 @@ export default function Impostazioni() {
     finally { setSaving(false) }
   }
 
-  const saveApiKey = () => {
-    if (!apiKey.trim()) { notify('Inserisci la chiave API', 'warn'); return }
-    localStorage.setItem('ip_apikey', apiKey.trim())
-    notify('Chiave API salvata', 'ok')
-  }
-
-  const testApiKey = async () => {
-    if (!apiKey.trim()) { notify('Inserisci prima la chiave', 'warn'); return }
-    setTestingKey(true)
-    try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey.trim(),
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true'
-        },
-        body: JSON.stringify({ model: 'claude-sonnet-4-5', max_tokens: 10, messages: [{ role: 'user', content: 'test' }] })
-      })
-      const data = await res.json()
-      if (data.error) throw new Error(data.error.message)
-      notify('✅ Chiave API valida e funzionante!', 'ok', 4000)
-    } catch (e) { notify('❌ Chiave non valida: ' + e.message, 'err', 5000) }
-    finally { setTestingKey(false) }
-  }
 
   const TABS = [
     { id: 'profilo', label: 'Profilo utente', icon: User },
@@ -145,53 +115,28 @@ export default function Impostazioni() {
         {/* Chiave API */}
         {tab === 'api' && (
           <div className="card">
-            <div className="card-header"><div className="card-title">Chiave API Anthropic</div></div>
+            <div className="card-header"><div className="card-title">Chiave API AI</div></div>
             <div className="card-body">
-              <div className="alert alert-info" style={{ marginBottom: 20 }}>
+              <div style={{display:'flex',alignItems:'center',gap:16,padding:'16px 20px',background:'rgba(0,200,150,0.06)',border:'1px solid rgba(0,200,150,0.2)',borderRadius:10,marginBottom:20}}>
+                <span style={{fontSize:28}}>✅</span>
                 <div>
-                  <strong>Come ottenere la chiave API:</strong><br />
-                  1. Vai su <strong>console.anthropic.com</strong><br />
-                  2. Accedi con il tuo account<br />
-                  3. Vai su <strong>API Keys</strong> → <strong>Create Key</strong><br />
-                  4. Copia la chiave e incollala qui sotto<br />
-                  <span style={{ fontSize: 12, marginTop: 6, display: 'block', opacity: 0.8 }}>La chiave viene salvata localmente nel browser e non viene inviata ai nostri server.</span>
+                  <div style={{fontWeight:600,fontSize:14,color:'var(--accent-g)'}}>AI attiva e configurata</div>
+                  <div style={{fontSize:13,color:'var(--text2)',marginTop:2}}>La chiave API Anthropic è configurata in modo sicuro sul server. Non è necessario inserirla manualmente.</div>
                 </div>
               </div>
-
-              <div className="form-group">
-                <label className="form-label">API Key Anthropic</label>
-                <div style={{ position: 'relative' }}>
-                  <input
-                    type={showKey ? 'text' : 'password'}
-                    className="form-input"
-                    value={apiKey}
-                    onChange={e => setApiKey(e.target.value)}
-                    placeholder="sk-ant-api03-..."
-                    style={{ paddingRight: 40, fontFamily: 'DM Mono, monospace', fontSize: 13 }}
-                  />
-                  <button onClick={() => setShowKey(s => !s)} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer' }}>
-                    {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                </div>
+              <div style={{fontSize:13,color:'var(--text3)',lineHeight:1.6}}>
+                <p>Le funzionalità AI disponibili nell&apos;applicazione includono:</p>
+                <ul style={{paddingLeft:20,marginTop:8}}>
+                  <li>Analisi fotografica articoli e attribuzione valore commerciale/giudiziario</li>
+                  <li>Generazione descrizione lotti di vendita</li>
+                  <li>Redazione sezioni documenti (relazione particolareggiata, programma di liquidazione, rapporti)</li>
+                  <li>Generazione testo avvisi di vendita</li>
+                </ul>
               </div>
-
-              <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
-                <button className="btn btn-ghost" onClick={testApiKey} disabled={testingKey}>
-                  {testingKey ? 'Test in corso…' : '🔍 Testa chiave'}
-                </button>
-                <button className="btn btn-primary" onClick={saveApiKey}>
-                  <Save size={13} /> Salva chiave
-                </button>
-              </div>
-
-              {apiKey && (
-                <div style={{ marginTop: 20, padding: '10px 14px', background: 'rgba(0,200,150,0.06)', border: '1px solid rgba(0,200,150,0.15)', borderRadius: 8, fontSize: 12, color: 'var(--accent-g)' }}>
-                  ✅ Chiave configurata — la generazione AI è attiva in Documenti e Contratti
-                </div>
-              )}
             </div>
           </div>
         )}
+
         {tab === 'studio' && (
           <div className="settings-section">
             <div className="card">
