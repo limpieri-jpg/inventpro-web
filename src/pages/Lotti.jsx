@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore'
 import { Topbar, Spinner, Modal, Empty } from '../components/layout'
 import { supabase } from '../lib/supabase'
+import { callAI } from '../lib/ai'
 import { Plus, Trash2, Edit, Package, ChevronDown, ChevronUp, Sparkles } from 'lucide-react'
 
 function fmtEur(n) {
@@ -23,8 +24,6 @@ function LottoForm({ lotto, procId, articoliDisponibili, onSave, onClose }) {
   const [generandoDesc, setGenerandoDesc] = useState(false)
 
   const generaDescrizione = async () => {
-    const apiKey = localStorage.getItem('ip_apikey') || ''
-    if (!apiKey) { notify('Inserisci la chiave API in Impostazioni', 'warn'); return }
     const arts = articoliDisponibili.filter(a => selArticoli.includes(a.id))
     if (arts.length === 0) { notify('Seleziona prima gli articoli del lotto', 'warn'); return }
     setGenerandoDesc(true)
@@ -43,14 +42,7 @@ function LottoForm({ lotto, procId, articoliDisponibili, onSave, onClose }) {
       const prompt = isImmobile
         ? 'Sei un esperto di procedure concorsuali italiane. Redigi una descrizione sintetica del lotto immobiliare per un avviso di vendita giudiziaria. Includi dati catastali essenziali, tipologia, superficie e ubicazione. Max 80 parole, stile formale. Dati: '+contenuto
         : 'Sei un esperto di procedure concorsuali italiane. Redigi una descrizione sintetica del lotto di beni mobili per un avviso di vendita giudiziaria. Elenca i beni principali, max 60 parole, stile formale. Beni: '+contenuto
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-        body: JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:300,messages:[{role:'user',content:prompt}]})
-      })
-      const data = await res.json()
-      const testo = data.content?.[0]?.text || ''
-      if (!testo) throw new Error('Risposta AI vuota')
+      const testo = await callAI({ messages: [{ role: 'user', content: prompt }], max_tokens: 300 })
       setForm(f => ({...f, descrizione: testo.trim()}))
       notify('Descrizione generata', 'ok')
     } catch(e) { notify('Errore AI: '+e.message, 'err') }
