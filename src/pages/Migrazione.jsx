@@ -158,6 +158,7 @@ export default function Migrazione() {
               const { data: urlD } = supabase.storage.from('foto-inventario').getPublicUrl(path)
               const { error: fotoErr } = await supabase.from('foto').insert({
                 articolo_id: artId,
+                proc_id: newProcId,
                 storage_path: path,
                 url: urlD.publicUrl,
                 sort_order: i
