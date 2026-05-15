@@ -17,7 +17,7 @@ function fmtEur(n) {
 // ── Form lotto ───────────────────────────────────────────────────────
 function LottoForm({ lotto, procId, articoliDisponibili, onSave, onClose }) {
   const { notify } = useStore()
-  const [form, setForm] = useState({ numero: '', nome: '', descrizione: '', note: '', ...lotto })
+  const [form, setForm] = useState({ numero: '', nome: '', note: '', prezzo_base: '', offerta_minima: '', rilancio_min: '', ...lotto })
   const [selArticoli, setSelArticoli] = useState([])
   const [saving, setSaving] = useState(false)
 
@@ -72,9 +72,18 @@ function LottoForm({ lotto, procId, articoliDisponibili, onSave, onClose }) {
           <label className="form-label">Nome lotto</label>
           <input className="form-input" value={form.nome || ''} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} placeholder="Es. Macchinari officina" />
         </div>
-        <div className="form-col-full form-group">
-          <label className="form-label">Descrizione</label>
-          <textarea className="form-input" value={form.descrizione || ''} onChange={e => setForm(f => ({ ...f, descrizione: e.target.value }))} rows={2} />
+        <div className="form-section">Valori economici</div>
+        <div className="form-group">
+          <label className="form-label">Prezzo base (€)</label>
+          <input className="form-input" value={form.prezzo_base || ''} onChange={e => setForm(f => ({ ...f, prezzo_base: e.target.value }))} placeholder="Es. 5.000,00" />
+        </div>
+        <div className="form-group">
+          <label className="form-label">Offerta minima (€)</label>
+          <input className="form-input" value={form.offerta_minima || ''} onChange={e => setForm(f => ({ ...f, offerta_minima: e.target.value }))} placeholder="Vuoto = prezzo base" />
+        </div>
+        <div className="form-group">
+          <label className="form-label">Rilancio minimo (€)</label>
+          <input className="form-input" value={form.rilancio_min || ''} onChange={e => setForm(f => ({ ...f, rilancio_min: e.target.value }))} placeholder="Es. 250,00" />
         </div>
         <div className="form-col-full form-group">
           <label className="form-label">Note</label>

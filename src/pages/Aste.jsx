@@ -119,6 +119,7 @@ function mkFtr() {
 // ─── Generatore avviso ────────────────────────────────────────────────────────
 async function genAvviso(proc, lotti, opts, logoB64) {
   const { tipoAsta, nEsperimento, dataAsta, oraAsta, dataTermine, oraTermine,
+    durataRilancio, termineOfferte,
     prezzoBase, offertaMinima, rilancioMin, cauzione, dirittiAsta,
     termSaldo, ibanProcedura, intestazioneProcedura,
     ibanCauzione: _ibanCau, bancaCauzione: _bancaCau,
@@ -138,7 +139,7 @@ async function genAvviso(proc, lotti, opts, logoB64) {
   const isPVP    = tipoAsta.includes('pvp')
   const isAMag   = tipoAsta.includes('amag')
   const isMista  = tipoAsta === 'mista'
-  const isAsin   = tipoAsta.includes('asincrona') || isMista
+  const isAsin   = tipoAsta.includes('asincrona') && !isMista
   const isSin    = tipoAsta.includes('sincrona')
   const cau      = cauzione || '10'
   const dir      = dirittiAsta || '2'
@@ -305,7 +306,7 @@ async function genAvviso(proc, lotti, opts, logoB64) {
       P(T('Saranno considerate ammissibili esclusivamente le offerte depositate in modalit\u00e0 cartacea o telematica e che rispettano i requisiti riportati sul presente avviso di vendita.')),
       BR(),
       PSC([B('OFFERTA CARTACEA:')]),
-      P([T("L'offerta dovr\u00e0 essere presentata presso la sede del Soggetto Specializzato alla Vendita \u201cPro.Ges.S. S.r.l.\u201d \u2013 Lecco (Lc) Via Giuseppe Parini n. 29, nei giorni feriali, escluso il sabato, dalle ore 9:00 alle ore 13:00 e dalle ore 14:30 alle ore 18:30, entro e non oltre le ore 12:00 del secondo giorno lavorativo precedente la data di vendita ("), B(fmtD(dataAsta)), T("), in busta chiusa sigillata, distintamente per ciascun Lotto, e controfirmata sul lembo di chiusura.")]),
+      P([T("L'offerta dovr\u00e0 essere presentata presso la sede del Soggetto Specializzato alla Vendita \u201cPro.Ges.S. S.r.l.\u201d \u2013 Lecco (Lc) Via Giuseppe Parini n. 29, nei giorni feriali, escluso il sabato, dalle ore 9:00 alle ore 13:00 e dalle ore 14:30 alle ore 18:30, entro e non oltre le ore 12:00 del secondo giorno lavorativo precedente la data di vendita ("), B(fmtD(termineOfferte||dataAsta)), T("), in busta chiusa sigillata, distintamente per ciascun Lotto, e controfirmata sul lembo di chiusura.")]),
       P(T("L'offerta dovr\u00e0 essere redatta in bollo da euro 16,00 e dovr\u00e0 contenere: le generalit\u00e0 complete dell'offerente (o i dati societari e del legale rappresentante se persona giuridica); copia del documento d'identit\u00e0 in corso di validit\u00e0; il certificato di matrimonio se coniugato; la dichiarazione di accettazione del presente avviso; l'assegno circolare intestato alla procedura a titolo di cauzione. Non sono ammesse offerte per persona da nominare.")),
       BR(),
       PSC([B('OFFERTA TELEMATICA:')]),
@@ -340,7 +341,7 @@ async function genAvviso(proc, lotti, opts, logoB64) {
       P(T('Saranno considerate ammissibili esclusivamente le offerte depositate in modalit\u00e0 telematica e che rispettino i requisiti riportati nel presente avviso di vendita.')),
       BR(),
       PSC([B('OFFERTA TELEMATICA:')]),
-      P([T("L'offerta irrevocabile di acquisto dovr\u00e0 essere formulata entro il giorno "), B(isAsin ? fmtD(dataTermine) : fmtD(dataAsta)), T(" esclusivamente tramite il modulo web \u201cOfferta Telematica\u201d fornito dal Ministero della Giustizia, scaricabile dal portale ministeriale http://venditepubbliche.giustizia.it. L\u2019accesso potr\u00e0 avvenire anche attraverso www.progess-italia.it.")]),
+      P([T("L'offerta irrevocabile di acquisto dovr\u00e0 essere formulata entro il giorno "), B(isAsin ? fmtD(dataTermine) : fmtD(termineOfferte||dataAsta)), T(" esclusivamente tramite il modulo web \u201cOfferta Telematica\u201d fornito dal Ministero della Giustizia, scaricabile dal portale ministeriale http://venditepubbliche.giustizia.it. L\u2019accesso potr\u00e0 avvenire anche attraverso www.progess-italia.it.")]),
       P([T("L'offerta dovr\u00e0 essere inviata con le modalit\u00e0 previste dall'art. 12 del DM 32/2015 e trasmessa all'indirizzo PEC del Ministero della Giustizia "), B('offertapvp.dgsia@giustiziacert.it'), T('. Una volta trasmessa, non sar\u00e0 pi\u00f9 possibile modificare o cancellare l\u2019offerta.')]),
       P([T('La cauzione, nella misura del '), B(cau + '%'), T(" del prezzo offerto, dovr\u00e0 essere versata ai sensi dell'art. 12 DM 32/2015, mediante bonifico bancario, con accredito almeno entro le ore 12:00 del secondo giorno lavorativo antecedente l\u2019esperimento sul seguente conto corrente:")]),
       BR(),
@@ -574,6 +575,8 @@ function WizardAvviso({ proc, onClose, notify }) {
   const [oraAsta, setOraAsta]                 = useState('12:00')
   const [dataTermine, setDataTermine]         = useState(today)
   const [oraTermine, setOraTermine]           = useState('12:00')
+  const [durataRilancio, setDurataRilancio]   = useState('1')           // minuti
+  const [termineOfferte, setTermineOfferte]   = useState(today)         // sincrona: termine offerte cartacee
   const [prezzoBase, setPrezzoBase]           = useState('')
   const [offertaMinima, setOffertaMinima]     = useState('')
   const [rilancioMin, setRilancioMin]         = useState('')
@@ -612,7 +615,9 @@ function WizardAvviso({ proc, onClose, notify }) {
   const [savingTesto, setSavingTesto]         = useState(false)
   const [gen, setGen]                         = useState(false)
 
-  const isAsincrona = tipoAsta.includes('asincrona') || tipoAsta === 'mista'
+  const isAsincrona = tipoAsta.includes('asincrona') && tipoAsta !== 'mista'
+  const isMistaWiz   = tipoAsta === 'mista'
+  const isSincrona   = tipoAsta.includes('sincrona')
 
   // Carica IBAN da settings e testo AVVISA dal DB all'apertura
   useEffect(() => {
@@ -845,14 +850,30 @@ function WizardAvviso({ proc, onClose, notify }) {
         <div className="card-header"><div className="card-title">📅 Date e orari</div></div>
         <div className="card-body">
           <div className="form-grid">
-            {isAsincrona ? (<>
+            {/* ASINCRONA: data inizio + data fine */}
+            {isAsincrona && (<>
               <Inp label="Inizio periodo offerte" val={dataAsta} set={setDataAsta} type="date" />
               <Inp label="Ora inizio" val={oraAsta} set={setOraAsta} placeholder="12:00" />
               <Inp label="Fine periodo offerte" val={dataTermine} set={setDataTermine} type="date" />
               <Inp label="Ora fine" val={oraTermine} set={setOraTermine} placeholder="12:00" />
-            </>) : (<>
+              <Inp label="Durata rilanci (minuti)" val={durataRilancio} set={setDurataRilancio} placeholder="1" />
+            </>)}
+            {/* SINCRONA TELEMATICA: data/ora inizio + durata rilanci + termine offerte */}
+            {isSincrona && !isMistaWiz && (<>
               <Inp label="Data asta" val={dataAsta} set={setDataAsta} type="date" />
-              <Inp label="Ora asta" val={oraAsta} set={setOraAsta} placeholder="12:00" />
+              <Inp label="Ora inizio asta" val={oraAsta} set={setOraAsta} placeholder="12:00" />
+              <Inp label="Termine presentazione offerte" val={termineOfferte} set={setTermineOfferte} type="date" />
+              <Inp label="Durata rilanci (minuti)" val={durataRilancio} set={setDurataRilancio} placeholder="1" />
+            </>)}
+            {/* SINCRONA MISTA: data/ora asta in presenza + termine offerte cartacee + durata rilanci */}
+            {isMistaWiz && (<>
+              <Inp label="Data asta in presenza" val={dataAsta} set={setDataAsta} type="date" />
+              <Inp label="Ora inizio asta" val={oraAsta} set={setOraAsta} placeholder="12:00" />
+              <Inp label="Termine offerte cartacee" val={termineOfferte} set={setTermineOfferte} type="date" />
+              <div className="form-group" style={{gridColumn:'1/-1',fontSize:12,color:'var(--text3)',marginTop:-8}}>
+                Le offerte cartacee devono pervenire entro le ore 12:00 del secondo giorno lavorativo antecedente l&apos;asta
+              </div>
+              <Inp label="Durata rilanci (minuti)" val={durataRilancio} set={setDurataRilancio} placeholder="1" />
             </>)}
           </div>
         </div>
