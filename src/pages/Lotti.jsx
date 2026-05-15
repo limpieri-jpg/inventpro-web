@@ -48,8 +48,7 @@ function LottoForm({ lotto, procId, articoliDisponibili, onSave, onClose }) {
           ].filter(Boolean).join(' | ')
         }
         return [(a.qta > 1 ? a.qta + ' x ' : '') + [a.marca, a.modello, a.desc_breve].filter(Boolean).join(' ')].join('')
-      }).join('
-')
+      }).join('\n')
 
       const prompt = isImmobile
         ? `Sei un esperto di procedure concorsuali italiane. Redigi una descrizione sintetica del lotto immobiliare per un avviso di vendita giudiziaria. Includi i dati catastali essenziali, la tipologia, la superficie e l'ubicazione. Max 80 parole, stile formale. Dati: ${contenuto}`
