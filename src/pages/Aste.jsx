@@ -314,7 +314,7 @@ async function genAvviso(proc, lotti, opts, logoB64) {
       BLT(T("dovr\u00e0 essere inviata con le modalit\u00e0 previste dall'art. 12 del DM 32/2015;")),
       BLT([T("dovr\u00e0 essere trasmessa all'indirizzo PEC del Ministero della Giustizia "), B('offertapvp.dgsia@giustiziacert.it'), T('.')]),
       BR(),
-      P([T('La cauzione, nella misura del '), B(cau + '%'), T(' del prezzo offerto, dovr\u00e0 risultare accreditata almeno entro le ore '), B(oraTermine||'12:00'), T(' del giorno '), B(fmtD(termineOfferte||dataAsta)), T(' sul T(') sul conto corrente:')]),
+      P([T('La cauzione, nella misura del '), B(cau + '%'), T(' del prezzo offerto, dovr\u00e0 risultare accreditata almeno entro le ore '), B(oraTermine||'12:00'), T(' del giorno '), B(fmtD(termineOfferte||dataAsta)), T(' sul conto corrente:')]),
       BR(),
       P(B('Beneficiario: Pro.Ges.S. S.r.l.')),
       P([B('Banca: ' + BANCA_PGS)]),
