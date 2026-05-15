@@ -139,8 +139,8 @@ async function genAvviso(proc, lotti, opts, logoB64) {
   const isPVP    = tipoAsta.includes('pvp')
   const isAMag   = tipoAsta.includes('amag')
   const isMista  = tipoAsta === 'mista'
-  const isAsin   = tipoAsta.includes('asincrona') && !isMista
-  const isSin    = tipoAsta.includes('sincrona')
+  const isAsin   = tipoAsta === 'asincrona_pvp' || tipoAsta === 'asincrona_amag'
+  const isSin    = tipoAsta === 'sincrona_pvp' || tipoAsta === 'sincrona_amag'
   const cau      = cauzione || '10'
   const dir      = dirittiAsta || '2'
   const saldo    = termSaldo || '120'
@@ -615,9 +615,9 @@ function WizardAvviso({ proc, onClose, notify }) {
   const [savingTesto, setSavingTesto]         = useState(false)
   const [gen, setGen]                         = useState(false)
 
-  const isAsincrona = tipoAsta.includes('asincrona') && tipoAsta !== 'mista'
+  const isAsincrona  = tipoAsta === 'asincrona_pvp' || tipoAsta === 'asincrona_amag'
   const isMistaWiz   = tipoAsta === 'mista'
-  const isSincrona   = tipoAsta.includes('sincrona')
+  const isSincrona   = tipoAsta === 'sincrona_pvp' || tipoAsta === 'sincrona_amag'
 
   // Carica IBAN da settings e testo AVVISA dal DB all'apertura
   useEffect(() => {
@@ -852,11 +852,11 @@ function WizardAvviso({ proc, onClose, notify }) {
           <div className="form-grid">
             {/* ASINCRONA: data inizio + data fine */}
             {isAsincrona && (<>
-              <Inp label="Inizio periodo offerte" val={dataAsta} set={setDataAsta} type="date" />
-              <Inp label="Ora inizio" val={oraAsta} set={setOraAsta} placeholder="12:00" />
-              <Inp label="Fine periodo offerte" val={dataTermine} set={setDataTermine} type="date" />
-              <Inp label="Ora fine" val={oraTermine} set={setOraTermine} placeholder="12:00" />
-              <Inp label="Durata rilanci (minuti)" val={durataRilancio} set={setDurataRilancio} placeholder="1" />
+              <Inp label="Data inizio asta" val={dataAsta} set={setDataAsta} type="date" />
+              <Inp label="Ora inizio asta" val={oraAsta} set={setOraAsta} placeholder="12:00" />
+              <Inp label="Data fine asta" val={dataTermine} set={setDataTermine} type="date" />
+              <Inp label="Ora fine asta" val={oraTermine} set={setOraTermine} placeholder="12:00" />
+              <Inp label="Extra time / Durata rilanci (minuti)" val={durataRilancio} set={setDurataRilancio} placeholder="1" />
             </>)}
             {/* SINCRONA TELEMATICA: data/ora inizio + durata rilanci + termine offerte */}
             {isSincrona && !isMistaWiz && (<>
