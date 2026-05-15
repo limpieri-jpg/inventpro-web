@@ -55,7 +55,7 @@ export default function Migrazione() {
         const payload = {
           nome:           p.nome            || '',
           tipo:           TIPO_MAP[p.tipo]  || 'liquidazione_giudiziale',
-          num_rg:         p.num             || '',
+          num:            p.num             || '',
           tribunale:      p.tribunale       || '',
           giudice:        p.giudice         || '',
           curatore:       p.curatore        || '',
@@ -67,7 +67,7 @@ export default function Migrazione() {
         }
 
         const { data: ex } = await supabase.from('procedure')
-          .select('id').eq('nome', payload.nome).eq('num_rg', payload.num_rg).maybeSingle()
+          .select('id').eq('nome', payload.nome).eq('num', payload.num).maybeSingle()
 
         if (ex) {
           addLog(`  ⏭  ${p.nome} — già presente`, 'warn')
