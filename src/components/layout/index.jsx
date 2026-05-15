@@ -2,7 +2,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useStore } from '../../store/useStore'
 import {
   LayoutDashboard, FolderOpen, Package, Layers, Gavel,
-  FileText, Settings, LogOut, Users, ChevronRight, Lock
+  FileText, Settings, LogOut, Users, ChevronRight, Lock, Database
 } from 'lucide-react'
 
 const NAV = [
@@ -17,6 +17,7 @@ const NAV = [
   { section: 'Sistema' },
   { label: 'Impostazioni', icon: Settings,         path: '/impostazioni' },
   { label: 'Utenti',       icon: Users,            path: '/admin',       adminOnly: true },
+  { label: 'Migrazione',   icon: Database,         path: '/migrazione',  adminOnly: true },
 ]
 
 export function Sidebar() {
