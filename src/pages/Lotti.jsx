@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore'
 import { Topbar, Spinner, Modal, Empty } from '../components/layout'
 import { supabase } from '../lib/supabase'
-import { Plus, Trash2, Edit, Package, ChevronDown, ChevronUp } from 'lucide-react'
+import { Plus, Trash2, Edit, Package, ChevronDown, ChevronUp, Sparkles } from 'lucide-react'
 
 function fmtEur(n) {
   if (n === null || n === undefined || n === '') return '\u2014'
@@ -17,9 +17,57 @@ function fmtEur(n) {
 // ── Form lotto ───────────────────────────────────────────────────────
 function LottoForm({ lotto, procId, articoliDisponibili, onSave, onClose }) {
   const { notify } = useStore()
-  const [form, setForm] = useState({ numero: '', nome: '', note: '', prezzo_base: '', offerta_minima: '', rilancio_min: '', ...lotto })
+  const [form, setForm] = useState({ numero: '', nome: '', descrizione: '', note: '', prezzo_base: '', offerta_minima: '', rilancio_min: '', ...lotto })
   const [selArticoli, setSelArticoli] = useState([])
   const [saving, setSaving] = useState(false)
+  const [generandoDesc, setGenerandoDesc] = useState(false)
+
+  // Genera descrizione AI dal contenuto degli articoli selezionati
+  const generaDescrizione = async () => {
+    const apiKey = localStorage.getItem('ip_apikey') || ''
+    if (!apiKey) { notify('Inserisci la chiave API in Impostazioni', 'warn'); return }
+    const arts = articoliDisponibili.filter(a => selArticoli.includes(a.id))
+    if (arts.length === 0) { notify('Seleziona almeno un articolo', 'warn'); return }
+    setGenerandoDesc(true)
+    try {
+      // Raccoglie dati catastali e descrittivi
+      const isImmobile = arts.some(a => (a.tipologia_siecic||'').includes('IMMOBILE'))
+      const contenuto = arts.map(a => {
+        if ((a.tipologia_siecic||'').includes('IMMOBILE')) {
+          return [
+            a.desc_breve,
+            a.comune_catastale && 'Comune catastale: ' + a.comune_catastale,
+            a.foglio           && 'Foglio: ' + a.foglio,
+            a.mappale          && 'Particella/Mappale: ' + a.mappale,
+            a.subalterno       && 'Subalterno: ' + a.subalterno,
+            a.categoria_catastale && 'Categoria: ' + a.categoria_catastale,
+            a.rendita          && 'Rendita: € ' + a.rendita,
+            a.superficie       && 'Superficie: ' + a.superficie + ' mq',
+            a.indirizzo_immobile && 'Indirizzo: ' + a.indirizzo_immobile,
+            a.desc_estesa,
+          ].filter(Boolean).join(' | ')
+        }
+        return [(a.qta > 1 ? a.qta + ' x ' : '') + [a.marca, a.modello, a.desc_breve].filter(Boolean).join(' ')].join('')
+      }).join('
+')
+
+      const prompt = isImmobile
+        ? `Sei un esperto di procedure concorsuali italiane. Redigi una descrizione sintetica del lotto immobiliare per un avviso di vendita giudiziaria. Includi i dati catastali essenziali, la tipologia, la superficie e l'ubicazione. Max 80 parole, stile formale. Dati: ${contenuto}`
+        : `Sei un esperto di procedure concorsuali italiane. Redigi una descrizione sintetica del lotto di beni mobili per un avviso di vendita giudiziaria. Elenca i beni principali, max 60 parole, stile formale. Beni: ${contenuto}`
+
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+        body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 300, messages: [{ role: 'user', content: prompt }] })
+      })
+      const data = await res.json()
+      const testo = data.content?.[0]?.text || ''
+      if (!testo) throw new Error('Risposta AI vuota')
+      setForm(f => ({ ...f, descrizione: testo.trim() }))
+      notify('Descrizione generata', 'ok')
+    } catch (e) { notify('Errore AI: ' + e.message, 'err') }
+    finally { setGenerandoDesc(false) }
+  }
 
   useEffect(() => {
     if (lotto?.id) {
@@ -36,19 +84,26 @@ function LottoForm({ lotto, procId, articoliDisponibili, onSave, onClose }) {
     if (!form.numero) { notify('Inserisci il numero del lotto', 'warn'); return }
     setSaving(true)
     try {
+      // Estrai solo i campi scrivibili
+      const { id: _id, created_at, updated_at, lotti_articoli: _la, articolo_ids: _ai, ...payload } = form
       let lottoId
       if (lotto?.id) {
-        await supabase.from('lotti').update(form).eq('id', lotto.id)
+        const { error } = await supabase.from('lotti').update(payload).eq('id', lotto.id)
+        if (error) throw error
         lottoId = lotto.id
       } else {
-        const { data, error } = await supabase.from('lotti').insert({ ...form, proc_id: procId }).select().single()
+        const { data, error } = await supabase.from('lotti').insert({ ...payload, proc_id: procId }).select().single()
         if (error) throw error
         lottoId = data.id
       }
       // Aggiorna articoli del lotto
-      await supabase.from('lotti_articoli').delete().eq('lotto_id', lottoId)
+      const { error: delErr } = await supabase.from('lotti_articoli').delete().eq('lotto_id', lottoId)
+      if (delErr) throw delErr
       if (selArticoli.length > 0) {
-        await supabase.from('lotti_articoli').insert(selArticoli.map(aid => ({ lotto_id: lottoId, articolo_id: aid })))
+        const { error: insErr } = await supabase.from('lotti_articoli').insert(
+          selArticoli.map(aid => ({ lotto_id: lottoId, articolo_id: aid }))
+        )
+        if (insErr) throw insErr
       }
       notify('Lotto salvato', 'ok')
       onSave()
@@ -84,6 +139,16 @@ function LottoForm({ lotto, procId, articoliDisponibili, onSave, onClose }) {
         <div className="form-group">
           <label className="form-label">Rilancio minimo (€)</label>
           <input className="form-input" value={form.rilancio_min || ''} onChange={e => setForm(f => ({ ...f, rilancio_min: e.target.value }))} placeholder="Es. 250,00" />
+        </div>
+        <div className="form-col-full form-group">
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:4}}>
+            <label className="form-label" style={{marginBottom:0}}>Descrizione lotto</label>
+            <button className="btn btn-ghost btn-sm" onClick={generaDescrizione} disabled={generandoDesc} type="button">
+              <Sparkles size={12}/> {generandoDesc ? 'Generazione…' : 'Genera con AI'}
+            </button>
+          </div>
+          <textarea className="form-input" value={form.descrizione || ''} onChange={e => setForm(f => ({ ...f, descrizione: e.target.value }))} rows={3}
+            placeholder="Descrizione del lotto — generata automaticamente dall'AI o inserita manualmente" />
         </div>
         <div className="form-col-full form-group">
           <label className="form-label">Note</label>

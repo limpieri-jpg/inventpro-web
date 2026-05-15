@@ -25,7 +25,7 @@ const TIPI_ASTA = [
   { id: 'sincrona_pvp',   label: 'Sincrona telematica \u2014 Portale Vendite Pubbliche (PVP)' },
   { id: 'sincrona_amag',  label: 'Sincrona telematica \u2014 AsteMagazine' },
   { id: 'asincrona_amag', label: 'Asincrona telematica \u2014 AsteMagazine' },
-  { id: 'mista',          label: 'Vendita telematica mista (sincrona + asincrona)' },
+  { id: 'mista',          label: 'Sincrona mista (in presenza + telematica)' },
 ]
 
 // ─── Helpers docx ─────────────────────────────────────────────────────────────
@@ -293,7 +293,7 @@ async function genAvviso(proc, lotti, opts, logoB64) {
       P([B('IBAN:\u00a0 ' + IBAN_CAU)]),
       P([B('Causale: \u201c'), T(causale('cau')), B('\u201d')]),
       BR(),
-      P([T('La presentazione delle offerte e l\u2019accredito della relativa cauzione dovranno pervenire entro il giorno '), B(fmtD(dataTermine)), T(' alle ore '), B(oraTermine || '12:00'), T('.')]),
+      P([T('La presentazione delle offerte e l\u2019accredito della relativa cauzione dovranno pervenire entro il giorno '), B(fmtD(dataTermine)), T(' alle ore '), B(oraTermine||'12:00'), T('.')]),
     ]
   } else if (isMista) {
     sezioneOfferte = [
@@ -306,7 +306,7 @@ async function genAvviso(proc, lotti, opts, logoB64) {
       P(T('Saranno considerate ammissibili esclusivamente le offerte depositate in modalit\u00e0 cartacea o telematica e che rispettano i requisiti riportati sul presente avviso di vendita.')),
       BR(),
       PSC([B('OFFERTA CARTACEA:')]),
-      P([T("L'offerta dovr\u00e0 essere presentata presso la sede del Soggetto Specializzato alla Vendita \u201cPro.Ges.S. S.r.l.\u201d \u2013 Lecco (Lc) Via Giuseppe Parini n. 29, nei giorni feriali, escluso il sabato, dalle ore 9:00 alle ore 13:00 e dalle ore 14:30 alle ore 18:30, entro e non oltre le ore 12:00 del secondo giorno lavorativo precedente la data di vendita ("), B(fmtD(termineOfferte||dataAsta)), T("), in busta chiusa sigillata, distintamente per ciascun Lotto, e controfirmata sul lembo di chiusura.")]),
+      P([T("L'offerta dovr\u00e0 essere presentata presso la sede del Soggetto Specializzato alla Vendita \u201cPro.Ges.S. S.r.l.\u201d \u2013 Lecco (Lc) Via Giuseppe Parini n. 29, nei giorni feriali, escluso il sabato, dalle ore 9:00 alle ore 13:00 e dalle ore 14:30 alle ore 18:30, entro e non oltre le ore "), B(oraTermine||'12:00'), T(" del giorno "), B(fmtD(termineOfferte||dataAsta)), T(", T("), in busta chiusa sigillata, distintamente per ciascun Lotto, e controfirmata sul lembo di chiusura.")]),
       P(T("L'offerta dovr\u00e0 essere redatta in bollo da euro 16,00 e dovr\u00e0 contenere: le generalit\u00e0 complete dell'offerente (o i dati societari e del legale rappresentante se persona giuridica); copia del documento d'identit\u00e0 in corso di validit\u00e0; il certificato di matrimonio se coniugato; la dichiarazione di accettazione del presente avviso; l'assegno circolare intestato alla procedura a titolo di cauzione. Non sono ammesse offerte per persona da nominare.")),
       BR(),
       PSC([B('OFFERTA TELEMATICA:')]),
@@ -314,7 +314,7 @@ async function genAvviso(proc, lotti, opts, logoB64) {
       BLT(T("dovr\u00e0 essere inviata con le modalit\u00e0 previste dall'art. 12 del DM 32/2015;")),
       BLT([T("dovr\u00e0 essere trasmessa all'indirizzo PEC del Ministero della Giustizia "), B('offertapvp.dgsia@giustiziacert.it'), T('.')]),
       BR(),
-      P([T('La cauzione, nella misura del '), B(cau + '%'), T(' del prezzo offerto, dovr\u00e0 risultare accreditata almeno entro le ore 12:00 del secondo giorno lavorativo antecedente la data di apertura buste ('), B(fmtD(dataAsta)), T(') sul conto corrente:')]),
+      P([T('La cauzione, nella misura del '), B(cau + '%'), T(' del prezzo offerto, dovr\u00e0 risultare accreditata almeno entro le ore '), B(oraTermine||'12:00'), T(' del giorno '), B(fmtD(termineOfferte||dataAsta)), T(' sul T(') sul conto corrente:')]),
       BR(),
       P(B('Beneficiario: Pro.Ges.S. S.r.l.')),
       P([B('Banca: ' + BANCA_PGS)]),
@@ -863,6 +863,7 @@ function WizardAvviso({ proc, onClose, notify }) {
               <Inp label="Data asta" val={dataAsta} set={setDataAsta} type="date" />
               <Inp label="Ora inizio asta" val={oraAsta} set={setOraAsta} placeholder="12:00" />
               <Inp label="Termine presentazione offerte" val={termineOfferte} set={setTermineOfferte} type="date" />
+              <Inp label="Ora termine offerte" val={oraTermine} set={setOraTermine} placeholder="12:00" />
               <Inp label="Durata rilanci (minuti)" val={durataRilancio} set={setDurataRilancio} placeholder="1" />
             </>)}
             {/* SINCRONA MISTA: data/ora asta in presenza + termine offerte cartacee + durata rilanci */}
@@ -870,8 +871,9 @@ function WizardAvviso({ proc, onClose, notify }) {
               <Inp label="Data asta in presenza" val={dataAsta} set={setDataAsta} type="date" />
               <Inp label="Ora inizio asta" val={oraAsta} set={setOraAsta} placeholder="12:00" />
               <Inp label="Termine offerte cartacee" val={termineOfferte} set={setTermineOfferte} type="date" />
+              <Inp label="Ora termine offerte" val={oraTermine} set={setOraTermine} placeholder="12:00" />
               <div className="form-group" style={{gridColumn:'1/-1',fontSize:12,color:'var(--text3)',marginTop:-8}}>
-                Le offerte cartacee devono pervenire entro le ore 12:00 del secondo giorno lavorativo antecedente l&apos;asta
+                Le offerte cartacee devono pervenire entro l&apos;ora indicata del giorno selezionato
               </div>
               <Inp label="Durata rilanci (minuti)" val={durataRilancio} set={setDurataRilancio} placeholder="1" />
             </>)}
