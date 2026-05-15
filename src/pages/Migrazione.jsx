@@ -156,12 +156,13 @@ export default function Migrazione() {
               if (upErr && !upErr.message.includes('already exists')) throw upErr
 
               const { data: urlD } = supabase.storage.from('foto-inventario').getPublicUrl(path)
-              await supabase.from('foto').insert({
+              const { error: fotoErr } = await supabase.from('foto').insert({
                 articolo_id: artId,
                 storage_path: path,
                 url: urlD.publicUrl,
                 sort_order: i
               })
+              if (fotoErr) throw new Error('DB foto: ' + fotoErr.message)
               fotoOk++
             } catch (fe) {
               addLog(`    ⚠  foto ${i + 1} di "${a.descBreve}": ${fe.message}`, 'warn')
