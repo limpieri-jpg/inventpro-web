@@ -118,7 +118,7 @@ function mkFtr() {
 
 // ─── Generatore avviso ────────────────────────────────────────────────────────
 async function genAvviso(proc, lotti, opts, logoB64) {
-  const { tipoAsta, nEsperimento, dataAsta, oraAsta, dataTermine, oraTermine,
+  const { tipoAsta, tipoBene, nEsperimento, dataAsta, oraAsta, dataTermine, oraTermine,
     durataRilancio, termineOfferte,
     prezzoBase, offertaMinima, rilancioMin, cauzione, dirittiAsta,
     termSaldo, ibanProcedura, intestazioneProcedura,
