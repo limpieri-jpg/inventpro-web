@@ -127,7 +127,7 @@ export default function Migrazione() {
         let artId
         if (exArt) {
           artId = exArt.id
-          addLog(`  ⏭  ${a.descBreve} — già presente`, 'warn')
+          // Non logghiamo "già presente" qui — lo faremo dopo le foto
         } else {
           const { data, error } = await supabase.from('articoli').insert(payload).select('id').single()
           if (error) throw error
@@ -165,9 +165,11 @@ export default function Migrazione() {
               addLog(`    ⚠  foto ${i + 1} di "${a.descBreve}": ${fe.message}`, 'warn')
             }
           }
-          if (!exArt) addLog(`  ✅ ${a.descBreve} (${fotoOk} foto)`, 'ok')
+          if (exArt)  addLog(`  📷 ${a.descBreve} — ${fotoOk} foto caricate`, 'ok')
+          else        addLog(`  ✅ ${a.descBreve} (${fotoOk} foto)`, 'ok')
         } else {
-          if (!exArt) addLog(`  ✅ ${a.descBreve}`, 'ok')
+          if (exArt)  addLog(`  ⏭  ${a.descBreve} — già presente`, 'warn')
+          else        addLog(`  ✅ ${a.descBreve}`, 'ok')
         }
       } catch (err) {
         addLog(`  ❌ ${a.descBreve}: ${err.message}`, 'err')
