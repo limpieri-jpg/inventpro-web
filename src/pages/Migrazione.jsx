@@ -151,15 +151,17 @@ export default function Migrazione() {
               const ext  = mime.includes('png') ? 'png' : 'jpg'
               const path = `${newProcId}/${artId}/foto_${i + 1}.${ext}`
 
-              const { error: upErr } = await supabase.storage.from('foto-articoli')
+              const { error: upErr } = await supabase.storage.from('foto-inventario')
                 .upload(path, blob, { contentType: mime, upsert: true })
               if (upErr && !upErr.message.includes('already exists')) throw upErr
 
-              const { data: urlD } = supabase.storage.from('foto-articoli').getPublicUrl(path)
-              await supabase.from('foto_articoli').upsert(
-                { articolo_id: artId, url: urlD.publicUrl, sort_order: i },
-                { onConflict: 'articolo_id,sort_order' }
-              )
+              const { data: urlD } = supabase.storage.from('foto-inventario').getPublicUrl(path)
+              await supabase.from('foto').insert({
+                articolo_id: artId,
+                storage_path: path,
+                url: urlD.publicUrl,
+                sort_order: i
+              })
               fotoOk++
             } catch (fe) {
               addLog(`    ⚠  foto ${i + 1} di "${a.descBreve}": ${fe.message}`, 'warn')
