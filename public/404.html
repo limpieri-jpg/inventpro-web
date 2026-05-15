@@ -1,19 +1,18 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8">
-  <title>InventPro</title>
-  <script>
-    // GitHub Pages SPA redirect
-    // Prende il path corrente e lo passa come query string alla index.html
-    var l = window.location;
-    l.replace(
-      l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
-      '/inventpro-web/' +
-      '?p=' + encodeURIComponent(l.pathname.slice('/inventpro-web/'.length) + l.search) +
-      (l.hash || '')
-    );
-  </script>
+<script>
+  // GitHub Pages SPA redirect
+  var l = window.location;
+  l.replace(
+    l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
+    l.pathname.split('/').slice(0, 2).join('/') +
+    '/?p=' + l.pathname.slice(1).split('/').slice(1).join('/').replace(/&/g, '~and~') +
+    (l.search ? '&q=' + l.search.slice(1).replace(/&/g, '~and~') : '') +
+    l.hash
+  );
+</script>
 </head>
 <body></body>
 </html>
+<!-- Questo file va in public/404.html -->
