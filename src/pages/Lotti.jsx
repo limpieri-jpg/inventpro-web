@@ -20,53 +20,6 @@ function LottoForm({ lotto, procId, articoliDisponibili, onSave, onClose }) {
   const [form, setForm] = useState({ numero: '', nome: '', descrizione: '', note: '', prezzo_base: '', offerta_minima: '', rilancio_min: '', ...lotto })
   const [selArticoli, setSelArticoli] = useState([])
   const [saving, setSaving] = useState(false)
-  const [generandoDesc, setGenerandoDesc] = useState(false)
-
-  // Genera descrizione AI dal contenuto degli articoli selezionati
-  const generaDescrizione = async () => {
-    const apiKey = localStorage.getItem('ip_apikey') || ''
-    if (!apiKey) { notify('Inserisci la chiave API in Impostazioni', 'warn'); return }
-    const arts = articoliDisponibili.filter(a => selArticoli.includes(a.id))
-    if (arts.length === 0) { notify('Seleziona almeno un articolo', 'warn'); return }
-    setGenerandoDesc(true)
-    try {
-      // Raccoglie dati catastali e descrittivi
-      const isImmobile = arts.some(a => (a.tipologia_siecic||'').includes('IMMOBILE'))
-      const contenuto = arts.map(a => {
-        if ((a.tipologia_siecic||'').includes('IMMOBILE')) {
-          return [
-            a.desc_breve,
-            a.comune_catastale && 'Comune catastale: ' + a.comune_catastale,
-            a.foglio           && 'Foglio: ' + a.foglio,
-            a.mappale          && 'Particella/Mappale: ' + a.mappale,
-            a.subalterno       && 'Subalterno: ' + a.subalterno,
-            a.categoria_catastale && 'Categoria: ' + a.categoria_catastale,
-            a.rendita          && 'Rendita: € ' + a.rendita,
-            a.superficie       && 'Superficie: ' + a.superficie + ' mq',
-            a.indirizzo_immobile && 'Indirizzo: ' + a.indirizzo_immobile,
-            a.desc_estesa,
-          ].filter(Boolean).join(' | ')
-        }
-        return [(a.qta > 1 ? a.qta + ' x ' : '') + [a.marca, a.modello, a.desc_breve].filter(Boolean).join(' ')].join('')
-      }).join('\n')
-
-      const prompt = isImmobile
-        ? `Sei un esperto di procedure concorsuali italiane. Redigi una descrizione sintetica del lotto immobiliare per un avviso di vendita giudiziaria. Includi i dati catastali essenziali, la tipologia, la superficie e l'ubicazione. Max 80 parole, stile formale. Dati: ${contenuto}`
-        : `Sei un esperto di procedure concorsuali italiane. Redigi una descrizione sintetica del lotto di beni mobili per un avviso di vendita giudiziaria. Elenca i beni principali, max 60 parole, stile formale. Beni: ${contenuto}`
-
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-        body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 300, messages: [{ role: 'user', content: prompt }] })
-      })
-      const data = await res.json()
-      const testo = data.content?.[0]?.text || ''
-      if (!testo) throw new Error('Risposta AI vuota')
-      setForm(f => ({ ...f, descrizione: testo.trim() }))
-      notify('Descrizione generata', 'ok')
-    } catch (e) { notify('Errore AI: ' + e.message, 'err') }
-    finally { setGenerandoDesc(false) }
-  }
 
   useEffect(() => {
     if (lotto?.id) {
@@ -83,7 +36,7 @@ function LottoForm({ lotto, procId, articoliDisponibili, onSave, onClose }) {
     if (!form.numero) { notify('Inserisci il numero del lotto', 'warn'); return }
     setSaving(true)
     try {
-      // Estrai solo i campi scrivibili
+      // Rimuovi campi non scrivibili
       const { id: _id, created_at, updated_at, lotti_articoli: _la, articolo_ids: _ai, ...payload } = form
       let lottoId
       if (lotto?.id) {
@@ -126,6 +79,7 @@ function LottoForm({ lotto, procId, articoliDisponibili, onSave, onClose }) {
           <label className="form-label">Nome lotto</label>
           <input className="form-input" value={form.nome || ''} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} placeholder="Es. Macchinari officina" />
         </div>
+
         <div className="form-section">Valori economici</div>
         <div className="form-group">
           <label className="form-label">Prezzo base (€)</label>
@@ -139,6 +93,7 @@ function LottoForm({ lotto, procId, articoliDisponibili, onSave, onClose }) {
           <label className="form-label">Rilancio minimo (€)</label>
           <input className="form-input" value={form.rilancio_min || ''} onChange={e => setForm(f => ({ ...f, rilancio_min: e.target.value }))} placeholder="Es. 250,00" />
         </div>
+
         <div className="form-col-full form-group">
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:4}}>
             <label className="form-label" style={{marginBottom:0}}>Descrizione lotto</label>
