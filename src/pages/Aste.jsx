@@ -956,8 +956,6 @@ function WizardAvviso({ proc, onClose, notify }) {
         )}
       </div>
 
-        )}
-      </div>
 
       <div className="card">
         <div className="card-header" style={{cursor:'pointer'}} onClick={()=>toggleCard('date')}>
