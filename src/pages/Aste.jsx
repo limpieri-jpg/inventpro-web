@@ -1001,8 +1001,13 @@ function WizardAvviso({ proc, onClose, notify }) {
           <span style={{fontSize:12,color:'var(--text3)',transform:openCards.offerta?'rotate(180deg)':'none',transition:'transform 0.2s'}}>▼</span>
         </div>
         {openCards.offerta && (
-        {offertaIrrevocabile && (
-          <div className="card-body" style={{display:'flex',flexDirection:'column',gap:12}}>
+          <div className="card-body">
+            <label style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer',fontSize:13,padding:'8px 0'}}>
+              <input type="checkbox" checked={offertaIrrevocabile} onChange={e=>setOffertaIrrevocabile(e.target.checked)} />
+              È stata ricevuta un&apos;offerta irrevocabile cauzionata prima dell&apos;asta
+            </label>
+            {offertaIrrevocabile && (
+            <div style={{display:'flex',flexDirection:'column',gap:12,marginTop:8}}>
             <div className="form-grid">
               <div className="form-group">
                 <label className="form-label">Data ricezione offerta irrevocabile</label>
@@ -1051,8 +1056,8 @@ function WizardAvviso({ proc, onClose, notify }) {
             </div>
           </div>
         )}
-        )}
       </div>
+        )}
 
       <div className="card">
         <div className="card-header" style={{cursor:'pointer'}} onClick={()=>toggleCard('contatti')}>
