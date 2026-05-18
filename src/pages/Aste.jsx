@@ -733,8 +733,10 @@ function WizardAvviso({ proc, onClose, notify }) {
       const logo = localStorage.getItem('ip_logo') || null
       const blob = await genAvviso(proc, lottiEffettivi, {
         tipoAsta, tipoBene, nEsperimento, dataAsta, oraAsta, dataTermine, oraTermine,
+        durataRilancio, termineOfferte,
         prezzoBase, offertaMinima, rilancioMin, cauzione, dirittiAsta,
         termSaldo, ibanProcedura, intestazioneProcedura,
+        saldoGestoreCommiss, ibanCommissionario,
         ibanCauzione, bancaCauzione, ibanDiritti, bancaDiritti,
         referente, noteFinali,
         offertaIrrevocabile, offertaIrrevData, offertaIrrevImporto, testoOfferta,
