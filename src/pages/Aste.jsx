@@ -1246,63 +1246,66 @@ export default function Aste() {
   )
 
   return (
-    <>
-      <Topbar title="Aste e Vendite" subtitle={currentProc.nome||''} />
-      <div style={{flex:1,overflowY:'auto',padding:24}}>
-        <div style={{maxWidth:900,margin:'0 auto',display:'flex',flexDirection:'column',gap:20}}>
+    <div style={{display:'flex', height:'100%', overflow:'hidden'}}>
+      {/* ── Colonna sinistra: info procedura ─────────────────────────── */}
+      <div style={{
+        width: showWizard ? 280 : '100%', minWidth: showWizard ? 280 : undefined,
+        maxWidth: showWizard ? 280 : undefined,
+        borderRight: showWizard ? '1px solid var(--border)' : 'none',
+        display:'flex', flexDirection:'column', overflow:'hidden',
+        transition:'width 0.2s'
+      }}>
+        <Topbar title="Aste e Vendite" subtitle={currentProc.nome||''} />
+        <div style={{flex:1, overflowY:'auto', padding:16}}>
+          <div style={{display:'flex',flexDirection:'column',gap:12}}>
 
-          <div className="card" style={{cursor:'pointer'}} onClick={()=>setShowWizard(true)}>
-            <div className="card-body" style={{display:'flex',alignItems:'center',gap:20,padding:28}}>
-              <div style={{fontSize:48}}>📄</div>
-              <div style={{flex:1}}>
-                <div style={{fontWeight:700,fontSize:16,marginBottom:6}}>Avviso di Vendita</div>
-                <div style={{fontSize:13,color:'var(--text3)',marginBottom:12}}>
-                  Genera l&apos;avviso di vendita per aste telematiche: PVP, AsteMagazine, sincrona, asincrona, mista.
-                </div>
-                <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
-                  {TIPI_ASTA.map(t=>(
-                    <span key={t.id} style={{background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:4,padding:'2px 8px',fontSize:11}}>
-                      {t.label.split('\u2014')[0].trim()}
-                    </span>
+            <button className="btn btn-primary" style={{width:'100%'}}
+              onClick={()=>setShowWizard(w=>!w)}>
+              {showWizard ? '✕ Chiudi wizard' : <><Plus size={14}/> Nuovo avviso di vendita</>}
+            </button>
+
+            <div className="card">
+              <div className="card-header"><div className="card-title" style={{fontSize:13}}>🏛 Procedura</div></div>
+              <div className="card-body">
+                <div style={{display:'flex',flexDirection:'column',gap:4,fontSize:12}}>
+                  {[['Nome',currentProc.nome],['Tipo',currentProc.tipo],
+                    ['R.G.',(currentProc.num||'')+(currentProc.anno?'/'+currentProc.anno:'')],
+                    ['Tribunale',currentProc.tribunale],['Giudice',currentProc.giudice],
+                    ['Curatore',currentProc.curatore]].map(([l,v])=>(
+                    <div key={l} style={{display:'flex',gap:6}}>
+                      <span style={{color:'var(--text3)',minWidth:70}}>{l}</span>
+                      <span style={{fontWeight:500}}>{v||'—'}</span>
+                    </div>
                   ))}
                 </div>
               </div>
-              <button className="btn btn-primary" onClick={e=>{e.stopPropagation();setShowWizard(true)}}>
-                <Plus size={14}/> Nuovo avviso
-              </button>
             </div>
-          </div>
 
-          <div className="card">
-            <div className="card-header"><div className="card-title">🏛 Procedura attiva</div></div>
-            <div className="card-body">
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'6px 24px',fontSize:13}}>
-                {[['Procedura',currentProc.nome],['Tipo',currentProc.tipo],
-                  ['N. R.G.',(currentProc.num||'')+(currentProc.anno?'/'+currentProc.anno:'')],
-                  ['Tribunale',currentProc.tribunale],['Giudice',currentProc.giudice],
-                  ['Curatore',currentProc.curatore]].map(([l,v])=>(
-                  <div key={l} style={{display:'flex',gap:8}}>
-                    <span style={{color:'var(--text3)',minWidth:110}}>{l}</span>
-                    <span style={{fontWeight:500}}>{v||'\u2014'}</span>
+            {!showWizard && (
+              <div className="card">
+                <div className="card-body" style={{padding:20}}>
+                  <div style={{fontSize:13,color:'var(--text3)',marginBottom:8}}>Tipi di asta disponibili:</div>
+                  <div style={{display:'flex',flexDirection:'column',gap:4}}>
+                    {TIPI_ASTA.map(t=>(
+                      <div key={t.id} style={{fontSize:12,padding:'4px 8px',background:'var(--bg3)',borderRadius:4}}>
+                        {t.label}
+                      </div>
+                    ))}
                   </div>
-                ))}
+                </div>
               </div>
-            </div>
+            )}
           </div>
-
         </div>
       </div>
 
+      {/* ── Colonna destra: wizard ────────────────────────────────────── */}
       {showWizard && (
-        <div style={{
-          position:'fixed', inset:0, background:'var(--bg)', zIndex:200,
-          display:'flex', flexDirection:'column', overflow:'hidden'
-        }}>
+        <div style={{flex:1, display:'flex', flexDirection:'column', overflow:'hidden'}}>
           <div style={{
             height:48, background:'var(--bg2)', borderBottom:'1px solid var(--border)',
             display:'flex', alignItems:'center', padding:'0 20px', gap:16, flexShrink:0
           }}>
-            <button className="btn btn-ghost btn-sm" onClick={()=>setShowWizard(false)}>← Torna alle aste</button>
             <span style={{fontWeight:600,fontSize:15}}>Genera Avviso di Vendita</span>
           </div>
           <div style={{flex:1, overflowY:'auto'}}>
@@ -1310,7 +1313,7 @@ export default function Aste() {
           </div>
         </div>
       )}
-    </>
+    </div>
   )
 }
  
