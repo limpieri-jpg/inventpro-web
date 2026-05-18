@@ -585,6 +585,7 @@ function WizardAvviso({ proc, onClose, notify }) {
   const [prezzoBase, setPrezzoBase]           = useState('')
   const [offertaMinima, setOffertaMinima]     = useState('')
   const [rilancioMin, setRilancioMin]         = useState('')
+  const [abbattimento, setAbbattimento]       = useState('25')
   const [cauzione, setCauzione]               = useState(savedState.cauzione || '10')
   const [dirittiAsta, setDirittiAsta]         = useState(savedState.dirittiAsta || '2')
   const [termSaldo, setTermSaldo]             = useState(savedState.termSaldo || '120')
@@ -703,6 +704,20 @@ function WizardAvviso({ proc, onClose, notify }) {
   const handleLottoRemove = useCallback((idx) => {
     setLotti(ls => ls.filter((_, j) => j !== idx))
   }, [])
+
+  // Calcola prezzo base automaticamente dai lotti DB selezionati
+  useEffect(() => {
+    if (lottiMode === 'db' && lottiDbSel.length > 0) {
+      const totale = lottiDb
+        .filter(l => lottiDbSel.includes(l.id))
+        .reduce((s, l) => s + (Number((l.prezzo_base || '').toString().replace(/\./g,'').replace(',','.')) || 0), 0)
+      if (totale > 0) {
+        const abbPct = Number(abbattimento) || 25
+        setPrezzoBase(totale.toFixed(2).replace('.',','))
+        setOffertaMinima((totale * (1 - abbPct/100)).toFixed(2).replace('.',','))
+      }
+    }
+  }, [lottiDbSel, lottiDb, lottiMode, abbattimento])
 
   // Lotti effettivi da passare a genAvviso
   const lottiEffettivi = lottiMode === 'db'
@@ -911,8 +926,24 @@ function WizardAvviso({ proc, onClose, notify }) {
         <div className="card-header"><div className="card-title">💶 Prezzi e condizioni</div></div>
         <div className="card-body">
           <div className="form-grid">
-            <InpEur label="Prezzo base (€)" val={prezzoBase} set={setPrezzoBase} />
-            <InpEur label="Offerta minima ammissibile (€)" val={offertaMinima} set={setOffertaMinima} placeholder="Vuoto = uguale al prezzo base" />
+            <InpEur label="Prezzo base (€)" val={prezzoBase} set={(v) => {
+              setPrezzoBase(v)
+              const base = parseFloat((v||'').replace(/\./g,'').replace(',','.')) || 0
+              const abbPct = Number(abbattimento) || 25
+              if (base > 0) setOffertaMinima((base * (1 - abbPct/100)).toFixed(2).replace('.',','))
+            }} />
+            <div className="form-group">
+              <label className="form-label">Abbattimento (%)</label>
+              <input className="form-input" defaultValue={abbattimento}
+                onBlur={e => {
+                  setAbbattimento(e.target.value)
+                  const base = parseFloat((prezzoBase||'').replace(/\./g,'').replace(',','.')) || 0
+                  const abbPct = Number(e.target.value) || 25
+                  if (base > 0) setOffertaMinima((base * (1 - abbPct/100)).toFixed(2).replace('.',','))
+                }}
+                placeholder="Es: 25" />
+            </div>
+            <InpEur label="Offerta minima ammissibile (€)" val={offertaMinima} set={setOffertaMinima} placeholder="Calcolata automaticamente" />
             <InpEur label="Rilancio minimo (€)" val={rilancioMin} set={setRilancioMin} placeholder="Es: 250,00" />
             <Inp label="Deposito cauzionale (%)" val={cauzione} set={setCauzione} placeholder="10" />
             <Inp label="Diritti d'asta (%)" val={dirittiAsta} set={setDirittiAsta} placeholder="2" />
@@ -929,7 +960,26 @@ function WizardAvviso({ proc, onClose, notify }) {
               <Inp label="IBAN conto procedura (per saldo)" val={ibanProcedura} set={setIbanProcedura} placeholder="IT00 X000 0000 0000 0000 0000 000" full />
             )}
             {saldoGestoreCommiss && (
-              <Inp label="IBAN conto Commissionario (per saldo)" val={ibanCommissionario} set={setIbanCommissionario} placeholder="IT00 X000 0000 0000 0000 0000 000" full />
+              <div className="form-group form-col-full">
+                <label className="form-label">Conto Commissionario (per saldo)</label>
+                <select className="form-input" value={ibanCommissionario} onChange={e=>setIbanCommissionario(e.target.value)}>
+                  <option value="">— Seleziona conto —</option>
+                  {(proc?.commissionario_iban_list || []).map((iban,i) => (
+                    <option key={i} value={iban}>{iban}</option>
+                  ))}
+                  <option value="__custom">Inserisci manualmente…</option>
+                </select>
+                {ibanCommissionario === '__custom' && (
+                  <input className="form-input" style={{marginTop:6}}
+                    placeholder="IT00 X000 0000 0000 0000 0000 000"
+                    onChange={e=>setIbanCommissionario(e.target.value)} />
+                )}
+                {(!proc?.commissionario_iban_list || proc.commissionario_iban_list.length === 0) && (
+                  <div style={{fontSize:11,color:'var(--text3)',marginTop:4}}>
+                    Aggiungi i conti IBAN del commissionario in Anagrafica procedura
+                  </div>
+                )}
+              </div>
             )}
             <Inp label="Intestazione conto procedura" val={intestazioneProcedura} set={setIntestazioneProcedura} placeholder="Es: Liquidazione Giudiziale Rossi S.r.l." full />
           </div>
@@ -1080,9 +1130,21 @@ export default function Aste() {
       </div>
 
       {showWizard && (
-        <Modal open={showWizard} onClose={()=>setShowWizard(false)} title="Genera Avviso di Vendita" wide>
-          <WizardAvviso proc={currentProc} onClose={()=>setShowWizard(false)} notify={notify} />
-        </Modal>
+        <div style={{
+          position:'fixed', inset:0, background:'var(--bg)', zIndex:200,
+          display:'flex', flexDirection:'column', overflow:'hidden'
+        }}>
+          <div style={{
+            height:48, background:'var(--bg2)', borderBottom:'1px solid var(--border)',
+            display:'flex', alignItems:'center', padding:'0 20px', gap:16, flexShrink:0
+          }}>
+            <button className="btn btn-ghost btn-sm" onClick={()=>setShowWizard(false)}>← Torna alle aste</button>
+            <span style={{fontWeight:600,fontSize:15}}>Genera Avviso di Vendita</span>
+          </div>
+          <div style={{flex:1, overflowY:'auto'}}>
+            <WizardAvviso proc={currentProc} onClose={()=>setShowWizard(false)} notify={notify} />
+          </div>
+        </div>
       )}
     </>
   )
