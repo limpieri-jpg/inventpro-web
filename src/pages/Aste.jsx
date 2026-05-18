@@ -1176,7 +1176,3 @@ export default function Aste() {
     </div>
   )
 }
- 
-    </div>
-  )
-}
