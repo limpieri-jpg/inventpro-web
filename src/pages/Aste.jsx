@@ -805,7 +805,6 @@ function WizardAvviso({ proc, onClose, notify }) {
   )
 
   return (
-  return (
     <div style={{display:'flex',flexDirection:'column',gap:12,padding:'0 0 40px 0'}}>
 
       {/* Modalità */}
