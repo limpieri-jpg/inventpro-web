@@ -40,7 +40,7 @@ const fmtEur = (n) => {
 }
 const fmtD = (d) => {
   if (!d) return '_______________'
-  if (d.includes('/')) return d        // gi\u00e0 in formato gg/mm/aaaa
+  if (d.includes('/')) return d        // già in formato gg/mm/aaaa
   const dt = new Date(d)
   if (isNaN(dt)) return d
   return String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0')+'/'+dt.getFullYear()
@@ -122,7 +122,6 @@ async function genAvviso(proc, lotti, opts, logoB64) {
     durataRilancio, termineOfferte,
     prezzoBase, offertaMinima, rilancioMin, cauzione, dirittiAsta,
     termSaldo, ibanProcedura, intestazioneProcedura,
-    saldoGestoreCommiss, ibanCommissionario,
     ibanCauzione: _ibanCau, bancaCauzione: _bancaCau,
     ibanDiritti: _ibanDir, bancaDiritti: _bancaDir,
     referente, noteFinali,
@@ -257,7 +256,7 @@ async function genAvviso(proc, lotti, opts, logoB64) {
       PL([B('OFFERTA MINIMA AMMISSIBILE: '), T(fmtEur(offMin) + (tipoBene === 'immobile' ? ' oltre IVA se dovuta / oneri di legge' : ' OLTRE IVA SE DOVUTA E ONERI DI LEGGE'))]),
       PL([B('RILANCI MINIMI in caso di GARA: '), T(fmtEur(rilancio))]),
       PL([B('DEPOSITO CAUZIONALE: '), T(cau + '% del prezzo offerto')]),
-      PL([B('DIRITTI D\'ASTA: '), T(dir + '% oltre IVA al 22%, da calcolarsi sul prezzo di aggiudicazione')]),
+      PL([B('DIRITTI D’ASTA: '), T(dir + '% oltre IVA al 22%, da calcolarsi sul prezzo di aggiudicazione')]),
     ]
   }
 
@@ -269,7 +268,7 @@ async function genAvviso(proc, lotti, opts, logoB64) {
     BR(),
   ]
 
-  // ── Sezione: Modalit\u00e0 offerte ─────────────────────────────────────────────
+  // ── Sezione: Modalità offerte ─────────────────────────────────────────────
   let sezioneOfferte
   if (isAMag) {
     sezioneOfferte = [
@@ -361,7 +360,7 @@ async function genAvviso(proc, lotti, opts, logoB64) {
       ] : [
         P([T('Il giorno della gara, almeno 30 minuti prima dell\u2019asta fissata per il '), B(fmtDT(dataAsta, oraAsta)), T(', il presentatore ricever\u00e0 all\u2019indirizzo PEC indicato nell\u2019offerta le credenziali di accesso alla piattaforma.')]),
       ]),
-      P(T('Nel caso di unica offerta valida, il Lotto verr\u00e0 aggiudicato all\u2019unico migliore offerente, anche se non collegato telematicamente. Nel caso di pluralit\u00e0 di offerte valide, il Curatore indir\u00e0 la gara tra gli offerenti, partendo dall\u2019offerta valida pi\u00f9 alta pervenuta, con i rilanci minimi fissati per il Lotto. Trascorso 1 (uno) minuto dall\u2019ultima offerta senza rilanci, il Lotto sar\u00e0 aggiudicato al miglior offerente.')),
+      P(T('Nel caso di unica offerta valida, il Lotto verr\u00e0 aggiudicato all\u2019unico migliore offerente, anche se non collegato telematicamente. Nel caso di pluralit\u00e0 di offerte valide, il Curatore indirà la gara tra gli offerenti, partendo dall\u2019offerta valida pi\u00f9 alta pervenuta, con i rilanci minimi fissati per il Lotto. Trascorso 1 (uno) minuto dall\u2019ultima offerta senza rilanci, il Lotto sar\u00e0 aggiudicato al miglior offerente.')),
       P(T("L'aggiudicazione \u00e8 definitiva e non verranno prese in considerazione offerte successive, anche in aumento. La cauzione dell\u2019aggiudicatario \u00e8 imputata in acconto sul prezzo. La cauzione dei non aggiudicatari sar\u00e0 restituita entro 7 giorni lavorativi.")),
     ]
   }
@@ -371,7 +370,7 @@ async function genAvviso(proc, lotti, opts, logoB64) {
     BR(),
     PSC([B('TERMINE DELLA GARA E AGGIUDICAZIONE')]),
     BLT(T('Al termine della gara verr\u00e0 dichiarato aggiudicatario provvisorio il soggetto che avr\u00e0 presentato la migliore offerta valida entro il termine di fine gara.')),
-    BLT(T("All'esito della gara, il soggetto specializzato alla vendita invier\u00e0 una Relazione finale (report) all'indirizzo E-mail/PEC della procedura con le generalit\u00e0 complete dell'aggiudicatario e tutta la documentazione annessa.")),
+    BLT(T("All'esito della gara, il soggetto specializzato alla vendita invierà una Relazione finale (report) all'indirizzo E-mail/PEC della procedura con le generalit\u00e0 complete dell'aggiudicatario e tutta la documentazione annessa.")),
     BLT(T('La restituzione delle cauzioni ai soggetti non aggiudicatari verr\u00e0 effettuata dal Soggetto specializzato \u2013 Pro.Ges.S. \u2013 entro sette giorni lavorativi dal termine della gara.')),
     BLT([T('I diritti d\u2019asta pari al '), B(dir + '%'), T(' oltre IVA, calcolati sul prezzo di aggiudicazione, dovranno essere versati entro 15 giorni dall\u2019aggiudicazione definitiva su:')]),
     BR(),
@@ -416,7 +415,7 @@ async function genAvviso(proc, lotti, opts, logoB64) {
     BLT(T('I beni potranno essere visionati, previa richiesta da inoltrare direttamente al Curatore o al Commissionario.')),
   ] : []
 
-  // ── Sezione: Pubblicit\u00e0 ───────────────────────────────────────────────────
+  // ── Sezione: Pubblicità ───────────────────────────────────────────────────
   const sezionePubblicita = [
     BR(),
     PSC([B('PUBBLICIT\u00c0')]),
@@ -445,7 +444,7 @@ async function genAvviso(proc, lotti, opts, logoB64) {
     ...(noteFinali ? [BR(), P(T(noteFinali))] : []),
   ]
 
-  // ── Titolo modalit\u00e0 per intestazione ─────────────────────────────────────
+  // ── Titolo modalità per intestazione ─────────────────────────────────────
   const titoloModalita = isAMag
     ? (isAsin && !isMista ? 'SENZA INCANTO CON MODALIT\u00c0 COMPETITIVA TELEMATICA' : 'SENZA INCANTO CON MODALIT\u00c0 SINCRONA TELEMATICA ASTEMAGAZINE')
     : (isAsin && !isMista ? 'CON MODALIT\u00c0 ASINCRONA TELEMATICA' : isMista ? 'SENZA INCANTO CON MODALIT\u00c0 SINCRONA MISTA' : 'CON MODALIT\u00c0 SINCRONA TELEMATICA')
@@ -500,8 +499,8 @@ async function genAvviso(proc, lotti, opts, logoB64) {
 }
 
 // ─── Componente riga lotto — ESTRATTO fuori dal wizard per evitare re-mount ──
-// Se il componente \u00e8 definito dentro WizardAvviso, React lo ricrea ad ogni render
-// e l'input perde il focus dopo ogni carattere. Estratto fuori = identit\u00e0 stabile.
+// Se il componente è definito dentro WizardAvviso, React lo ricrea ad ogni render
+// e l'input perde il focus dopo ogni carattere. Estratto fuori = identità stabile.
 function LottoRow({ lotto, idx, total, onChange, onRemove }) {
   return (
     <div style={{background:'var(--bg2)',borderRadius:8,padding:'12px 14px'}}>
@@ -559,8 +558,8 @@ function LottoRow({ lotto, idx, total, onChange, onRemove }) {
 const mkTestoOfferta = (data, importo) => {
   const d = data || '___'
   const i = importo ? 'Euro ' + importo + ' OLTRE IVA SE DOVUTA E ONERI DI LEGGE' : 'Euro ___'
-  return 'che in data ' + d + ' \u00e8 stata ricevuta un\'offerta irrevocabile d\'acquisto a lotto unico per la somma di ' + i + '. ' +
-    'Nel rispetto dei principi di competitivit\u00e0 e trasparenza si avvia una gara competitiva telematica ' +
+  return 'che in data ' + d + ' è stata ricevuta un’offerta irrevocabile d’acquisto a lotto unico per la somma di ' + i + '. ' +
+    'Nel rispetto dei principi di competitività e trasparenza si avvia una gara competitiva telematica ' +
     'allo scopo di permettere a eventuali interessati di partecipare presentando la propria offerta ' +
     'a rialzo come da rilancio minimo indicato.'
 }
@@ -585,14 +584,11 @@ function WizardAvviso({ proc, onClose, notify }) {
   const [prezzoBase, setPrezzoBase]           = useState('')
   const [offertaMinima, setOffertaMinima]     = useState('')
   const [rilancioMin, setRilancioMin]         = useState('')
-  const [abbattimento, setAbbattimento]       = useState(savedState.abbattimento || '25')
   const [cauzione, setCauzione]               = useState(savedState.cauzione || '10')
   const [dirittiAsta, setDirittiAsta]         = useState(savedState.dirittiAsta || '2')
   const [termSaldo, setTermSaldo]             = useState(savedState.termSaldo || '120')
   const [ibanProcedura, setIbanProcedura]     = useState('')
   const [intestazioneProcedura, setIntestazioneProcedura] = useState('')
-  const [saldoGestoreCommiss, setSaldoGestoreCommiss] = useState(false)
-  const [ibanCommissionario, setIbanCommissionario]   = useState('')
   const [ibanCauzione, setIbanCauzione]       = useState('')
   const [bancaCauzione, setBancaCauzione]     = useState('')
   const [ibanDiritti, setIbanDiritti]         = useState('')
@@ -622,9 +618,6 @@ function WizardAvviso({ proc, onClose, notify }) {
   const [testoOfferta, setTestoOfferta]       = useState('')
   const [savingTesto, setSavingTesto]         = useState(false)
   const [gen, setGen]                         = useState(false)
-  const [openCards, setOpenCards] = useState({modalita:true,lotti:false,prezzi:false,date:false,offerta:false,contatti:false})
-  const toggleCard = (k) => setOpenCards(s=>({...s,[k]:!s[k]}))
-
 
   const isAsincrona  = tipoAsta === 'asincrona_pvp' || tipoAsta === 'asincrona_amag'
   const isMistaWiz   = tipoAsta === 'mista'
@@ -635,18 +628,16 @@ function WizardAvviso({ proc, onClose, notify }) {
     try {
       sessionStorage.setItem(SS_KEY, JSON.stringify({
         tipoAsta, tipoBene, nEsperimento, dataAsta, oraAsta, dataTermine, oraTermine,
-        durataRilancio, termineOfferte, prezzoBase, offertaMinima, rilancioMin, abbattimento,
+        durataRilancio, termineOfferte, prezzoBase, offertaMinima, rilancioMin,
         cauzione, dirittiAsta, termSaldo, ibanProcedura, intestazioneProcedura,
-        saldoGestoreCommiss, ibanCommissionario,
+        ibanCauzione, bancaCauzione, ibanDiritti, bancaDiritti,
         referente, noteFinali, offertaIrrevocabile, offertaIrrevGg, offertaIrrevMm,
         offertaIrrevAa, offertaIrrevImporto, testoOfferta
       }))
     } catch {}
-  }, [tipoAsta, tipoBene, nEsperimento, dataAsta, oraAsta, dataTermine, oraTermine,
-      durataRilancio, termineOfferte, prezzoBase, offertaMinima, rilancioMin, abbattimento,
-      cauzione, dirittiAsta, termSaldo, ibanProcedura, intestazioneProcedura,
-      saldoGestoreCommiss, ibanCommissionario, referente, noteFinali,
-      offertaIrrevocabile, offertaIrrevGg, offertaIrrevMm, offertaIrrevAa, offertaIrrevImporto])
+  }, [tipoAsta, tipoBene, dataAsta, oraAsta, dataTermine, oraTermine,
+      prezzoBase, offertaMinima, rilancioMin, cauzione, ibanProcedura,
+      offertaIrrevocabile, offertaIrrevImporto])
 
   // Carica IBAN da settings e testo AVVISA dal DB all'apertura
   useEffect(() => {
@@ -671,7 +662,7 @@ function WizardAvviso({ proc, onClose, notify }) {
     load()
   }, [proc.id])
 
-  // Carica lotti dal DB quando si passa a modalit\u00e0 DB
+  // Carica lotti dal DB quando si passa a modalità DB
   useEffect(() => {
     if (lottiMode !== 'db') return
     const load = async () => {
@@ -701,7 +692,7 @@ function WizardAvviso({ proc, onClose, notify }) {
     load()
   }, [lottiMode, proc.id])
 
-  // useCallback evita che la funzione cambi identit\u00e0 ad ogni render → LottoRow non si rimonta
+  // useCallback evita che la funzione cambi identità ad ogni render → LottoRow non si rimonta
   const handleLottoChange = useCallback((idx, field, val) => {
     setLotti(ls => ls.map((x, j) => j === idx ? {...x, [field]: val} : x))
   }, [])
@@ -709,21 +700,6 @@ function WizardAvviso({ proc, onClose, notify }) {
   const handleLottoRemove = useCallback((idx) => {
     setLotti(ls => ls.filter((_, j) => j !== idx))
   }, [])
-
-  // Calcola prezzo base automaticamente dai lotti DB selezionati
-  useEffect(() => {
-    if (lottiMode === 'db' && lottiDbSel.length > 0) {
-      const totale = lottiDb
-        .filter(l => lottiDbSel.includes(l.id))
-        .reduce((s, l) => s + (Number((l.prezzo_base || '').toString().replace(/\./g,'').replace(',','.')) || 0), 0)
-      if (totale > 0) {
-        const abbPct = Number(abbattimento) || 0
-        setPrezzoBase(totale.toFixed(2).replace('.',','))
-        if (abbPct > 0) setOffertaMinima((totale * (1 - abbPct/100)).toFixed(2).replace('.',','))
-        else setOffertaMinima('')
-      }
-    }
-  }, [lottiDbSel, lottiDb, lottiMode, abbattimento])
 
   // Lotti effettivi da passare a genAvviso
   const lottiEffettivi = lottiMode === 'db'
@@ -757,10 +733,8 @@ function WizardAvviso({ proc, onClose, notify }) {
       const logo = localStorage.getItem('ip_logo') || null
       const blob = await genAvviso(proc, lottiEffettivi, {
         tipoAsta, tipoBene, nEsperimento, dataAsta, oraAsta, dataTermine, oraTermine,
-        durataRilancio, termineOfferte,
         prezzoBase, offertaMinima, rilancioMin, cauzione, dirittiAsta,
         termSaldo, ibanProcedura, intestazioneProcedura,
-        saldoGestoreCommiss, ibanCommissionario,
         ibanCauzione, bancaCauzione, ibanDiritti, bancaDiritti,
         referente, noteFinali,
         offertaIrrevocabile, offertaIrrevData, offertaIrrevImporto, testoOfferta,
@@ -778,13 +752,13 @@ function WizardAvviso({ proc, onClose, notify }) {
 
   // Inp definito FUORI dalla funzione (sopra) sarebbe ideale, ma qui usiamo
   // un componente inline semplice con setter diretto — ok perché i setter
-  // di useState hanno identit\u00e0 stabile, quindi non causano re-mount
+  // di useState hanno identità stabile, quindi non causano re-mount
   const Inp = ({ label, val, set, placeholder='', type='text', full=false }) => (
     <div className={full ? 'form-col-full form-group' : 'form-group'}>
       <label className="form-label">{label}</label>
       <input type={type} className="form-input"
-        value={val ?? ''}
-        onChange={e => set(e.target.value)}
+        defaultValue={val}
+        onBlur={e => set(e.target.value)}
         placeholder={placeholder} />
     </div>
   )
@@ -795,8 +769,8 @@ function WizardAvviso({ proc, onClose, notify }) {
       <label className="form-label">{label}</label>
       <div style={{position:'relative'}}>
         <input className="form-input"
-          value={val ?? ''}
-          onChange={e => set(e.target.value)}
+          defaultValue={val}
+          onBlur={e => set(e.target.value)}
           placeholder={placeholder}
           style={{paddingLeft:28}} />
         <span style={{position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:'var(--text3)',fontSize:13,pointerEvents:'none'}}>€</span>
@@ -805,15 +779,11 @@ function WizardAvviso({ proc, onClose, notify }) {
   )
 
   return (
-    <div style={{display:'flex',flexDirection:'column',gap:12,padding:'0 0 40px 0'}}>
+    <div style={{display:'flex',flexDirection:'column',gap:16}}>
 
-      {/* Modalit\u00e0 */}
+      {/* Modalità + Tipo bene + Esperimento */}
       <div className="card">
-        <div className="card-header" style={{cursor:'pointer'}} onClick={()=>toggleCard('modalita')}>
-          <div className="card-title">📋 Modalit\u00e0 di vendita</div>
-          <span style={{fontSize:12,color:'var(--text3)',transform:openCards.modalita?'rotate(180deg)':'none',transition:'transform 0.2s'}}>▼</span>
-        </div>
-        {openCards.modalita && (
+        <div className="card-header"><div className="card-title">📋 Modalità di vendita</div></div>
         <div className="card-body">
           <div className="form-grid">
             <div className="form-col-full form-group">
@@ -832,182 +802,19 @@ function WizardAvviso({ proc, onClose, notify }) {
             <Inp label="N° esperimento di vendita" val={nEsperimento} set={setNEsperimento} placeholder="Es: 1" />
           </div>
         </div>
-        )}
       </div>
 
+      {/* Offerta irrevocabile */}
       <div className="card">
-        <div className="card-header" style={{cursor:'pointer'}} onClick={()=>toggleCard('lotti')}>
-          <div className="card-title">📦 Lotti in vendita</div>
-          <span style={{fontSize:12,color:'var(--text3)',transform:openCards.lotti?'rotate(180deg)':'none',transition:'transform 0.2s'}}>▼</span>
-        </div>
-        {openCards.lotti && (
-        <div className="card-body" style={{display:'flex',flexDirection:'column',gap:12}}>
-          {lottiMode === 'manual' ? (<>
-            {lotti.map((l,i) => (
-              <LottoRow key={i} lotto={l} idx={i} total={lotti.length}
-                onChange={handleLottoChange} onRemove={() => handleLottoRemove(i)} />
-            ))}
-            <button className="btn btn-ghost btn-sm" style={{alignSelf:'flex-start'}}
-              onClick={()=>setLotti(l=>[...l,{desc:'',qta:1,base:'',offertaMinima:'',rilancio:''}])}>
-              <Plus size={13}/> Aggiungi lotto
-            </button>
-          </>) : loadingLotti ? (
-            <div style={{textAlign:'center',padding:20,color:'var(--text3)'}}>Caricamento lotti…</div>
-          ) : lottiDb.length === 0 ? (
-            <div style={{textAlign:'center',padding:20,color:'var(--text3)'}}>Nessun lotto trovato per questa procedura</div>
-          ) : (
-            <div style={{display:'flex',flexDirection:'column',gap:8}}>
-              <div style={{fontSize:12,color:'var(--text3)',marginBottom:4}}>
-                Seleziona i lotti da includere nell&apos;avviso. I prezzi non compilati useranno i valori globali sotto.
-              </div>
-              {lottiDb.map(l => (
-                <label key={l.id} style={{display:'flex',alignItems:'flex-start',gap:10,background:'var(--bg2)',borderRadius:8,padding:'10px 14px',cursor:'pointer'}}>
-                  <input type="checkbox" style={{marginTop:2}} checked={lottiDbSel.includes(l.id)}
-                    onChange={e => setLottiDbSel(s => e.target.checked ? [...s,l.id] : s.filter(x=>x!==l.id))} />
-                  <div style={{flex:1}}>
-                    <div style={{fontWeight:600,fontSize:13}}>Lotto {l.numero} — {l.nome||l.descrizione||'—'}</div>
-                    {l.descrizione && l.nome && <div style={{fontSize:12,color:'var(--text3)',marginTop:2}}>{l.descrizione}</div>}
-                    <div style={{display:'flex',gap:16,marginTop:6,fontSize:12,flexWrap:'wrap'}}>
-                      {l.prezzo_base    && <span>Base: <b>€ {l.prezzo_base}</b></span>}
-                      {l.offerta_minima && <span>Min: <b>€ {l.offerta_minima}</b></span>}
-                      {l.rilancio_min   && <span>Rilancio: <b>€ {l.rilancio_min}</b></span>}
-                    </div>
-                  </div>
-                </label>
-              ))}
-              <div style={{fontSize:11,color:'var(--text3)',marginTop:4}}>
-                I prezzi non presenti nei lotti verranno sostituiti dai valori globali inseriti nella sezione Prezzi.
-              </div>
-            </div>
-          )}
-        </div>
-        )}
-      </div>
-
-      <div className="card">
-        <div className="card-header" style={{cursor:'pointer'}} onClick={()=>toggleCard('prezzi')}>
-          <div className="card-title">💶 Prezzi e condizioni</div>
-          <span style={{fontSize:12,color:'var(--text3)',transform:openCards.prezzi?'rotate(180deg)':'none',transition:'transform 0.2s'}}>▼</span>
-        </div>
-        {openCards.prezzi && (
-        <div className="card-body">
-          <div className="form-grid">
-            <InpEur label="Prezzo base (€)" val={prezzoBase} set={(v) => {
-              setPrezzoBase(v)
-              const base = parseFloat((v||'').replace(/[.]/g,'').replace(',','.')) || 0
-              const abbPct = Number(abbattimento) || 0
-              if (base > 0 && abbPct > 0) setOffertaMinima((base * (1 - abbPct/100)).toFixed(2).replace('.',','))
-              else if (base > 0) setOffertaMinima('')
-            }} />
-            <div className="form-group">
-              <label className="form-label">Abbattimento (%)</label>
-              <input className="form-input" value={abbattimento ?? '25'}
-                onChange={e => {
-                  setAbbattimento(e.target.value)
-                  const base = parseFloat((prezzoBase||'').replace(/[.]/g,'').replace(',','.')) || 0
-                  const abbPct = Number(e.target.value) || 0
-                  if (base > 0 && abbPct > 0) setOffertaMinima((base * (1 - abbPct/100)).toFixed(2).replace('.',','))
-                  else if (base > 0) setOffertaMinima('')
-                }}
-                placeholder="Es: 25" />
-            </div>
-            <InpEur label="Offerta minima ammissibile (€)" val={offertaMinima} set={setOffertaMinima} placeholder="Calcolata automaticamente" />
-            <InpEur label="Rilancio minimo (€)" val={rilancioMin} set={setRilancioMin} placeholder="Es: 250,00" />
-            <Inp label="Deposito cauzionale (%)" val={cauzione} set={setCauzione} placeholder="10" />
-            <Inp label="Diritti d'asta (%)" val={dirittiAsta} set={setDirittiAsta} placeholder="2" />
-            <Inp label="Termine saldo prezzo (giorni)" val={termSaldo} set={setTermSaldo} placeholder="120 (PVP) / 30 (AsteMagazine)" />
-            {/* Toggle commissionario saldo */}
-            <div className="form-group form-col-full" style={{display:'flex',alignItems:'center',gap:12,padding:'4px 0'}}>
-              <label style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer',fontSize:13}}>
-                <input type="checkbox" checked={saldoGestoreCommiss} onChange={e=>setSaldoGestoreCommiss(e.target.checked)}
-                  style={{width:16,height:16,cursor:'pointer'}}/>
-                <span>Saldo gestito dal Commissionario</span>
-              </label>
-            </div>
-            {!saldoGestoreCommiss && (
-              <Inp label="IBAN conto procedura (per saldo)" val={ibanProcedura} set={setIbanProcedura} placeholder="IT00 X000 0000 0000 0000 0000 000" full />
-            )}
-            {saldoGestoreCommiss && (
-              <div className="form-group form-col-full">
-                <label className="form-label">Conto Commissionario (per saldo)</label>
-                <select className="form-input" value={ibanCommissionario} onChange={e=>setIbanCommissionario(e.target.value)}>
-                  <option value="">— Seleziona conto —</option>
-                  {(proc?.commissionario_iban_list || []).map((iban,i) => (
-                    <option key={i} value={iban}>{iban}</option>
-                  ))}
-                  <option value="__custom">Inserisci manualmente…</option>
-                </select>
-                {ibanCommissionario === '__custom' && (
-                  <input className="form-input" style={{marginTop:6}}
-                    placeholder="IT00 X000 0000 0000 0000 0000 000"
-                    onChange={e=>setIbanCommissionario(e.target.value)} />
-                )}
-                {(!proc?.commissionario_iban_list || proc.commissionario_iban_list.length === 0) && (
-                  <div style={{fontSize:11,color:'var(--text3)',marginTop:4}}>
-                    Aggiungi i conti IBAN del commissionario in Anagrafica procedura
-                  </div>
-                )}
-              </div>
-            )}
-            <Inp label="Intestazione conto procedura" val={intestazioneProcedura} set={setIntestazioneProcedura} placeholder="Es: Liquidazione Giudiziale Rossi S.r.l." full />
-          </div>
-        </div>
-        )}
-      </div>
-
-      <div className="card">
-        <div className="card-header" style={{cursor:'pointer'}} onClick={()=>toggleCard('date')}>
-          <div className="card-title">📅 Date e orari</div>
-          <span style={{fontSize:12,color:'var(--text3)',transform:openCards.date?'rotate(180deg)':'none',transition:'transform 0.2s'}}>▼</span>
-        </div>
-        {openCards.date && (
-        <div className="card-body">
-          <div className="form-grid">
-            {/* ASINCRONA: data inizio + data fine */}
-            {isAsincrona && (<>
-              <Inp label="Data inizio asta" val={dataAsta} set={setDataAsta} type="date" />
-              <Inp label="Ora inizio asta" val={oraAsta} set={setOraAsta} placeholder="12:00" />
-              <Inp label="Data fine asta" val={dataTermine} set={setDataTermine} type="date" />
-              <Inp label="Ora fine asta" val={oraTermine} set={setOraTermine} placeholder="12:00" />
-              <Inp label="Extra time / Durata rilanci (minuti)" val={durataRilancio} set={setDurataRilancio} placeholder="1" />
-            </>)}
-            {/* SINCRONA TELEMATICA: data/ora inizio + durata rilanci + termine offerte */}
-            {isSincrona && !isMistaWiz && (<>
-              <Inp label="Data asta" val={dataAsta} set={setDataAsta} type="date" />
-              <Inp label="Ora inizio asta" val={oraAsta} set={setOraAsta} placeholder="12:00" />
-              <Inp label="Termine presentazione offerte" val={termineOfferte} set={setTermineOfferte} type="date" />
-              <Inp label="Ora termine offerte" val={oraTermine} set={setOraTermine} placeholder="12:00" />
-              <Inp label="Durata rilanci (minuti)" val={durataRilancio} set={setDurataRilancio} placeholder="1" />
-            </>)}
-            {/* SINCRONA MISTA: data/ora asta in presenza + termine offerte cartacee + durata rilanci */}
-            {isMistaWiz && (<>
-              <Inp label="Data asta in presenza" val={dataAsta} set={setDataAsta} type="date" />
-              <Inp label="Ora inizio asta" val={oraAsta} set={setOraAsta} placeholder="12:00" />
-              <Inp label="Termine offerte cartacee" val={termineOfferte} set={setTermineOfferte} type="date" />
-              <Inp label="Ora termine offerte" val={oraTermine} set={setOraTermine} placeholder="12:00" />
-              <div className="form-group" style={{gridColumn:'1/-1',fontSize:12,color:'var(--text3)',marginTop:-8}}>
-                Le offerte cartacee devono pervenire entro l&apos;ora indicata del giorno selezionato
-              </div>
-              <Inp label="Durata rilanci (minuti)" val={durataRilancio} set={setDurataRilancio} placeholder="1" />
-            </>)}
-          </div>
-        </div>
-        )}
-      </div>
-
-      <div className="card">
-        <div className="card-header" style={{cursor:'pointer'}} onClick={()=>toggleCard('offerta')}>
+        <div className="card-header" style={{flexDirection:'column',alignItems:'flex-start',gap:8}}>
           <div className="card-title">📩 Offerta irrevocabile pre-asta</div>
-          <span style={{fontSize:12,color:'var(--text3)',transform:openCards.offerta?'rotate(180deg)':'none',transition:'transform 0.2s'}}>▼</span>
+          <label style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer',fontSize:13,fontWeight:'normal'}}>
+            <input type="checkbox" checked={offertaIrrevocabile} onChange={e=>setOffertaIrrevocabile(e.target.checked)} />
+            È stata ricevuta un&apos;offerta irrevocabile cauzionata prima dell&apos;asta
+          </label>
         </div>
-        {openCards.offerta && (
-          <div className="card-body">
-            <label style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer',fontSize:13,padding:'8px 0'}}>
-              <input type="checkbox" checked={offertaIrrevocabile} onChange={e=>setOffertaIrrevocabile(e.target.checked)} />
-              È stata ricevuta un&apos;offerta irrevocabile cauzionata prima dell&apos;asta
-            </label>
-            {offertaIrrevocabile && (
-            <div style={{display:'flex',flexDirection:'column',gap:12,marginTop:8}}>
+        {offertaIrrevocabile && (
+          <div className="card-body" style={{display:'flex',flexDirection:'column',gap:12}}>
             <div className="form-grid">
               <div className="form-group">
                 <label className="form-label">Data ricezione offerta irrevocabile</label>
@@ -1057,14 +864,129 @@ function WizardAvviso({ proc, onClose, notify }) {
           </div>
         )}
       </div>
-        )}
 
+      {/* Date */}
       <div className="card">
-        <div className="card-header" style={{cursor:'pointer'}} onClick={()=>toggleCard('contatti')}>
-          <div className="card-title">📞 Contatti e note</div>
-          <span style={{fontSize:12,color:'var(--text3)',transform:openCards.contatti?'rotate(180deg)':'none',transition:'transform 0.2s'}}>▼</span>
+        <div className="card-header"><div className="card-title">📅 Date e orari</div></div>
+        <div className="card-body">
+          <div className="form-grid">
+            {/* ASINCRONA: data inizio + data fine */}
+            {isAsincrona && (<>
+              <Inp label="Data inizio asta" val={dataAsta} set={setDataAsta} type="date" />
+              <Inp label="Ora inizio asta" val={oraAsta} set={setOraAsta} placeholder="12:00" />
+              <Inp label="Data fine asta" val={dataTermine} set={setDataTermine} type="date" />
+              <Inp label="Ora fine asta" val={oraTermine} set={setOraTermine} placeholder="12:00" />
+              <Inp label="Extra time / Durata rilanci (minuti)" val={durataRilancio} set={setDurataRilancio} placeholder="1" />
+            </>)}
+            {/* SINCRONA TELEMATICA: data/ora inizio + durata rilanci + termine offerte */}
+            {isSincrona && !isMistaWiz && (<>
+              <Inp label="Data asta" val={dataAsta} set={setDataAsta} type="date" />
+              <Inp label="Ora inizio asta" val={oraAsta} set={setOraAsta} placeholder="12:00" />
+              <Inp label="Termine presentazione offerte" val={termineOfferte} set={setTermineOfferte} type="date" />
+              <Inp label="Ora termine offerte" val={oraTermine} set={setOraTermine} placeholder="12:00" />
+              <Inp label="Durata rilanci (minuti)" val={durataRilancio} set={setDurataRilancio} placeholder="1" />
+            </>)}
+            {/* SINCRONA MISTA: data/ora asta in presenza + termine offerte cartacee + durata rilanci */}
+            {isMistaWiz && (<>
+              <Inp label="Data asta in presenza" val={dataAsta} set={setDataAsta} type="date" />
+              <Inp label="Ora inizio asta" val={oraAsta} set={setOraAsta} placeholder="12:00" />
+              <Inp label="Termine offerte cartacee" val={termineOfferte} set={setTermineOfferte} type="date" />
+              <Inp label="Ora termine offerte" val={oraTermine} set={setOraTermine} placeholder="12:00" />
+              <div className="form-group" style={{gridColumn:'1/-1',fontSize:12,color:'var(--text3)',marginTop:-8}}>
+                Le offerte cartacee devono pervenire entro l&apos;ora indicata del giorno selezionato
+              </div>
+              <Inp label="Durata rilanci (minuti)" val={durataRilancio} set={setDurataRilancio} placeholder="1" />
+            </>)}
+          </div>
         </div>
-        {openCards.contatti && (
+      </div>
+
+      {/* Prezzi globali */}
+      <div className="card">
+        <div className="card-header"><div className="card-title">💶 Prezzi e condizioni</div></div>
+        <div className="card-body">
+          <div className="form-grid">
+            <InpEur label="Prezzo base (€)" val={prezzoBase} set={setPrezzoBase} />
+            <InpEur label="Offerta minima ammissibile (€)" val={offertaMinima} set={setOffertaMinima} placeholder="Vuoto = uguale al prezzo base" />
+            <InpEur label="Rilancio minimo (€)" val={rilancioMin} set={setRilancioMin} placeholder="Es: 250,00" />
+            <Inp label="Deposito cauzionale (%)" val={cauzione} set={setCauzione} placeholder="10" />
+            <Inp label="Diritti d'asta (%)" val={dirittiAsta} set={setDirittiAsta} placeholder="2" />
+            <Inp label="Termine saldo prezzo (giorni)" val={termSaldo} set={setTermSaldo} placeholder="120 (PVP) / 30 (AsteMagazine)" />
+            {/* Toggle commissionario saldo */}
+            <div className="form-group form-col-full" style={{display:'flex',alignItems:'center',gap:12,padding:'4px 0'}}>
+              <label style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer',fontSize:13}}>
+                <input type="checkbox" checked={saldoGestoreCommiss} onChange={e=>setSaldoGestoreCommiss(e.target.checked)}
+                  style={{width:16,height:16,cursor:'pointer'}}/>
+                <span>Saldo gestito dal Commissionario</span>
+              </label>
+            </div>
+            {!saldoGestoreCommiss && (
+              <Inp label="IBAN conto procedura (per saldo)" val={ibanProcedura} set={setIbanProcedura} placeholder="IT00 X000 0000 0000 0000 0000 000" full />
+            )}
+            {saldoGestoreCommiss && (
+              <Inp label="IBAN conto Commissionario (per saldo)" val={ibanCommissionario} set={setIbanCommissionario} placeholder="IT00 X000 0000 0000 0000 0000 000" full />
+            )}
+            <Inp label="Intestazione conto procedura" val={intestazioneProcedura} set={setIntestazioneProcedura} placeholder="Es: Liquidazione Giudiziale Rossi S.r.l." full />
+          </div>
+        </div>
+      </div>
+
+      {/* Lotti */}
+      <div className="card">
+        <div className="card-header">
+          <div className="card-title">📦 Lotti in vendita</div>
+          <div style={{display:'flex',gap:6}}>
+            <button className="btn btn-ghost btn-sm" style={{fontWeight: lottiMode==='manual'?700:'normal'}}
+              onClick={()=>setLottiMode('manual')}>✏️ Manuale</button>
+            <button className="btn btn-ghost btn-sm" style={{fontWeight: lottiMode==='db'?700:'normal'}}
+              onClick={()=>setLottiMode('db')}>🗄 Da procedura</button>
+          </div>
+        </div>
+        <div className="card-body" style={{display:'flex',flexDirection:'column',gap:12}}>
+          {lottiMode === 'manual' ? (<>
+            {lotti.map((l,i) => (
+              <LottoRow key={i} lotto={l} idx={i} total={lotti.length}
+                onChange={handleLottoChange} onRemove={() => handleLottoRemove(i)} />
+            ))}
+            <button className="btn btn-ghost btn-sm" style={{alignSelf:'flex-start'}}
+              onClick={()=>setLotti(l=>[...l,{desc:'',qta:1,base:'',offertaMinima:'',rilancio:''}])}>
+              <Plus size={13}/> Aggiungi lotto
+            </button>
+          </>) : loadingLotti ? (
+            <div style={{textAlign:'center',padding:20,color:'var(--text3)'}}>Caricamento lotti…</div>
+          ) : lottiDb.length === 0 ? (
+            <div style={{textAlign:'center',padding:20,color:'var(--text3)'}}>Nessun lotto trovato per questa procedura</div>
+          ) : (
+            <div style={{display:'flex',flexDirection:'column',gap:8}}>
+              <div style={{fontSize:12,color:'var(--text3)',marginBottom:4}}>
+                Seleziona i lotti da includere nell&apos;avviso. I prezzi non compilati useranno i valori globali sotto.
+              </div>
+              {lottiDb.map(l => (
+                <label key={l.id} style={{display:'flex',alignItems:'flex-start',gap:10,background:'var(--bg2)',borderRadius:8,padding:'10px 14px',cursor:'pointer'}}>
+                  <input type="checkbox" style={{marginTop:2}} checked={lottiDbSel.includes(l.id)}
+                    onChange={e => setLottiDbSel(s => e.target.checked ? [...s,l.id] : s.filter(x=>x!==l.id))} />
+                  <div style={{flex:1}}>
+                    <div style={{fontWeight:600,fontSize:13}}>Lotto {l.numero} — {l.nome||l.descrizione||'—'}</div>
+                    {l.descrizione && l.nome && <div style={{fontSize:12,color:'var(--text3)',marginTop:2}}>{l.descrizione}</div>}
+                    <div style={{display:'flex',gap:16,marginTop:6,fontSize:12,flexWrap:'wrap'}}>
+                      {l.prezzo_base    && <span>Base: <b>€ {l.prezzo_base}</b></span>}
+                      {l.offerta_minima && <span>Min: <b>€ {l.offerta_minima}</b></span>}
+                      {l.rilancio_min   && <span>Rilancio: <b>€ {l.rilancio_min}</b></span>}
+                    </div>
+                  </div>
+                </label>
+              ))}
+              <div style={{fontSize:11,color:'var(--text3)',marginTop:4}}>
+                I prezzi non presenti nei lotti verranno sostituiti dai valori globali inseriti nella sezione Prezzi.
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Contatti e note */}
+      <div className="card">
+        <div className="card-header"><div className="card-title">📞 Contatti e note</div></div>
         <div className="card-body">
           <div className="form-grid">
             <Inp label="Referente per informazioni e visite" val={referente} set={setReferente} full />
@@ -1072,11 +994,10 @@ function WizardAvviso({ proc, onClose, notify }) {
               <label className="form-label">Note finali (facoltativo)</label>
               <textarea className="form-input" value={noteFinali}
                 onChange={e=>setNoteFinali(e.target.value)} rows={3}
-                placeholder="Es: La vendita \u00e8 soggetta all'imposta di registro..." />
+                placeholder="Es: La vendita è soggetta all'imposta di registro..." />
             </div>
           </div>
         </div>
-        )}
       </div>
 
       {/* Azioni */}
@@ -1106,73 +1027,58 @@ export default function Aste() {
   )
 
   return (
-    <div style={{display:'flex', height:'100%', overflow:'hidden'}}>
-      {/* ── Colonna sinistra: info procedura ─────────────────────────── */}
-      <div style={{
-        width: showWizard ? 280 : '100%', minWidth: showWizard ? 280 : undefined,
-        maxWidth: showWizard ? 280 : undefined,
-        borderRight: showWizard ? '1px solid var(--border)' : 'none',
-        display:'flex', flexDirection:'column', overflow:'hidden',
-        transition:'width 0.2s'
-      }}>
-        <Topbar title="Aste e Vendite" subtitle={currentProc.nome||''} />
-        <div style={{flex:1, overflowY:'auto', padding:16}}>
-          <div style={{display:'flex',flexDirection:'column',gap:12}}>
+    <>
+      <Topbar title="Aste e Vendite" subtitle={currentProc.nome||''} />
+      <div style={{flex:1,overflowY:'auto',padding:24}}>
+        <div style={{maxWidth:900,margin:'0 auto',display:'flex',flexDirection:'column',gap:20}}>
 
-            <button className="btn btn-primary" style={{width:'100%'}}
-              onClick={()=>setShowWizard(w=>!w)}>
-              {showWizard ? '✕ Chiudi wizard' : <><Plus size={14}/> Nuovo avviso di vendita</>}
-            </button>
-
-            <div className="card">
-              <div className="card-header"><div className="card-title" style={{fontSize:13}}>🏛 Procedura</div></div>
-              <div className="card-body">
-                <div style={{display:'flex',flexDirection:'column',gap:4,fontSize:12}}>
-                  {[['Nome',currentProc.nome],['Tipo',currentProc.tipo],
-                    ['R.G.',(currentProc.num||'')+(currentProc.anno?'/'+currentProc.anno:'')],
-                    ['Tribunale',currentProc.tribunale],['Giudice',currentProc.giudice],
-                    ['Curatore',currentProc.curatore]].map(([l,v])=>(
-                    <div key={l} style={{display:'flex',gap:6}}>
-                      <span style={{color:'var(--text3)',minWidth:70}}>{l}</span>
-                      <span style={{fontWeight:500}}>{v||'—'}</span>
-                    </div>
+          <div className="card" style={{cursor:'pointer'}} onClick={()=>setShowWizard(true)}>
+            <div className="card-body" style={{display:'flex',alignItems:'center',gap:20,padding:28}}>
+              <div style={{fontSize:48}}>📄</div>
+              <div style={{flex:1}}>
+                <div style={{fontWeight:700,fontSize:16,marginBottom:6}}>Avviso di Vendita</div>
+                <div style={{fontSize:13,color:'var(--text3)',marginBottom:12}}>
+                  Genera l&apos;avviso di vendita per aste telematiche: PVP, AsteMagazine, sincrona, asincrona, mista.
+                </div>
+                <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+                  {TIPI_ASTA.map(t=>(
+                    <span key={t.id} style={{background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:4,padding:'2px 8px',fontSize:11}}>
+                      {t.label.split('\u2014')[0].trim()}
+                    </span>
                   ))}
                 </div>
               </div>
+              <button className="btn btn-primary" onClick={e=>{e.stopPropagation();setShowWizard(true)}}>
+                <Plus size={14}/> Nuovo avviso
+              </button>
             </div>
-
-            {!showWizard && (
-              <div className="card">
-                <div className="card-body" style={{padding:20}}>
-                  <div style={{fontSize:13,color:'var(--text3)',marginBottom:8}}>Tipi di asta disponibili:</div>
-                  <div style={{display:'flex',flexDirection:'column',gap:4}}>
-                    {TIPI_ASTA.map(t=>(
-                      <div key={t.id} style={{fontSize:12,padding:'4px 8px',background:'var(--bg3)',borderRadius:4}}>
-                        {t.label}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
+
+          <div className="card">
+            <div className="card-header"><div className="card-title">🏛 Procedura attiva</div></div>
+            <div className="card-body">
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'6px 24px',fontSize:13}}>
+                {[['Procedura',currentProc.nome],['Tipo',currentProc.tipo],
+                  ['N. R.G.',(currentProc.num||'')+(currentProc.anno?'/'+currentProc.anno:'')],
+                  ['Tribunale',currentProc.tribunale],['Giudice',currentProc.giudice],
+                  ['Curatore',currentProc.curatore]].map(([l,v])=>(
+                  <div key={l} style={{display:'flex',gap:8}}>
+                    <span style={{color:'var(--text3)',minWidth:110}}>{l}</span>
+                    <span style={{fontWeight:500}}>{v||'\u2014'}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
 
-      {/* ── Colonna destra: wizard ────────────────────────────────────── */}
       {showWizard && (
-        <div style={{flex:1, display:'flex', flexDirection:'column', overflow:'hidden'}}>
-          <div style={{
-            height:48, background:'var(--bg2)', borderBottom:'1px solid var(--border)',
-            display:'flex', alignItems:'center', padding:'0 20px', gap:16, flexShrink:0
-          }}>
-            <span style={{fontWeight:600,fontSize:15}}>Genera Avviso di Vendita</span>
-          </div>
-          <div style={{flex:1, overflowY:'auto'}}>
-            <WizardAvviso proc={currentProc} onClose={()=>setShowWizard(false)} notify={notify} />
-          </div>
-        </div>
+        <Modal open={showWizard} onClose={()=>setShowWizard(false)} title="Genera Avviso di Vendita" wide>
+          <WizardAvviso proc={currentProc} onClose={()=>setShowWizard(false)} notify={notify} />
+        </Modal>
       )}
-    </div>
+    </>
   )
 }
