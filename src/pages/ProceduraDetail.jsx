@@ -102,7 +102,7 @@ function TabSedi({ procId }) {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editSede, setEditSede] = useState(null)
-  const [form, setForm] = useState({ tipo: 'legale', indirizzo: '', civico: '', cap: '', comune: '', provincia: '', note: '' })
+  const [form, setForm] = useState({ tipo: 'legale', indirizzo: '', civico: '', cap: '', comune: '', provincia: '', note: '', beni_presenti: false })
   const s = (k) => ({ value: form[k] || '', onChange: e => setForm(f => ({ ...f, [k]: e.target.value })), className: 'form-input' })
 
   useEffect(() => { loadSedi() }, [procId])
@@ -115,7 +115,7 @@ function TabSedi({ procId }) {
     } catch (e) { notify('Errore: ' + e.message, 'err') }
   }
   const deleteSede = async (id) => { if (!confirm('Eliminare questa sede?')) return; await supabase.from('sedi').delete().eq('id', id); loadSedi() }
-  const openForm = (sede = null) => { setEditSede(sede); setForm(sede || { tipo: 'legale', indirizzo: '', civico: '', cap: '', comune: '', provincia: '', note: '' }); setShowForm(true) }
+  const openForm = (sede = null) => { setEditSede(sede); setForm(sede || { tipo: 'legale', indirizzo: '', civico: '', cap: '', comune: '', provincia: '', note: '', beni_presenti: false }); setShowForm(true) }
 
   if (loading) return <Spinner />
   return (
@@ -136,7 +136,10 @@ function TabSedi({ procId }) {
                 </div>
               </div>
               <div className="card-body">
-                <div style={{ fontSize: 13 }}>{[s2.indirizzo, s2.civico].filter(Boolean).join(' ')}{s2.comune && ` — ${[s2.cap, s2.comune, s2.provincia ? '('+s2.provincia+')' : ''].filter(Boolean).join(' ')}`}</div>
+                <div style={{ fontSize: 13, display:'flex', alignItems:'center', gap:8 }}>
+                  <span>{[s2.indirizzo, s2.civico].filter(Boolean).join(' ')}{s2.comune && ` — ${[s2.cap, s2.comune, s2.provincia ? '('+s2.provincia+')' : ''].filter(Boolean).join(' ')}`}</span>
+                  {s2.beni_presenti && <span style={{fontSize:11,background:'rgba(59,111,255,0.12)',color:'var(--accent)',padding:'2px 8px',borderRadius:6,fontWeight:600}}>📦 Beni presenti</span>}
+                </div>
                 {s2.note && <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 4 }}>{s2.note}</div>}
               </div>
             </div>
@@ -152,6 +155,12 @@ function TabSedi({ procId }) {
           <div className="form-group"><label className="form-label">CAP</label><input className="form-input" value={form.cap || ''} onChange={e => setForm(f => ({ ...f, cap: e.target.value }))} /></div>
           <div className="form-group"><label className="form-label">Comune</label><input className="form-input" value={form.comune || ''} onChange={e => setForm(f => ({ ...f, comune: e.target.value }))} /></div>
           <div className="form-col-full form-group"><label className="form-label">Note</label><textarea className="form-input" value={form.note || ''} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} rows={2} /></div>
+          <div className="form-col-full form-group" style={{display:'flex',alignItems:'center',gap:12}}>
+            <label style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer',fontSize:13}}>
+              <input type="checkbox" checked={!!form.beni_presenti} onChange={e=>setForm(f=>({...f,beni_presenti:e.target.checked}))} style={{width:16,height:16,cursor:'pointer'}}/>
+              <span>Beni presenti in questa sede <span style={{color:'var(--text3)',fontSize:12}}>(diventa sede predefinita nell'inventario)</span></span>
+            </label>
+          </div>
         </div>
       </Modal>
     </>

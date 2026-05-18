@@ -379,16 +379,16 @@ async function genAvviso(proc, lotti, opts, logoB64) {
     P([B('IBAN:\u00a0 ' + IBAN_DIR)]),
     P([B('Causale: \u201c'), T(causale('dir')), B('\u201d')]),
     BR(),
-    BLT([T('Il saldo prezzo, dedotta la cauzione gi\u00e0 versata, dovr\u00e0 essere corrisposto entro 30 giorni dall\u2019aggiudicazione definitiva, a mezzo bonifico bancario sul conto corrente della procedura intestato a '), B((intestazioneProcedura || proc.nome || '').toUpperCase()), T(' \u2013 IBAN: '), B(ibanProcedura || '______________________________'), T('.')]),
+    BLT([T('Il saldo prezzo, dedotta la cauzione gi\u00e0 versata, dovr\u00e0 essere corrisposto entro 30 giorni dall\u2019aggiudicazione definitiva, a mezzo bonifico bancario sul conto corrente '), B(saldoGestoreCommiss ? 'del Commissionario' : ('della procedura intestato a ' + (intestazioneProcedura || proc.nome || '').toUpperCase())), T(' \u2013 IBAN: '), B(saldoGestoreCommiss ? (ibanCommissionario || '______________________________') : (ibanProcedura || '______________________________')), T('.')]),
     BLT(T("In caso di mancato versamento del saldo prezzo, l\u2019aggiudicatario sar\u00e0 dichiarato decaduto e la procedura incamerer\u00e0 la cauzione a titolo di penale, salvo il diritto al risarcimento del maggior danno.")),
     BLT([T('Le eventuali offerte migliorative per un importo non inferiore al 10% del prezzo di aggiudicazione a norma dell\u2019art. 584 c.p.c. dovranno pervenire a mezzo PEC all\u2019indirizzo della procedura e in c.c. a '), B('progess@arubapec.it'), T(', entro 10 giorni dall\u2019aggiudicazione provvisoria.')]),
   ] : [
     BR(),
     PSC([B('PAGAMENTO DEL SALDO PREZZO \u2013 ONERI FISCALI \u2013 DIRITTI D\u2019ASTA')]),
-    P([T('Entro il termine di '), B(saldo + ' giorni'), T(' dalla data di aggiudicazione, oppure nel minor termine contenuto nell\u2019offerta irrevocabile (termine migliorativo), l\u2019aggiudicatario dovr\u00e0 provvedere al versamento integrale del saldo prezzo dovuto (oltre oneri di Legge ove dovuti), dedotta la cauzione gi\u00e0 versata, a mezzo bonifico bancario sul c/c intestato a:')]),
+    P([T('Entro il termine di '), B(saldo + ' giorni'), T(' dalla data di aggiudicazione, oppure nel minor termine contenuto nell\u2019offerta irrevocabile (termine migliorativo), l\u2019aggiudicatario dovr\u00e0 provvedere al versamento integrale del saldo prezzo dovuto (oltre oneri di Legge ove dovuti), dedotta la cauzione gi\u00e0 versata, a mezzo bonifico bancario sul c/c '), B(saldoGestoreCommiss ? 'del Commissionario:' : 'intestato a:')]),
     BR(),
-    P([B('Beneficiario: '), T((intestazioneProcedura || proc.nome || '').toUpperCase())]),
-    P([B('IBAN: '), T(ibanProcedura || '______________________________')]),
+    P([B('Beneficiario: '), T(saldoGestoreCommiss ? (proc.commissionario || 'Commissionario') : (intestazioneProcedura || proc.nome || '').toUpperCase())]),
+    P([B('IBAN: '), T(saldoGestoreCommiss ? (ibanCommissionario || '______________________________') : (ibanProcedura || '______________________________'))]),
     P([B('Causale: \u201c'), T(causale('saldo')), B('\u201d')]),
     BR(),
     P(T("Se l'aggiudicatario non provveder\u00e0 al pagamento nel termine, sar\u00e0 dichiarato decaduto con conseguente incameramento della cauzione a titolo di penale. In caso di successiva vendita a prezzo inferiore, l'aggiudicatario sar\u00e0 tenuto al pagamento della differenza.")),
@@ -568,21 +568,25 @@ const TESTO_OFFERTA_DEFAULT = mkTestoOfferta('', '')
 // ─── Wizard ───────────────────────────────────────────────────────────────────
 function WizardAvviso({ proc, onClose, notify }) {
   const today = new Date().toISOString().slice(0,10)
-  const [tipoAsta, setTipoAsta]               = useState('asincrona_pvp')
-  const [tipoBene, setTipoBene]               = useState('mobile')
-  const [nEsperimento, setNEsperimento]       = useState('1')
+  // ── Punto 1: ripristino stato da sessionStorage ────────────────────────────
+  const SS_KEY = 'inventpro_wizard_aste'
+  const savedState = (() => { try { return JSON.parse(sessionStorage.getItem(SS_KEY) || '{}') } catch { return {} } })()
+
+  const [tipoAsta, setTipoAsta]               = useState(savedState.tipoAsta || 'asincrona_pvp')
+  const [tipoBene, setTipoBene]               = useState(savedState.tipoBene || 'mobile')
+  const [nEsperimento, setNEsperimento]       = useState(savedState.nEsperimento || '1')
   const [dataAsta, setDataAsta]               = useState(today)
-  const [oraAsta, setOraAsta]                 = useState('12:00')
+  const [oraAsta, setOraAsta]                 = useState(savedState.oraAsta || '12:00')
   const [dataTermine, setDataTermine]         = useState(today)
-  const [oraTermine, setOraTermine]           = useState('12:00')
-  const [durataRilancio, setDurataRilancio]   = useState('1')           // minuti
+  const [oraTermine, setOraTermine]           = useState(savedState.oraTermine || '12:00')
+  const [durataRilancio, setDurataRilancio]   = useState(savedState.durataRilancio || '1')           // minuti
   const [termineOfferte, setTermineOfferte]   = useState(today)         // sincrona: termine offerte cartacee
   const [prezzoBase, setPrezzoBase]           = useState('')
   const [offertaMinima, setOffertaMinima]     = useState('')
   const [rilancioMin, setRilancioMin]         = useState('')
-  const [cauzione, setCauzione]               = useState('10')
-  const [dirittiAsta, setDirittiAsta]         = useState('2')
-  const [termSaldo, setTermSaldo]             = useState('120')
+  const [cauzione, setCauzione]               = useState(savedState.cauzione || '10')
+  const [dirittiAsta, setDirittiAsta]         = useState(savedState.dirittiAsta || '2')
+  const [termSaldo, setTermSaldo]             = useState(savedState.termSaldo || '120')
   const [ibanProcedura, setIbanProcedura]     = useState('')
   const [intestazioneProcedura, setIntestazioneProcedura] = useState('')
   const [ibanCauzione, setIbanCauzione]       = useState('')
@@ -618,6 +622,22 @@ function WizardAvviso({ proc, onClose, notify }) {
   const isAsincrona  = tipoAsta === 'asincrona_pvp' || tipoAsta === 'asincrona_amag'
   const isMistaWiz   = tipoAsta === 'mista'
   const isSincrona   = tipoAsta === 'sincrona_pvp' || tipoAsta === 'sincrona_amag'
+
+  // ── Salva stato wizard in sessionStorage ────────────────────────────────────
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(SS_KEY, JSON.stringify({
+        tipoAsta, tipoBene, nEsperimento, dataAsta, oraAsta, dataTermine, oraTermine,
+        durataRilancio, termineOfferte, prezzoBase, offertaMinima, rilancioMin,
+        cauzione, dirittiAsta, termSaldo, ibanProcedura, intestazioneProcedura,
+        ibanCauzione, bancaCauzione, ibanDiritti, bancaDiritti,
+        referente, noteFinali, offertaIrrevocabile, offertaIrrevGg, offertaIrrevMm,
+        offertaIrrevAa, offertaIrrevImporto, testoOfferta
+      }))
+    } catch {}
+  }, [tipoAsta, tipoBene, dataAsta, oraAsta, dataTermine, oraTermine,
+      prezzoBase, offertaMinima, rilancioMin, cauzione, ibanProcedura,
+      offertaIrrevocabile, offertaIrrevImporto])
 
   // Carica IBAN da settings e testo AVVISA dal DB all'apertura
   useEffect(() => {
@@ -892,7 +912,20 @@ function WizardAvviso({ proc, onClose, notify }) {
             <Inp label="Deposito cauzionale (%)" val={cauzione} set={setCauzione} placeholder="10" />
             <Inp label="Diritti d'asta (%)" val={dirittiAsta} set={setDirittiAsta} placeholder="2" />
             <Inp label="Termine saldo prezzo (giorni)" val={termSaldo} set={setTermSaldo} placeholder="120 (PVP) / 30 (AsteMagazine)" />
-            <Inp label="IBAN conto procedura (per saldo)" val={ibanProcedura} set={setIbanProcedura} placeholder="IT00 X000 0000 0000 0000 0000 000" full />
+            {/* Toggle commissionario saldo */}
+            <div className="form-group form-col-full" style={{display:'flex',alignItems:'center',gap:12,padding:'4px 0'}}>
+              <label style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer',fontSize:13}}>
+                <input type="checkbox" checked={saldoGestoreCommiss} onChange={e=>setSaldoGestoreCommiss(e.target.checked)}
+                  style={{width:16,height:16,cursor:'pointer'}}/>
+                <span>Saldo gestito dal Commissionario</span>
+              </label>
+            </div>
+            {!saldoGestoreCommiss && (
+              <Inp label="IBAN conto procedura (per saldo)" val={ibanProcedura} set={setIbanProcedura} placeholder="IT00 X000 0000 0000 0000 0000 000" full />
+            )}
+            {saldoGestoreCommiss && (
+              <Inp label="IBAN conto Commissionario (per saldo)" val={ibanCommissionario} set={setIbanCommissionario} placeholder="IT00 X000 0000 0000 0000 0000 000" full />
+            )}
             <Inp label="Intestazione conto procedura" val={intestazioneProcedura} set={setIntestazioneProcedura} placeholder="Es: Liquidazione Giudiziale Rossi S.r.l." full />
           </div>
         </div>

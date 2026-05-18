@@ -96,6 +96,18 @@ function LottoForm({ lotto, procId, articoliDisponibili, onSave, onClose }) {
     .filter(a => selArticoli.includes(a.id))
     .reduce((s, a) => s + (Number(a.val_giud || 0) * Number(a.qta || 1)), 0)
 
+  // Aggiorna prezzo base automaticamente quando cambiano gli articoli selezionati
+  useEffect(() => {
+    if (totValore > 0) {
+      setForm(f => {
+        const newBase = Math.round(totValore)
+        const abbPct  = f._abbattimento ? Number(f._abbattimento) : 25
+        const newMin  = Math.round(newBase * (1 - abbPct/100))
+        return { ...f, prezzo_base: String(newBase), offerta_minima: String(newMin) }
+      })
+    }
+  }, [totValore])
+
   return (
     <>
       <div className="form-grid">
@@ -111,12 +123,22 @@ function LottoForm({ lotto, procId, articoliDisponibili, onSave, onClose }) {
 
         <div className="form-section">Valori economici</div>
         <div className="form-group">
-          <label className="form-label">Prezzo base (€)</label>
-          <input className="form-input" value={form.prezzo_base || ''} onChange={e => setForm(f => ({ ...f, prezzo_base: e.target.value }))} placeholder="Es. 5.000,00" />
+          <label className="form-label">Prezzo base (€) <span style={{fontSize:11,color:'var(--text3)'}}>calcolato automaticamente</span></label>
+          <input className="form-input" value={form.prezzo_base || ''} onChange={e => setForm(f => ({ ...f, prezzo_base: e.target.value }))} placeholder="Calcolato dalla somma val. giudiziario articoli" />
         </div>
         <div className="form-group">
-          <label className="form-label">Offerta minima (€)</label>
-          <input className="form-input" value={form.offerta_minima || ''} onChange={e => setForm(f => ({ ...f, offerta_minima: e.target.value }))} placeholder="Vuoto = prezzo base" />
+          <label className="form-label">Abbattimento (%)</label>
+          <input type="number" className="form-input" value={form._abbattimento ?? 25}
+            onChange={e => {
+              const pct = Number(e.target.value)
+              const base = Number(form.prezzo_base) || totValore
+              setForm(f => ({ ...f, _abbattimento: e.target.value, offerta_minima: String(Math.round(base * (1 - pct/100))) }))
+            }}
+            min="0" max="100" placeholder="Es. 25" />
+        </div>
+        <div className="form-group">
+          <label className="form-label">Offerta minima (€) <span style={{fontSize:11,color:'var(--text3)'}}>calcolata automaticamente</span></label>
+          <input className="form-input" value={form.offerta_minima || ''} onChange={e => setForm(f => ({ ...f, offerta_minima: e.target.value }))} placeholder="Calcolata dall'abbattimento sul prezzo base" />
         </div>
         <div className="form-group">
           <label className="form-label">Rilancio minimo (€)</label>
