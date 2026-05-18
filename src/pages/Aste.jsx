@@ -122,6 +122,7 @@ async function genAvviso(proc, lotti, opts, logoB64) {
     durataRilancio, termineOfferte,
     prezzoBase, offertaMinima, rilancioMin, cauzione, dirittiAsta,
     termSaldo, ibanProcedura, intestazioneProcedura,
+    saldoGestoreCommiss, ibanCommissionario,
     ibanCauzione: _ibanCau, bancaCauzione: _bancaCau,
     ibanDiritti: _ibanDir, bancaDiritti: _bancaDir,
     referente, noteFinali,
