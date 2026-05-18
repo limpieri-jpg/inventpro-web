@@ -40,7 +40,7 @@ const fmtEur = (n) => {
 }
 const fmtD = (d) => {
   if (!d) return '_______________'
-  if (d.includes('/')) return d        // già in formato gg/mm/aaaa
+  if (d.includes('/')) return d        // gi\u00e0 in formato gg/mm/aaaa
   const dt = new Date(d)
   if (isNaN(dt)) return d
   return String(dt.getDate()).padStart(2,'0')+'/'+String(dt.getMonth()+1).padStart(2,'0')+'/'+dt.getFullYear()
@@ -257,7 +257,7 @@ async function genAvviso(proc, lotti, opts, logoB64) {
       PL([B('OFFERTA MINIMA AMMISSIBILE: '), T(fmtEur(offMin) + (tipoBene === 'immobile' ? ' oltre IVA se dovuta / oneri di legge' : ' OLTRE IVA SE DOVUTA E ONERI DI LEGGE'))]),
       PL([B('RILANCI MINIMI in caso di GARA: '), T(fmtEur(rilancio))]),
       PL([B('DEPOSITO CAUZIONALE: '), T(cau + '% del prezzo offerto')]),
-      PL([B('DIRITTI D’ASTA: '), T(dir + '% oltre IVA al 22%, da calcolarsi sul prezzo di aggiudicazione')]),
+      PL([B('DIRITTI D\'ASTA: '), T(dir + '% oltre IVA al 22%, da calcolarsi sul prezzo di aggiudicazione')]),
     ]
   }
 
@@ -269,7 +269,7 @@ async function genAvviso(proc, lotti, opts, logoB64) {
     BR(),
   ]
 
-  // ── Sezione: Modalità offerte ─────────────────────────────────────────────
+  // ── Sezione: Modalit\u00e0 offerte ─────────────────────────────────────────────
   let sezioneOfferte
   if (isAMag) {
     sezioneOfferte = [
@@ -361,7 +361,7 @@ async function genAvviso(proc, lotti, opts, logoB64) {
       ] : [
         P([T('Il giorno della gara, almeno 30 minuti prima dell\u2019asta fissata per il '), B(fmtDT(dataAsta, oraAsta)), T(', il presentatore ricever\u00e0 all\u2019indirizzo PEC indicato nell\u2019offerta le credenziali di accesso alla piattaforma.')]),
       ]),
-      P(T('Nel caso di unica offerta valida, il Lotto verr\u00e0 aggiudicato all\u2019unico migliore offerente, anche se non collegato telematicamente. Nel caso di pluralit\u00e0 di offerte valide, il Curatore indirà la gara tra gli offerenti, partendo dall\u2019offerta valida pi\u00f9 alta pervenuta, con i rilanci minimi fissati per il Lotto. Trascorso 1 (uno) minuto dall\u2019ultima offerta senza rilanci, il Lotto sar\u00e0 aggiudicato al miglior offerente.')),
+      P(T('Nel caso di unica offerta valida, il Lotto verr\u00e0 aggiudicato all\u2019unico migliore offerente, anche se non collegato telematicamente. Nel caso di pluralit\u00e0 di offerte valide, il Curatore indir\u00e0 la gara tra gli offerenti, partendo dall\u2019offerta valida pi\u00f9 alta pervenuta, con i rilanci minimi fissati per il Lotto. Trascorso 1 (uno) minuto dall\u2019ultima offerta senza rilanci, il Lotto sar\u00e0 aggiudicato al miglior offerente.')),
       P(T("L'aggiudicazione \u00e8 definitiva e non verranno prese in considerazione offerte successive, anche in aumento. La cauzione dell\u2019aggiudicatario \u00e8 imputata in acconto sul prezzo. La cauzione dei non aggiudicatari sar\u00e0 restituita entro 7 giorni lavorativi.")),
     ]
   }
@@ -371,7 +371,7 @@ async function genAvviso(proc, lotti, opts, logoB64) {
     BR(),
     PSC([B('TERMINE DELLA GARA E AGGIUDICAZIONE')]),
     BLT(T('Al termine della gara verr\u00e0 dichiarato aggiudicatario provvisorio il soggetto che avr\u00e0 presentato la migliore offerta valida entro il termine di fine gara.')),
-    BLT(T("All'esito della gara, il soggetto specializzato alla vendita invierà una Relazione finale (report) all'indirizzo E-mail/PEC della procedura con le generalit\u00e0 complete dell'aggiudicatario e tutta la documentazione annessa.")),
+    BLT(T("All'esito della gara, il soggetto specializzato alla vendita invier\u00e0 una Relazione finale (report) all'indirizzo E-mail/PEC della procedura con le generalit\u00e0 complete dell'aggiudicatario e tutta la documentazione annessa.")),
     BLT(T('La restituzione delle cauzioni ai soggetti non aggiudicatari verr\u00e0 effettuata dal Soggetto specializzato \u2013 Pro.Ges.S. \u2013 entro sette giorni lavorativi dal termine della gara.')),
     BLT([T('I diritti d\u2019asta pari al '), B(dir + '%'), T(' oltre IVA, calcolati sul prezzo di aggiudicazione, dovranno essere versati entro 15 giorni dall\u2019aggiudicazione definitiva su:')]),
     BR(),
@@ -416,7 +416,7 @@ async function genAvviso(proc, lotti, opts, logoB64) {
     BLT(T('I beni potranno essere visionati, previa richiesta da inoltrare direttamente al Curatore o al Commissionario.')),
   ] : []
 
-  // ── Sezione: Pubblicità ───────────────────────────────────────────────────
+  // ── Sezione: Pubblicit\u00e0 ───────────────────────────────────────────────────
   const sezionePubblicita = [
     BR(),
     PSC([B('PUBBLICIT\u00c0')]),
@@ -445,7 +445,7 @@ async function genAvviso(proc, lotti, opts, logoB64) {
     ...(noteFinali ? [BR(), P(T(noteFinali))] : []),
   ]
 
-  // ── Titolo modalità per intestazione ─────────────────────────────────────
+  // ── Titolo modalit\u00e0 per intestazione ─────────────────────────────────────
   const titoloModalita = isAMag
     ? (isAsin && !isMista ? 'SENZA INCANTO CON MODALIT\u00c0 COMPETITIVA TELEMATICA' : 'SENZA INCANTO CON MODALIT\u00c0 SINCRONA TELEMATICA ASTEMAGAZINE')
     : (isAsin && !isMista ? 'CON MODALIT\u00c0 ASINCRONA TELEMATICA' : isMista ? 'SENZA INCANTO CON MODALIT\u00c0 SINCRONA MISTA' : 'CON MODALIT\u00c0 SINCRONA TELEMATICA')
@@ -500,8 +500,8 @@ async function genAvviso(proc, lotti, opts, logoB64) {
 }
 
 // ─── Componente riga lotto — ESTRATTO fuori dal wizard per evitare re-mount ──
-// Se il componente è definito dentro WizardAvviso, React lo ricrea ad ogni render
-// e l'input perde il focus dopo ogni carattere. Estratto fuori = identità stabile.
+// Se il componente \u00e8 definito dentro WizardAvviso, React lo ricrea ad ogni render
+// e l'input perde il focus dopo ogni carattere. Estratto fuori = identit\u00e0 stabile.
 function LottoRow({ lotto, idx, total, onChange, onRemove }) {
   return (
     <div style={{background:'var(--bg2)',borderRadius:8,padding:'12px 14px'}}>
@@ -559,8 +559,8 @@ function LottoRow({ lotto, idx, total, onChange, onRemove }) {
 const mkTestoOfferta = (data, importo) => {
   const d = data || '___'
   const i = importo ? 'Euro ' + importo + ' OLTRE IVA SE DOVUTA E ONERI DI LEGGE' : 'Euro ___'
-  return 'che in data ' + d + ' è stata ricevuta un’offerta irrevocabile d’acquisto a lotto unico per la somma di ' + i + '. ' +
-    'Nel rispetto dei principi di competitività e trasparenza si avvia una gara competitiva telematica ' +
+  return 'che in data ' + d + ' \u00e8 stata ricevuta un\'offerta irrevocabile d\'acquisto a lotto unico per la somma di ' + i + '. ' +
+    'Nel rispetto dei principi di competitivit\u00e0 e trasparenza si avvia una gara competitiva telematica ' +
     'allo scopo di permettere a eventuali interessati di partecipare presentando la propria offerta ' +
     'a rialzo come da rilancio minimo indicato.'
 }
@@ -671,7 +671,7 @@ function WizardAvviso({ proc, onClose, notify }) {
     load()
   }, [proc.id])
 
-  // Carica lotti dal DB quando si passa a modalità DB
+  // Carica lotti dal DB quando si passa a modalit\u00e0 DB
   useEffect(() => {
     if (lottiMode !== 'db') return
     const load = async () => {
@@ -701,7 +701,7 @@ function WizardAvviso({ proc, onClose, notify }) {
     load()
   }, [lottiMode, proc.id])
 
-  // useCallback evita che la funzione cambi identità ad ogni render → LottoRow non si rimonta
+  // useCallback evita che la funzione cambi identit\u00e0 ad ogni render → LottoRow non si rimonta
   const handleLottoChange = useCallback((idx, field, val) => {
     setLotti(ls => ls.map((x, j) => j === idx ? {...x, [field]: val} : x))
   }, [])
@@ -778,7 +778,7 @@ function WizardAvviso({ proc, onClose, notify }) {
 
   // Inp definito FUORI dalla funzione (sopra) sarebbe ideale, ma qui usiamo
   // un componente inline semplice con setter diretto — ok perché i setter
-  // di useState hanno identità stabile, quindi non causano re-mount
+  // di useState hanno identit\u00e0 stabile, quindi non causano re-mount
   const Inp = ({ label, val, set, placeholder='', type='text', full=false }) => (
     <div className={full ? 'form-col-full form-group' : 'form-group'}>
       <label className="form-label">{label}</label>
@@ -807,10 +807,10 @@ function WizardAvviso({ proc, onClose, notify }) {
   return (
     <div style={{display:'flex',flexDirection:'column',gap:12,padding:'0 0 40px 0'}}>
 
-      {/* Modalità */}
+      {/* Modalit\u00e0 */}
       <div className="card">
         <div className="card-header" style={{cursor:'pointer'}} onClick={()=>toggleCard('modalita')}>
-          <div className="card-title">📋 Modalità di vendita</div>
+          <div className="card-title">📋 Modalit\u00e0 di vendita</div>
           <span style={{fontSize:12,color:'var(--text3)',transform:openCards.modalita?'rotate(180deg)':'none',transition:'transform 0.2s'}}>▼</span>
         </div>
         {openCards.modalita && (
@@ -1072,7 +1072,7 @@ function WizardAvviso({ proc, onClose, notify }) {
               <label className="form-label">Note finali (facoltativo)</label>
               <textarea className="form-input" value={noteFinali}
                 onChange={e=>setNoteFinali(e.target.value)} rows={3}
-                placeholder="Es: La vendita è soggetta all'imposta di registro..." />
+                placeholder="Es: La vendita \u00e8 soggetta all'imposta di registro..." />
             </div>
           </div>
         </div>
