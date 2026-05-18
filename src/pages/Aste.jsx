@@ -590,6 +590,8 @@ function WizardAvviso({ proc, onClose, notify }) {
   const [termSaldo, setTermSaldo]             = useState(savedState.termSaldo || '120')
   const [ibanProcedura, setIbanProcedura]     = useState('')
   const [intestazioneProcedura, setIntestazioneProcedura] = useState('')
+  const [saldoGestoreCommiss, setSaldoGestoreCommiss] = useState(false)
+  const [ibanCommissionario, setIbanCommissionario]   = useState('')
   const [ibanCauzione, setIbanCauzione]       = useState('')
   const [bancaCauzione, setBancaCauzione]     = useState('')
   const [ibanDiritti, setIbanDiritti]         = useState('')
