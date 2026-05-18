@@ -807,30 +807,31 @@ function WizardAvviso({ proc, onClose, notify }) {
   return (
     <div style={{display:'flex',flexDirection:'column',gap:12,padding:'0 0 40px 0'}}>
 
+      {/* Modalità */}
       <div className="card">
         <div className="card-header" style={{cursor:'pointer'}} onClick={()=>toggleCard('modalita')}>
           <div className="card-title">📋 Modalità di vendita</div>
           <span style={{fontSize:12,color:'var(--text3)',transform:openCards.modalita?'rotate(180deg)':'none',transition:'transform 0.2s'}}>▼</span>
         </div>
         {openCards.modalita && (
-          <div className="card-body">
-            <div className="form-grid">
-              <div className="form-col-full form-group">
-                <label className="form-label">Tipo di vendita</label>
-                <select className="form-input" value={tipoAsta} onChange={e=>setTipoAsta(e.target.value)}>
-                  {TIPI_ASTA.map(t=><option key={t.id} value={t.id}>{t.label}</option>)}
-                </select>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Tipo di bene</label>
-                <select className="form-input" value={tipoBene} onChange={e=>setTipoBene(e.target.value)}>
-                  <option value="mobile">Beni mobili</option>
-                  <option value="immobile">Beni immobili</option>
-                </select>
-              </div>
-              <Inp label="N° esperimento di vendita" val={nEsperimento} set={setNEsperimento} placeholder="Es: 1" />
+        <div className="card-body">
+          <div className="form-grid">
+            <div className="form-col-full form-group">
+              <label className="form-label">Tipo di vendita</label>
+              <select className="form-input" value={tipoAsta} onChange={e=>setTipoAsta(e.target.value)}>
+                {TIPI_ASTA.map(t=><option key={t.id} value={t.id}>{t.label}</option>)}
+              </select>
             </div>
+            <div className="form-group">
+              <label className="form-label">Tipo di bene</label>
+              <select className="form-input" value={tipoBene} onChange={e=>setTipoBene(e.target.value)}>
+                <option value="mobile">Beni mobili</option>
+                <option value="immobile">Beni immobili</option>
+              </select>
+            </div>
+            <Inp label="N° esperimento di vendita" val={nEsperimento} set={setNEsperimento} placeholder="Es: 1" />
           </div>
+        </div>
         )}
       </div>
 
@@ -880,8 +881,6 @@ function WizardAvviso({ proc, onClose, notify }) {
             </div>
           )}
         </div>
-        )}
-
         )}
       </div>
 
@@ -956,7 +955,6 @@ function WizardAvviso({ proc, onClose, notify }) {
         )}
       </div>
 
-
       <div className="card">
         <div className="card-header" style={{cursor:'pointer'}} onClick={()=>toggleCard('date')}>
           <div className="card-title">📅 Date e orari</div>
@@ -994,9 +992,6 @@ function WizardAvviso({ proc, onClose, notify }) {
             </>)}
           </div>
         </div>
-        )}
-      </div>
-
         )}
       </div>
 
@@ -1059,9 +1054,6 @@ function WizardAvviso({ proc, onClose, notify }) {
         )}
       </div>
 
-        )}
-      </div>
-
       <div className="card">
         <div className="card-header" style={{cursor:'pointer'}} onClick={()=>toggleCard('contatti')}>
           <div className="card-title">📞 Contatti e note</div>
@@ -1082,9 +1074,6 @@ function WizardAvviso({ proc, onClose, notify }) {
         )}
       </div>
 
-        )}
-      </div>
-
       {/* Azioni */}
       <div style={{display:'flex',justifyContent:'flex-end',gap:10,paddingBottom:24}}>
         <button className="btn btn-ghost" onClick={onClose}>Annulla</button>
@@ -1095,11 +1084,6 @@ function WizardAvviso({ proc, onClose, notify }) {
     </div>
   )
 }
-
-    </div>
-  )
-}
-
 
 // ─── Pagina principale ────────────────────────────────────────────────────────
 export default function Aste() {
