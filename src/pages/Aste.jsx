@@ -807,7 +807,6 @@ function WizardAvviso({ proc, onClose, notify }) {
   return (
     <div style={{display:'flex',flexDirection:'column',gap:12,padding:'0 0 40px 0'}}>
 
-      {/* Modalità */}
       <div className="card">
         <div className="card-header" style={{cursor:'pointer'}} onClick={()=>toggleCard('modalita')}>
           <div className="card-title">📋 Modalità di vendita</div>
@@ -833,6 +832,7 @@ function WizardAvviso({ proc, onClose, notify }) {
           </div>
         </div>
       </div>
+
         )}
       </div>
 
@@ -882,6 +882,9 @@ function WizardAvviso({ proc, onClose, notify }) {
             </div>
           )}
         </div>
+        )}
+      </div>
+
         )}
       </div>
 
@@ -956,6 +959,9 @@ function WizardAvviso({ proc, onClose, notify }) {
         )}
       </div>
 
+        )}
+      </div>
+
       <div className="card">
         <div className="card-header" style={{cursor:'pointer'}} onClick={()=>toggleCard('date')}>
           <div className="card-title">📅 Date e orari</div>
@@ -993,6 +999,9 @@ function WizardAvviso({ proc, onClose, notify }) {
             </>)}
           </div>
         </div>
+        )}
+      </div>
+
         )}
       </div>
 
@@ -1055,6 +1064,9 @@ function WizardAvviso({ proc, onClose, notify }) {
         )}
       </div>
 
+        )}
+      </div>
+
       <div className="card">
         <div className="card-header" style={{cursor:'pointer'}} onClick={()=>toggleCard('contatti')}>
           <div className="card-title">📞 Contatti e note</div>
@@ -1075,6 +1087,9 @@ function WizardAvviso({ proc, onClose, notify }) {
         )}
       </div>
 
+        )}
+      </div>
+
       {/* Azioni */}
       <div style={{display:'flex',justifyContent:'flex-end',gap:10,paddingBottom:24}}>
         <button className="btn btn-ghost" onClick={onClose}>Annulla</button>
@@ -1085,6 +1100,11 @@ function WizardAvviso({ proc, onClose, notify }) {
     </div>
   )
 }
+
+    </div>
+  )
+}
+
 
 // ─── Pagina principale ────────────────────────────────────────────────────────
 export default function Aste() {
