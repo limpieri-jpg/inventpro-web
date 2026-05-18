@@ -16,7 +16,7 @@ function fmtEur(n) {
 }
 
 // ── Form lotto ───────────────────────────────────────────────────────
-function LottoForm({ lotto, procId, articoliDisponibili, articoliUsati, onSave, onClose }) {
+function LottoForm({ lotto, procId, articoliDisponibili, onSave, onClose }) {
   const { notify } = useStore()
   const [form, setForm] = useState({ numero: '', nome: '', descrizione: '', note: '', prezzo_base: '', offerta_minima: '', rilancio_min: '', ...lotto })
   const [selArticoli, setSelArticoli] = useState([])
@@ -114,14 +114,7 @@ function LottoForm({ lotto, procId, articoliDisponibili, articoliUsati, onSave, 
           <label className="form-label">Prezzo base (€)</label>
           <input className="form-input" value={form.prezzo_base || ''} onChange={e => setForm(f => ({ ...f, prezzo_base: e.target.value }))} placeholder="Es. 5.000,00" />
         </div>
-        <div className="form-group">
-          <label className="form-label">Offerta minima (€)</label>
-          <input className="form-input" value={form.offerta_minima || ''} onChange={e => setForm(f => ({ ...f, offerta_minima: e.target.value }))} placeholder="Vuoto = prezzo base" />
-        </div>
-        <div className="form-group">
-          <label className="form-label">Rilancio minimo (€)</label>
-          <input className="form-input" value={form.rilancio_min || ''} onChange={e => setForm(f => ({ ...f, rilancio_min: e.target.value }))} placeholder="Es. 250,00" />
-        </div>
+
 
         <div className="form-col-full form-group">
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:4}}>
@@ -148,38 +141,30 @@ function LottoForm({ lotto, procId, articoliDisponibili, articoliUsati, onSave, 
           <div style={{ maxHeight: 280, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 8 }}>
             {articoliDisponibili.length === 0 ? (
               <div style={{ padding: 20, textAlign: 'center', color: 'var(--text3)', fontSize: 13 }}>Nessun articolo disponibile</div>
-            ) : articoliDisponibili.map(a => {
-              const inAltroLotto = (articoliUsati || []).includes(a.id) && !selArticoli.includes(a.id)
-              const isSelected   = selArticoli.includes(a.id)
-              return (
+            ) : articoliDisponibili.map(a => (
               <div key={a.id}
-                onClick={() => !inAltroLotto && toggleArticolo(a.id)}
+                onClick={() => toggleArticolo(a.id)}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px',
-                  borderBottom: '1px solid var(--border)',
-                  cursor: inAltroLotto ? 'not-allowed' : 'pointer',
-                  background: isSelected ? 'rgba(59,111,255,0.08)' : inAltroLotto ? 'rgba(0,0,0,0.04)' : 'transparent',
-                  opacity: inAltroLotto ? 0.4 : 1,
+                  borderBottom: '1px solid var(--border)', cursor: 'pointer',
+                  background: selArticoli.includes(a.id) ? 'rgba(59,111,255,0.08)' : 'transparent',
                   transition: 'background 0.1s'
                 }}>
                 <div style={{
-                  width: 18, height: 18, borderRadius: 4,
-                  border: `2px solid ${isSelected ? 'var(--accent)' : inAltroLotto ? 'var(--text3)' : 'var(--border2)'}`,
-                  background: isSelected ? 'var(--accent)' : 'transparent',
+                  width: 18, height: 18, borderRadius: 4, border: `2px solid ${selArticoli.includes(a.id) ? 'var(--accent)' : 'var(--border2)'}`,
+                  background: selArticoli.includes(a.id) ? 'var(--accent)' : 'transparent',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
                 }}>
-                  {isSelected && <span style={{ color: '#fff', fontSize: 11, fontWeight: 700 }}>✓</span>}
+                  {selArticoli.includes(a.id) && <span style={{ color: '#fff', fontSize: 11, fontWeight: 700 }}>✓</span>}
                 </div>
                 {a.prima_foto_url && <img src={a.prima_foto_url} alt="" style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 4 }} />}
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 500 }}>{a.desc_breve}
-                    {inAltroLotto && <span style={{fontSize:10,color:'var(--text3)',marginLeft:6}}>già in un altro lotto</span>}
-                  </div>
+                  <div style={{ fontSize: 13, fontWeight: 500 }}>{a.desc_breve}</div>
                   <div style={{ fontSize: 11, color: 'var(--text2)' }}>{[a.marca, a.modello].filter(Boolean).join(' ')} · {a.qta} {a.unita_misura}</div>
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--accent-g)', fontFamily: 'DM Mono, monospace' }}>{fmtEur(Number(a.val_giud || 0) * Number(a.qta || 1))}</div>
               </div>
-            )})}
+            ))}
           </div>
         </div>
       </div>
@@ -336,9 +321,6 @@ export default function Lotti() {
           lotto={editLotto}
           procId={currentProc.id}
           articoliDisponibili={articoli}
-          articoliUsati={lotti
-            .filter(l => !editLotto || l.id !== editLotto.id)
-            .flatMap(l => l.articolo_ids || [])}
           onClose={() => setShowForm(false)}
           onSave={() => { setShowForm(false); loadAll() }}
         />

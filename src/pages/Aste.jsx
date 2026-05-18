@@ -585,7 +585,7 @@ function WizardAvviso({ proc, onClose, notify }) {
   const [prezzoBase, setPrezzoBase]           = useState('')
   const [offertaMinima, setOffertaMinima]     = useState('')
   const [rilancioMin, setRilancioMin]         = useState('')
-  const [abbattimento, setAbbattimento]       = useState('25')
+  const [abbattimento, setAbbattimento]       = useState(savedState.abbattimento || '25')
   const [cauzione, setCauzione]               = useState(savedState.cauzione || '10')
   const [dirittiAsta, setDirittiAsta]         = useState(savedState.dirittiAsta || '2')
   const [termSaldo, setTermSaldo]             = useState(savedState.termSaldo || '120')
@@ -632,16 +632,18 @@ function WizardAvviso({ proc, onClose, notify }) {
     try {
       sessionStorage.setItem(SS_KEY, JSON.stringify({
         tipoAsta, tipoBene, nEsperimento, dataAsta, oraAsta, dataTermine, oraTermine,
-        durataRilancio, termineOfferte, prezzoBase, offertaMinima, rilancioMin,
+        durataRilancio, termineOfferte, prezzoBase, offertaMinima, rilancioMin, abbattimento,
         cauzione, dirittiAsta, termSaldo, ibanProcedura, intestazioneProcedura,
-        ibanCauzione, bancaCauzione, ibanDiritti, bancaDiritti,
+        saldoGestoreCommiss, ibanCommissionario,
         referente, noteFinali, offertaIrrevocabile, offertaIrrevGg, offertaIrrevMm,
         offertaIrrevAa, offertaIrrevImporto, testoOfferta
       }))
     } catch {}
-  }, [tipoAsta, tipoBene, dataAsta, oraAsta, dataTermine, oraTermine,
-      prezzoBase, offertaMinima, rilancioMin, cauzione, ibanProcedura,
-      offertaIrrevocabile, offertaIrrevImporto])
+  }, [tipoAsta, tipoBene, nEsperimento, dataAsta, oraAsta, dataTermine, oraTermine,
+      durataRilancio, termineOfferte, prezzoBase, offertaMinima, rilancioMin, abbattimento,
+      cauzione, dirittiAsta, termSaldo, ibanProcedura, intestazioneProcedura,
+      saldoGestoreCommiss, ibanCommissionario, referente, noteFinali,
+      offertaIrrevocabile, offertaIrrevGg, offertaIrrevMm, offertaIrrevAa, offertaIrrevImporto])
 
   // Carica IBAN da settings e testo AVVISA dal DB all'apertura
   useEffect(() => {
@@ -777,8 +779,8 @@ function WizardAvviso({ proc, onClose, notify }) {
     <div className={full ? 'form-col-full form-group' : 'form-group'}>
       <label className="form-label">{label}</label>
       <input type={type} className="form-input"
-        defaultValue={val}
-        onBlur={e => set(e.target.value)}
+        value={val ?? ''}
+        onChange={e => set(e.target.value)}
         placeholder={placeholder} />
     </div>
   )
@@ -789,8 +791,8 @@ function WizardAvviso({ proc, onClose, notify }) {
       <label className="form-label">{label}</label>
       <div style={{position:'relative'}}>
         <input className="form-input"
-          defaultValue={val}
-          onBlur={e => set(e.target.value)}
+          value={val ?? ''}
+          onChange={e => set(e.target.value)}
           placeholder={placeholder}
           style={{paddingLeft:28}} />
         <span style={{position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:'var(--text3)',fontSize:13,pointerEvents:'none'}}>€</span>
@@ -928,17 +930,179 @@ function WizardAvviso({ proc, onClose, notify }) {
           <div className="form-grid">
             <InpEur label="Prezzo base (€)" val={prezzoBase} set={(v) => {
               setPrezzoBase(v)
-              const base = parseFloat((v||'').replace(/\./g,'').replace(',','.')) || 0
-              const abbPct = Number(abbattimento) || 25
+              const base = parseFloat((v||'').replace(/[.]/g,'').replace(',','.')) || 0
+              const abbPct = Number(abbattimento) || 0
               if (base > 0) setOffertaMinima((base * (1 - abbPct/100)).toFixed(2).replace('.',','))
             }} />
             <div className="form-group">
               <label className="form-label">Abbattimento (%)</label>
-              <input className="form-input" defaultValue={abbattimento}
-                onBlur={e => {
+              <input className="form-input" value={abbattimento ?? '25'}
+                onChange={e => {
                   setAbbattimento(e.target.value)
-                  const base = parseFloat((prezzoBase||'').replace(/\./g,'').replace(',','.')) || 0
-                  const abbPct = Number(e.target.value) || 25
+                  const base = parseFloat((prezzoBase||'').replace(/[.]/g,'').replace(',','.')) || 0
+                  const abbPct = Number(e.target.value) || 0
+                  if (base > 0) setOffertaMinima((base * (1 - abbPct/100)).toFixed(2).replace('.',','))
+                }}
+                placeholder="Es: 25" />
+            </div>
+            <InpEur label="Offerta minima ammissibile (€)" val={offertaMinima} set={setOffertaMinima} placeholder="Calcolata automaticamente" />
+            <InpEur label="Rilancio minimo (€)" val={rilancioMin} set={setRilancioMin} placeholder="Es: 250,00" />
+            <Inp label="Deposito cauzionale (%)" val={cauzione} set={setCauzione} placeholder="10" />
+            <Inp label="Diritti d'asta (%)" val={dirittiAsta} set={setDirittiAsta} placeholder="2" />
+            <Inp label="Termine saldo prezzo (giorni)" val={termSaldo} set={setTermSaldo} placeholder="120 (PVP) / 30 (AsteMagazine)" />
+            {/* Toggle commissionario saldo */}
+            <div className="form-group form-col-full" style={{display:'flex',alignItems:'center',gap:12,padding:'4px 0'}}>
+              <label style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer',fontSize:13}}>
+                <input type="checkbox" checked={saldoGestoreCommiss} onChange={e=>setSaldoGestoreCommiss(e.target.checked)}
+                  style={{width:16,height:16,cursor:'pointer'}}/>
+                <span>Saldo gestito dal Commissionario</span>
+              </label>
+            </div>
+            {!saldoGestoreCommiss && (
+              <Inp label="IBAN conto procedura (per saldo)" val={ibanProcedura} set={setIbanProcedura} placeholder="IT00 X000 0000 0000 0000 0000 000" full />
+            )}
+            {saldoGestoreCommiss && (
+              <div className="form-group form-col-full">
+                <label className="form-label">Conto Commissionario (per saldo)</label>
+                <select className="form-input" value={ibanCommissionario} onChange={e=>setIbanCommissionario(e.target.value)}>
+                  <option value="">— Seleziona conto —</option>
+                  {(proc?.commissionario_iban_list || []).map((iban,i) => (
+                    <option key={i} value={iban}>{iban}</option>
+                  ))}
+                  <option value="__custom">Inserisci manualmente…</option>
+                </select>
+                {ibanCommissionario === '__custom' && (
+                  <input className="form-input" style={{marginTop:6}}
+                    placeholder="IT00 X000 0000 0000 0000 0000 000"
+                    onChange={e=>setIbanCommissionario(e.target.value)} />
+                )}
+                {(!proc?.commissionario_iban_list || proc.commissionario_iban_list.length === 0) && (
+                  <div style={{fontSize:11,color:'var(--text3)',marginTop:4}}>
+                    Aggiungi i conti IBAN del commissionario in Anagrafica procedura
+                  </div>
+                )}
+              </div>
+            )}
+            <Inp label="Intestazione conto procedura" val={intestazioneProcedura} set={setIntestazioneProcedura} placeholder="Es: Liquidazione Giudiziale Rossi S.r.l." full />
+          </div>
+        </div>
+      </div>
+
+      {/* Offerta irrevocabile */}
+      <div className="card">
+        <div className="card-header" style={{flexDirection:'column',alignItems:'flex-start',gap:8}}>
+          <div className="card-title">📩 Offerta irrevocabile pre-asta</div>
+          <label style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer',fontSize:13,fontWeight:'normal'}}>
+            <input type="checkbox" checked={offertaIrrevocabile} onChange={e=>setOffertaIrrevocabile(e.target.checked)} />
+            È stata ricevuta un&apos;offerta irrevocabile cauzionata prima dell&apos;asta
+          </label>
+        </div>
+        {offertaIrrevocabile && (
+          <div className="card-body" style={{display:'flex',flexDirection:'column',gap:12}}>
+            <div className="form-grid">
+              <div className="form-group">
+                <label className="form-label">Data ricezione offerta irrevocabile</label>
+                <div style={{display:'flex',gap:6}}>
+                  <input className="form-input" value={offertaIrrevGg} onChange={e=>setOffertaIrrevGg(e.target.value)}
+                    placeholder="GG" maxLength={2} style={{width:56,textAlign:'center'}} />
+                  <input className="form-input" value={offertaIrrevMm} onChange={e=>setOffertaIrrevMm(e.target.value)}
+                    placeholder="MM" maxLength={2} style={{width:56,textAlign:'center'}} />
+                  <input className="form-input" value={offertaIrrevAa} onChange={e=>setOffertaIrrevAa(e.target.value)}
+                    placeholder="AAAA" maxLength={4} style={{width:72,textAlign:'center'}} />
+                </div>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Importo offerta irrevocabile (€)</label>
+                <div style={{position:'relative'}}>
+                  <input className="form-input" value={offertaIrrevImporto}
+                    onChange={e=>setOffertaIrrevImporto(e.target.value)}
+                    placeholder="Es: 50.000,00" style={{paddingLeft:28}} />
+                  <span style={{position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:'var(--text3)',fontSize:13,pointerEvents:'none'}}>€</span>
+                </div>
+              </div>
+            </div>
+            <div className="form-group form-col-full">
+              <label className="form-label">
+                Testo paragrafo AVVISA
+                <span style={{fontWeight:400,color:'var(--text3)',marginLeft:6,fontSize:11}}>(personalizzabile — salvato nel database)</span>
+              </label>
+              <textarea
+                className="form-input"
+                value={testoOfferta}
+                onChange={e=>setTestoOfferta(e.target.value)}
+                rows={5}
+                style={{fontFamily:'inherit',fontSize:13,lineHeight:1.6}}
+              />
+              <div style={{fontSize:11,color:'var(--text3)',marginTop:4}}>
+                Il testo inizia automaticamente con <b>AVVISA</b> (in grassetto) nel documento finale.
+              </div>
+            </div>
+            <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+              <button className="btn btn-ghost btn-sm" onClick={()=>setTestoOfferta(mkTestoOfferta(offertaIrrevData, offertaIrrevImporto))}>
+                ↺ Ripristina testo predefinito
+              </button>
+              <button className="btn btn-ghost btn-sm" onClick={salvaTestoAvvisa} disabled={savingTesto}>
+                💾 {savingTesto ? 'Salvataggio…' : 'Salva testo nel database'}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Date */}
+      <div className="card">
+        <div className="card-header"><div className="card-title">📅 Date e orari</div></div>
+        <div className="card-body">
+          <div className="form-grid">
+            {/* ASINCRONA: data inizio + data fine */}
+            {isAsincrona && (<>
+              <Inp label="Data inizio asta" val={dataAsta} set={setDataAsta} type="date" />
+              <Inp label="Ora inizio asta" val={oraAsta} set={setOraAsta} placeholder="12:00" />
+              <Inp label="Data fine asta" val={dataTermine} set={setDataTermine} type="date" />
+              <Inp label="Ora fine asta" val={oraTermine} set={setOraTermine} placeholder="12:00" />
+              <Inp label="Extra time / Durata rilanci (minuti)" val={durataRilancio} set={setDurataRilancio} placeholder="1" />
+            </>)}
+            {/* SINCRONA TELEMATICA: data/ora inizio + durata rilanci + termine offerte */}
+            {isSincrona && !isMistaWiz && (<>
+              <Inp label="Data asta" val={dataAsta} set={setDataAsta} type="date" />
+              <Inp label="Ora inizio asta" val={oraAsta} set={setOraAsta} placeholder="12:00" />
+              <Inp label="Termine presentazione offerte" val={termineOfferte} set={setTermineOfferte} type="date" />
+              <Inp label="Ora termine offerte" val={oraTermine} set={setOraTermine} placeholder="12:00" />
+              <Inp label="Durata rilanci (minuti)" val={durataRilancio} set={setDurataRilancio} placeholder="1" />
+            </>)}
+            {/* SINCRONA MISTA: data/ora asta in presenza + termine offerte cartacee + durata rilanci */}
+            {isMistaWiz && (<>
+              <Inp label="Data asta in presenza" val={dataAsta} set={setDataAsta} type="date" />
+              <Inp label="Ora inizio asta" val={oraAsta} set={setOraAsta} placeholder="12:00" />
+              <Inp label="Termine offerte cartacee" val={termineOfferte} set={setTermineOfferte} type="date" />
+              <Inp label="Ora termine offerte" val={oraTermine} set={setOraTermine} placeholder="12:00" />
+              <div className="form-group" style={{gridColumn:'1/-1',fontSize:12,color:'var(--text3)',marginTop:-8}}>
+                Le offerte cartacee devono pervenire entro l&apos;ora indicata del giorno selezionato
+              </div>
+              <Inp label="Durata rilanci (minuti)" val={durataRilancio} set={setDurataRilancio} placeholder="1" />
+            </>)}
+          </div>
+        </div>
+      </div>
+
+      {/* Prezzi globali */}
+      <div className="card">
+        <div className="card-header"><div className="card-title">💶 Prezzi e condizioni</div></div>
+        <div className="card-body">
+          <div className="form-grid">
+            <InpEur label="Prezzo base (€)" val={prezzoBase} set={(v) => {
+              setPrezzoBase(v)
+              const base = parseFloat((v||'').replace(/[.]/g,'').replace(',','.')) || 0
+              const abbPct = Number(abbattimento) || 0
+              if (base > 0) setOffertaMinima((base * (1 - abbPct/100)).toFixed(2).replace('.',','))
+            }} />
+            <div className="form-group">
+              <label className="form-label">Abbattimento (%)</label>
+              <input className="form-input" value={abbattimento ?? '25'}
+                onChange={e => {
+                  setAbbattimento(e.target.value)
+                  const base = parseFloat((prezzoBase||'').replace(/[.]/g,'').replace(',','.')) || 0
+                  const abbPct = Number(e.target.value) || 0
                   if (base > 0) setOffertaMinima((base * (1 - abbPct/100)).toFixed(2).replace('.',','))
                 }}
                 placeholder="Es: 25" />
