@@ -52,6 +52,14 @@ const fmtEur = (n) => {
   parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.')
   return 'Euro\u00a0' + parts[0] + ',' + parts[1]
 }
+// Formatta numero → stringa italiana "18.010,00" (per i campi input)
+const toItStr = (n) => {
+  if (n === null || n === undefined || isNaN(n)) return ''
+  const parts = Number(n).toFixed(2).split('.')
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+  return parts[0] + ',' + parts[1]
+}
+
 const fmtD = (d) => {
   if (!d) return '_______________'
   if (d.includes('/')) return d        // già in formato gg/mm/aaaa
@@ -791,13 +799,13 @@ function WizardAvviso({ proc, onClose, notify }) {
         return s + v
       }, 0)
       if (totale > 0) {
-        const fmtVal = totale.toFixed(2).replace('.', ',')
+        const fmtVal = toItStr(totale)
         setPrezzoBase_(fmtVal)
         save('prezzoBase', fmtVal)
         // Calcola offerta minima se c'è abbattimento
         const abbPct = parseFloat(abbattimento) || 0
         if (abbPct > 0) {
-          const offMin = (totale * (1 - abbPct/100)).toFixed(2).replace('.', ',')
+          const offMin = toItStr(totale * (1 - abbPct/100))
           setOffertaMinima_(offMin)
           save('offertaMinima', offMin)
         }
@@ -816,12 +824,12 @@ function WizardAvviso({ proc, onClose, notify }) {
       return s + v
     }, 0)
     if (totale > 0) {
-      const fmtVal = totale.toFixed(2).replace('.', ',')
+      const fmtVal = toItStr(totale)
       setPrezzoBase_(fmtVal)
       save('prezzoBase', fmtVal)
       const abbPct = parseFloat(abbattimento) || 0
       if (abbPct > 0) {
-        const offMin = (totale * (1 - abbPct/100)).toFixed(2).replace('.', ',')
+        const offMin = toItStr(totale * (1 - abbPct/100))
         setOffertaMinima_(offMin)
         save('offertaMinima', offMin)
       }
@@ -1073,7 +1081,7 @@ function WizardAvviso({ proc, onClose, notify }) {
               setPrezzoBase(v)
               const base = parseFloat((v||'').replace(/\./g,'').replace(',','.')) || 0
               const pct  = Number(abbattimento) || 0
-              if (base > 0 && pct > 0) setOffertaMinima((base*(1-pct/100)).toFixed(2).replace('.',','))
+              if (base > 0 && pct > 0) setOffertaMinima(toItStr(base*(1-pct/100)))
               else setOffertaMinima('')
             }} />
             <div className="form-group">
@@ -1082,7 +1090,7 @@ function WizardAvviso({ proc, onClose, notify }) {
                 setAbbattimento(e.target.value)
                 const base = parseFloat((prezzoBase||'').replace(/\./g,'').replace(',','.')) || 0
                 const pct  = Number(e.target.value) || 0
-                if (base > 0 && pct > 0) setOffertaMinima((base*(1-pct/100)).toFixed(2).replace('.',','))
+                if (base > 0 && pct > 0) setOffertaMinima(toItStr(base*(1-pct/100)))
                 else setOffertaMinima('')
               }} placeholder="Es: 25" />
             </div>
