@@ -1180,7 +1180,7 @@ export default function Aste() {
         }}>
           <div style={{padding:'18px 24px',borderBottom:'1px solid var(--border)',
             display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0}}>
-            <div style={{display:'flex',alignItems:'center',gap:12}}><div style={{fontSize:15,fontWeight:600}}>Genera Avviso di Vendita</div>{avvisoId && <span style={{fontSize:11,color:'var(--text3)',padding:'2px 8px',background:'var(--bg3)',borderRadius:4}}>bozza salvata</span>}</div>
+            <div style={{fontSize:15,fontWeight:600}}>Genera Avviso di Vendita</div>
             <button onClick={()=>setShowWizard(false)} style={{background:'none',border:'none',
               color:'var(--text2)',fontSize:22,cursor:'pointer',lineHeight:1,padding:'2px 6px'}}>×</button>
           </div>
