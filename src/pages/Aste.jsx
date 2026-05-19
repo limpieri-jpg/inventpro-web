@@ -885,8 +885,12 @@ function WizardAvviso({ proc, onClose, notify }) {
         res = await supabase.from('avvisi').insert(payload).select('id').single()
         if (res.data?.id) setAvvisoId(res.data.id)
       }
+      if (res.error) {
+        console.error('Supabase error dettaglio:', JSON.stringify(res.error))
+        throw new Error(res.error.message + ' | code: ' + res.error.code + ' | details: ' + res.error.details + ' | hint: ' + res.error.hint)
+      }
       notify('Bozza salvata', 'ok')
-    } catch(e) { notify('Errore: '+e.message, 'err') }
+    } catch(e) { console.error('salvaBozza exception:', e); notify('Errore: '+e.message, 'err') }
     finally { setSaving(false) }
   }
   const salvaTestoAvvisa = salvaBozza
