@@ -572,6 +572,8 @@ function WizardAvviso({ proc, onClose, notify }) {
   const today = new Date().toISOString().slice(0,10)
   // ── Stato wizard persistente via Zustand store ──────────────────────────
   const { wizardAste: savedState, setWizardAste } = useStoreHook()
+  // Helper: aggiorna stato locale E store in un colpo solo
+  const save = (key, val) => { setWizardAste({ [key]: val }) }
 
   const [tipoAsta, setTipoAsta]               = useState(savedState.tipoAsta || 'asincrona_pvp')
   const [tipoBene, setTipoBene]               = useState(savedState.tipoBene || 'mobile')
@@ -582,10 +584,14 @@ function WizardAvviso({ proc, onClose, notify }) {
   const [oraTermine, setOraTermine]           = useState(savedState.oraTermine || '12:00')
   const [durataRilancio, setDurataRilancio]   = useState(savedState.durataRilancio || '1')           // minuti
   const [termineOfferte, setTermineOfferte]   = useState(today)         // sincrona: termine offerte cartacee
-  const [prezzoBase, setPrezzoBase]           = useState(savedState.prezzoBase || '')
-  const [offertaMinima, setOffertaMinima]     = useState(savedState.offertaMinima || '')
-  const [abbattimento, setAbbattimento]       = useState(savedState.abbattimento || '')
-  const [rilancioMin, setRilancioMin]         = useState('')
+  const [prezzoBase, setPrezzoBase_]          = useState(savedState.prezzoBase || '')
+  const setPrezzoBase = (v) => { setPrezzoBase_(v); save('prezzoBase', v) }
+  const [offertaMinima, setOffertaMinima_]    = useState(savedState.offertaMinima || '')
+  const setOffertaMinima = (v) => { setOffertaMinima_(v); save('offertaMinima', v) }
+  const [abbattimento, setAbbattimento_]      = useState(savedState.abbattimento || '')
+  const setAbbattimento = (v) => { setAbbattimento_(v); save('abbattimento', v) }
+  const [rilancioMin, setRilancioMin_]        = useState(savedState.rilancioMin || '')
+  const setRilancioMin = (v) => { setRilancioMin_(v); save('rilancioMin', v) }
   const [cauzione, setCauzione]               = useState(savedState.cauzione || '10')
   const [dirittiAsta, setDirittiAsta]         = useState(savedState.dirittiAsta || '2')
   const [termSaldo, setTermSaldo]             = useState(savedState.termSaldo || '120')
@@ -598,7 +604,8 @@ function WizardAvviso({ proc, onClose, notify }) {
   const [ibanDiritti, setIbanDiritti]         = useState('')
   const [bancaDiritti, setBancaDiritti]       = useState('')
   const [referente, setReferente]             = useState('Pro.Ges.S. Srl \u2014 procedure@progess-italia.it')
-  const [noteFinali, setNoteFinali]           = useState('')
+  const [noteFinali, setNoteFinali_]          = useState(savedState.noteFinali || '')
+  const setNoteFinali = (v) => { setNoteFinali_(v); save('noteFinali', v) }
   // Lotti: 'manual' | 'db'
   const [lottiMode, setLottiMode]             = useState(savedState.lottiMode || 'manual')
   const [lottiDb, setLottiDb]                 = useState([])
@@ -802,13 +809,13 @@ function WizardAvviso({ proc, onClose, notify }) {
           <div className="form-grid">
             <div className="form-col-full form-group">
               <label className="form-label">Tipo di vendita</label>
-              <select className="form-input" value={tipoAsta} onChange={e=>setTipoAsta(e.target.value)}>
+              <select className="form-input" value={tipoAsta} onChange={e=>{setTipoAsta(e.target.value);save('tipoAsta',e.target.value)}}>
                 {TIPI_ASTA.map(t=><option key={t.id} value={t.id}>{t.label}</option>)}
               </select>
             </div>
             <div className="form-group">
               <label className="form-label">Tipo di bene</label>
-              <select className="form-input" value={tipoBene} onChange={e=>setTipoBene(e.target.value)}>
+              <select className="form-input" value={tipoBene} onChange={e=>{setTipoBene(e.target.value);save('tipoBene',e.target.value)}}>
                 <option value="mobile">Beni mobili</option>
                 <option value="immobile">Beni immobili</option>
               </select>
