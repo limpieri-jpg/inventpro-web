@@ -578,12 +578,12 @@ function WizardAvviso({ proc, onClose, notify }) {
   const [tipoAsta, setTipoAsta]               = useState(savedState.tipoAsta || 'asincrona_pvp')
   const [tipoBene, setTipoBene]               = useState(savedState.tipoBene || 'mobile')
   const [nEsperimento, setNEsperimento]       = useState(savedState.nEsperimento || '1')
-  const [dataAsta, setDataAsta]               = useState(savedState.dataAsta || today)
+  const [dataAsta, setDataAsta]               = useState(today)
   const [oraAsta, setOraAsta]                 = useState(savedState.oraAsta || '12:00')
-  const [dataTermine, setDataTermine]         = useState(savedState.dataTermine || today)
+  const [dataTermine, setDataTermine]         = useState(today)
   const [oraTermine, setOraTermine]           = useState(savedState.oraTermine || '12:00')
   const [durataRilancio, setDurataRilancio]   = useState(savedState.durataRilancio || '1')           // minuti
-  const [termineOfferte, setTermineOfferte]   = useState(savedState.termineOfferte || today)         // sincrona: termine offerte cartacee
+  const [termineOfferte, setTermineOfferte]   = useState(today)         // sincrona: termine offerte cartacee
   const [prezzoBase, setPrezzoBase_]          = useState(savedState.prezzoBase || '')
   const setPrezzoBase = (v) => { setPrezzoBase_(v); save('prezzoBase', v) }
   const [offertaMinima, setOffertaMinima_]    = useState(savedState.offertaMinima || '')
@@ -613,11 +613,11 @@ function WizardAvviso({ proc, onClose, notify }) {
   const [loadingLotti, setLoadingLotti]       = useState(false)
   const [lotti, setLotti]                     = useState([{ desc:'Lotto unico \u2014 tutti i beni inventariati', qta:1, base:'', offertaMinima:'', rilancio:'' }])
   // Offerta irrevocabile
-  const [offertaIrrevocabile, setOffertaIrrevocabile] = useState(savedState.offertaIrrevocabile || false)
-  const [offertaIrrevGg,    setOffertaIrrevGg]    = useState(savedState.offertaIrrevGg || '')
-  const [offertaIrrevMm,    setOffertaIrrevMm]    = useState(savedState.offertaIrrevMm || '')
-  const [offertaIrrevAa,    setOffertaIrrevAa]    = useState(savedState.offertaIrrevAa || '')
-  const [offertaIrrevImporto, setOffertaIrrevImporto] = useState(savedState.offertaIrrevImporto || '')
+  const [offertaIrrevocabile, setOffertaIrrevocabile] = useState(false)
+  const [offertaIrrevGg,    setOffertaIrrevGg]    = useState('')
+  const [offertaIrrevMm,    setOffertaIrrevMm]    = useState('')
+  const [offertaIrrevAa,    setOffertaIrrevAa]    = useState('')
+  const [offertaIrrevImporto, setOffertaIrrevImporto] = useState('')
   // computa data formattata gg/mm/aaaa
   const offertaIrrevData = [offertaIrrevGg, offertaIrrevMm, offertaIrrevAa].filter(Boolean).join('/')
 
@@ -629,6 +629,8 @@ function WizardAvviso({ proc, onClose, notify }) {
   const [testoOfferta, setTestoOfferta]       = useState('')
   const [savingTesto, setSavingTesto]         = useState(false)
   const [gen, setGen]                         = useState(false)
+  const [avvisoId, setAvvisoId]               = useState(null)
+  const [saving, setSaving]                   = useState(false)
   const [openCards, setOpenCards] = useState({modalita:true,lotti:false,prezzi:false,date:false,offerta:false,contatti:false})
   const toggleCard = (k) => setOpenCards(s=>({...s,[k]:!s[k]}))
 
@@ -673,9 +675,43 @@ function WizardAvviso({ proc, onClose, notify }) {
         setIbanDiritti('IT63 J031 0422 9030 0000 0820 981')
         setBancaDiritti('Deutsche Bank \u2014 Filiale di Lecco, Agenzia di Castello')
       }
-      // Testo AVVISA personalizzato (ultimo avviso della procedura)
-      const { data: av } = await supabase.from('avvisi').select('testo_avvisa').eq('proc_id', proc.id).order('updated_at', { ascending: false }).limit(1).maybeSingle()
-      setTestoOfferta(av?.testo_avvisa || TESTO_OFFERTA_DEFAULT)
+      const { data: av } = await supabase.from('avvisi').select('*').eq('proc_id', proc.id).order('updated_at', { ascending: false }).limit(1).maybeSingle()
+      if (av) {
+        if (av.modalita)              setTipoAsta(av.modalita)
+        if (av.tipo_bene)             setTipoBene(av.tipo_bene)
+        if (av.n_esperimento)         setNEsperimento(av.n_esperimento)
+        if (av.data_asta)             setDataAsta(av.data_asta)
+        if (av.ora_asta)              setOraAsta(av.ora_asta)
+        if (av.data_avviso)           setDataTermine(av.data_avviso)
+        if (av.durata_rilancio)       setDurataRilancio(av.durata_rilancio)
+        if (av.prezzo_base)           setPrezzoBase_(av.prezzo_base)
+        if (av.offerta_minima)        setOffertaMinima_(av.offerta_minima)
+        if (av.abbattimento)          setAbbattimento_(av.abbattimento)
+        if (av.rilancio_min)          setRilancioMin_(av.rilancio_min)
+        if (av.cauzione)              setCauzione(av.cauzione)
+        if (av.diritti_default)       setDirittiAsta(av.diritti_default)
+        if (av.termine_saldo)         setTermSaldo(av.termine_saldo)
+        if (av.iban)                  setIbanProcedura(av.iban)
+        if (av.intestaz_cc)           setIntestazioneProcedura(av.intestaz_cc)
+        if (av.saldo_commiss != null) setSaldoGestoreCommiss(av.saldo_commiss)
+        if (av.iban_commiss)          setIbanCommissionario(av.iban_commiss)
+        if (av.referente)             setReferente_(av.referente)
+        if (av.note_finali)           setNoteFinali_(av.note_finali)
+        if (av.offerta_irrev != null) setOffertaIrrevocabile(av.offerta_irrev)
+        if (av.offerta_irrev_data) {
+          const p = (av.offerta_irrev_data||'').split('/')
+          if (p[0]) setOffertaIrrevGg(p[0])
+          if (p[1]) setOffertaIrrevMm(p[1])
+          if (p[2]) setOffertaIrrevAa(p[2])
+        }
+        if (av.offerta_irrev_importo) setOffertaIrrevImporto(av.offerta_irrev_importo)
+        if (av.testo_avvisa)          setTestoOfferta(av.testo_avvisa)
+        if (av.lotti_manual)          try { setLotti(JSON.parse(av.lotti_manual)) } catch(e) {}
+        if (av.lotti_ids)             try { const ids = JSON.parse(av.lotti_ids); setLottiDbSel(ids); if (ids.length > 0) setLottiMode('db') } catch(e) {}
+        setAvvisoId(av.id)
+      } else {
+        setTestoOfferta(TESTO_OFFERTA_DEFAULT)
+      }
     }
     load()
   }, [proc.id])
@@ -712,19 +748,11 @@ function WizardAvviso({ proc, onClose, notify }) {
 
   // useCallback evita che la funzione cambi identità ad ogni render → LottoRow non si rimonta
   const handleLottoChange = useCallback((idx, field, val) => {
-    setLotti(ls => {
-      const next = ls.map((x, j) => j === idx ? {...x, [field]: val} : x)
-      save('lotti', next)
-      return next
-    })
+    setLotti(ls => ls.map((x, j) => j === idx ? {...x, [field]: val} : x))
   }, [])
 
   const handleLottoRemove = useCallback((idx) => {
-    setLotti(ls => {
-      const next = ls.filter((_, j) => j !== idx)
-      save('lotti', next)
-      return next
-    })
+    setLotti(ls => ls.filter((_, j) => j !== idx))
   }, [])
 
   // Lotti effettivi da passare a genAvviso
@@ -740,18 +768,36 @@ function WizardAvviso({ proc, onClose, notify }) {
       }))
     : lotti
 
-  const salvaTestoAvvisa = async () => {
-    setSavingTesto(true)
+  const salvaBozza = async () => {
+    setSaving(true)
     try {
-      await supabase.from('avvisi').upsert({
-        proc_id: proc.id,
-        modalita: tipoAsta,
-        testo_avvisa: testoOfferta,
-      }, { onConflict: 'proc_id,modalita' })
-      notify('Testo AVVISA salvato', 'ok')
-    } catch(e) { notify('Errore salvataggio: '+e.message, 'err') }
-    finally { setSavingTesto(false) }
+      const payload = {
+        proc_id: proc.id, modalita: tipoAsta, tipo_bene: tipoBene,
+        n_esperimento: nEsperimento, data_asta: dataAsta, ora_asta: oraAsta,
+        data_avviso: dataTermine, durata_rilancio: durataRilancio,
+        prezzo_base: prezzoBase, offerta_minima: offertaMinima,
+        abbattimento: abbattimento, rilancio_min: rilancioMin,
+        cauzione: cauzione, diritti_default: dirittiAsta, termine_saldo: termSaldo,
+        iban: ibanProcedura, intestaz_cc: intestazioneProcedura,
+        saldo_commiss: saldoGestoreCommiss, iban_commiss: ibanCommissionario,
+        referente: referente, note_finali: noteFinali,
+        offerta_irrev: offertaIrrevocabile, offerta_irrev_data: offertaIrrevData,
+        offerta_irrev_importo: offertaIrrevImporto, testo_avvisa: testoOfferta,
+        lotti_manual: JSON.stringify(lotti), lotti_ids: JSON.stringify(lottiDbSel),
+        status: 'bozza',
+      }
+      let res
+      if (avvisoId) {
+        res = await supabase.from('avvisi').update(payload).eq('id', avvisoId).select('id').single()
+      } else {
+        res = await supabase.from('avvisi').insert(payload).select('id').single()
+        if (res.data?.id) setAvvisoId(res.data.id)
+      }
+      notify('Bozza salvata', 'ok')
+    } catch(e) { notify('Errore: '+e.message, 'err') }
+    finally { setSaving(false) }
   }
+  const salvaTestoAvvisa = salvaBozza
 
   const genera = async () => {
     setGen(true)
@@ -906,9 +952,9 @@ function WizardAvviso({ proc, onClose, notify }) {
           <div className="card-title">📦 Lotti in vendita</div>
           <div style={{display:'flex',gap:6}}>
             <button className="btn btn-ghost btn-sm" style={{fontWeight: lottiMode==='manual'?700:'normal'}}
-              onClick={()=>{setLottiMode('manual');save('lottiMode','manual')}}>✏️ Manuale</button>
+              onClick={()=>setLottiMode('manual')}>✏️ Manuale</button>
             <button className="btn btn-ghost btn-sm" style={{fontWeight: lottiMode==='db'?700:'normal'}}
-              onClick={()=>{setLottiMode('db');save('lottiMode','db')}}>🗄 Da procedura</button>
+              onClick={()=>setLottiMode('db')}>🗄 Da procedura</button>
           </div>
         </div>
         {openCards.lotti && (<div className="card-body" style={{display:'flex',flexDirection:'column',gap:12}}>
@@ -918,7 +964,7 @@ function WizardAvviso({ proc, onClose, notify }) {
                 onChange={handleLottoChange} onRemove={() => handleLottoRemove(i)} />
             ))}
             <button className="btn btn-ghost btn-sm" style={{alignSelf:'flex-start'}}
-              onClick={()=>setLotti(l=>{const n=[...l,{desc:'',qta:1,base:'',offertaMinima:'',rilancio:''}];save('lotti',n);return n})}>
+              onClick={()=>setLotti(l=>[...l,{desc:'',qta:1,base:'',offertaMinima:'',rilancio:''}])}>
               <Plus size={13}/> Aggiungi lotto
             </button>
           </>) : loadingLotti ? (
@@ -1067,6 +1113,7 @@ function WizardAvviso({ proc, onClose, notify }) {
       {/* Azioni */}
       <div style={{display:'flex',justifyContent:'flex-end',gap:10,paddingBottom:24}}>
         <button className="btn btn-ghost" onClick={onClose}>Annulla</button>
+        <button className="btn btn-secondary" onClick={salvaBozza} disabled={saving}>{saving ? 'Salvataggio...' : 'Salva bozza'}</button>
         <button className="btn btn-primary" onClick={genera} disabled={gen} style={{minWidth:260,justifyContent:'center'}}>
           <Download size={14}/> {gen?'Generazione\u2026':'Genera Avviso di Vendita (.docx)'}
         </button>
@@ -1133,7 +1180,7 @@ export default function Aste() {
         }}>
           <div style={{padding:'18px 24px',borderBottom:'1px solid var(--border)',
             display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0}}>
-            <div style={{fontSize:15,fontWeight:600}}>Genera Avviso di Vendita</div>
+            <div style={{display:'flex',alignItems:'center',gap:12}}><div style={{fontSize:15,fontWeight:600}}>Genera Avviso di Vendita</div>{avvisoId && <span style={{fontSize:11,color:'var(--text3)',padding:'2px 8px',background:'var(--bg3)',borderRadius:4}}>bozza salvata</span>}</div>
             <button onClick={()=>setShowWizard(false)} style={{background:'none',border:'none',
               color:'var(--text2)',fontSize:22,cursor:'pointer',lineHeight:1,padding:'2px 6px'}}>×</button>
           </div>
