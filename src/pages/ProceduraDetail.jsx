@@ -1127,6 +1127,23 @@ export default function ProceduraDetail() {
   const [tab, setTab] = useState('anagrafica')
   const [showEdit, setShowEdit] = useState(false)
 
+  const cambiaStato = async (nuovoStato) => {
+    if (!confirm(`Impostare la procedura come "${nuovoStato}"?`)) return
+    const { data, error } = await supabase.from('procedure').update({ status: nuovoStato }).eq('id', id).select('*, sedi(*)').single()
+    if (error) { notify('Errore: ' + error.message, 'err'); return }
+    setProc(data); setCurrentProc(data)
+    notify('Stato aggiornato: ' + nuovoStato, 'ok')
+  }
+
+  const eliminaProcedura = async () => {
+    if (!confirm('Eliminare definitivamente questa procedura? L\'operazione non è reversibile.')) return
+    if (!confirm('Sei sicuro? Verranno eliminati anche tutti i dati collegati (inventario, lotti, avvisi).')) return
+    const { error } = await supabase.from('procedure').delete().eq('id', id)
+    if (error) { notify('Errore: ' + error.message, 'err'); return }
+    notify('Procedura eliminata', 'ok')
+    navigate('/procedure')
+  }
+
   useEffect(() => {
     supabase.from('procedure').select('*, sedi(*)').eq('id', id).single().then(({ data, error }) => {
       if (error) { notify('Procedura non trovata', 'err'); navigate('/procedure'); return }
@@ -1145,6 +1162,19 @@ export default function ProceduraDetail() {
         subtitle={`${proc.tipo} · ${proc.tribunale || ''} · ${proc.num ? proc.num+(proc.anno?'/'+proc.anno:'') : ''}`}
         actions={<div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <span className={`badge ${sb.cls}`}>{sb.label}</span>
+          {proc.status === 'attiva' && (
+            <button className="btn btn-ghost btn-sm" style={{color:'var(--accent-y)'}} onClick={()=>cambiaStato('sospesa')}>⏸ Sospendi</button>
+          )}
+          {proc.status === 'sospesa' && (
+            <button className="btn btn-ghost btn-sm" style={{color:'var(--accent-g)'}} onClick={()=>cambiaStato('attiva')}>▶ Riattiva</button>
+          )}
+          {proc.status !== 'chiusa' && (
+            <button className="btn btn-ghost btn-sm" style={{color:'var(--text3)'}} onClick={()=>cambiaStato('chiusa')}>✓ Chiudi</button>
+          )}
+          {proc.status === 'chiusa' && (
+            <button className="btn btn-ghost btn-sm" style={{color:'var(--accent-g)'}} onClick={()=>cambiaStato('attiva')}>▶ Riapri</button>
+          )}
+          <button className="btn btn-ghost btn-sm" style={{color:'var(--accent-r)'}} onClick={eliminaProcedura}><Trash2 size={13}/> Elimina</button>
           <button className="btn btn-ghost btn-sm" onClick={() => navigate('/procedure')}><ArrowLeft size={13} /> Procedure</button>
         </div>}
       />

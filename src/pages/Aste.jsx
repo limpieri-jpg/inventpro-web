@@ -402,7 +402,7 @@ async function genAvviso(proc, lotti, opts, logoB64) {
     P([B('IBAN:\u00a0 ' + IBAN_DIR)]),
     P([B('Causale: \u201c'), T(causale('dir')), B('\u201d')]),
     BR(),
-    BLT([T('Il saldo prezzo, dedotta la cauzione gi\u00e0 versata, dovr\u00e0 essere corrisposto entro 30 giorni dall\u2019aggiudicazione definitiva, a mezzo bonifico bancario sul conto corrente '), B(saldoGestoreCommiss ? 'del Commissionario' : ('della procedura intestato a ' + (intestazioneProcedura || proc.nome || '').toUpperCase())), T(' \u2013 IBAN: '), B(saldoGestoreCommiss ? (ibanCommissionario || '______________________________') : (ibanProcedura || '______________________________')), T('.')]),
+    BLT([T('Il saldo prezzo, dedotta la cauzione gi\u00e0 versata, dovr\u00e0 essere corrisposto entro '+saldo+' giorni dall\u2019aggiudicazione definitiva, a mezzo bonifico bancario sul conto corrente '), B(saldoGestoreCommiss ? 'del Commissionario' : ('della procedura intestato a ' + (intestazioneProcedura || proc.nome || '').toUpperCase())), T(' \u2013 IBAN: '), B(saldoGestoreCommiss ? (ibanCommissionario || '______________________________') : (ibanProcedura || '______________________________')), T('.')]),
     BLT(T("In caso di mancato versamento del saldo prezzo, l\u2019aggiudicatario sar\u00e0 dichiarato decaduto e la procedura incamerer\u00e0 la cauzione a titolo di penale, salvo il diritto al risarcimento del maggior danno.")),
     BLT([T('Le eventuali offerte migliorative per un importo non inferiore al 10% del prezzo di aggiudicazione a norma dell\u2019art. 584 c.p.c. dovranno pervenire a mezzo PEC all\u2019indirizzo della procedura e in c.c. a '), B('progess@arubapec.it'), T(', entro 10 giorni dall\u2019aggiudicazione provvisoria.')]),
   ] : [
@@ -617,7 +617,7 @@ function InpEur({ label, val, set, placeholder='Es: 5.000,00', full=false }) {
   )
 }
 
-function WizardAvviso({ proc, onClose, notify }) {
+function WizardAvviso({ proc, onClose, notify, initialAvvisoId = null }) {
   const today = new Date().toISOString().slice(0,10)
   // ── Stato wizard persistente via Zustand store ──────────────────────────
   const { wizardAste: savedState, setWizardAste } = useStoreHook()
@@ -643,7 +643,8 @@ function WizardAvviso({ proc, onClose, notify }) {
   const setRilancioMin = (v) => { setRilancioMin_(v); save('rilancioMin', v) }
   const [cauzione, setCauzione]               = useState(savedState.cauzione || '10')
   const [dirittiAsta, setDirittiAsta]         = useState(savedState.dirittiAsta || '2')
-  const [termSaldo, setTermSaldo]             = useState(savedState.termSaldo || '120')
+  const [termSaldo, setTermSaldo_]            = useState(savedState.termSaldo || '120')
+  const setTermSaldo = (v) => { setTermSaldo_(v); save('termSaldo', v) }
   const [ibanProcedura, setIbanProcedura]     = useState(savedState.ibanProcedura || '')
   const [intestazioneProcedura, setIntestazioneProcedura] = useState(savedState.intestazioneProcedura || '')
   const [saldoGestoreCommiss, setSaldoGestoreCommiss] = useState(savedState.saldoGestoreCommiss || false)
@@ -679,7 +680,7 @@ function WizardAvviso({ proc, onClose, notify }) {
   const [testoOfferta, setTestoOfferta]       = useState('')
   const [savingTesto, setSavingTesto]         = useState(false)
   const [gen, setGen]                         = useState(false)
-  const [avvisoId, setAvvisoId]               = useState(null)
+  const [avvisoId, setAvvisoId]               = useState(initialAvvisoId)
   const [saving, setSaving]                   = useState(false)
   const [openCards, setOpenCards] = useState({modalita:true,lotti:false,prezzi:false,date:false,offerta:false,contatti:false})
   const toggleCard = (k) => setOpenCards(s=>({...s,[k]:!s[k]}))
@@ -726,7 +727,9 @@ function WizardAvviso({ proc, onClose, notify }) {
         setIbanDiritti('IT63 J031 0422 9030 0000 0820 981')
         setBancaDiritti('Deutsche Bank \u2014 Filiale di Lecco, Agenzia di Castello')
       }
-      const { data: av } = await supabase.from('avvisi').select('*').eq('proc_id', proc.id).order('updated_at', { ascending: false }).limit(1).maybeSingle()
+      const { data: av } = initialAvvisoId
+        ? await supabase.from('avvisi').select('*').eq('id', initialAvvisoId).maybeSingle()
+        : await supabase.from('avvisi').select('*').eq('proc_id', proc.id).order('updated_at', { ascending: false }).limit(1).maybeSingle()
       if (av) {
         if (av.modalita)              setTipoAsta(av.modalita)
         if (av.tipo_bene)             setTipoBene(av.tipo_bene)
@@ -738,10 +741,10 @@ function WizardAvviso({ proc, onClose, notify }) {
         if (av.prezzo_base)           setPrezzoBase_(av.prezzo_base)
         if (av.offerta_minima)        setOffertaMinima_(av.offerta_minima)
         if (av.abbattimento)          setAbbattimento_(av.abbattimento)
-        if (av.rilancio_min)          setRilancioMin_(av.rilancio_min)
+        if (av.rilancio_min)          setRilancioMin(av.rilancio_min)
         if (av.cauz_default)          setCauzione(av.cauz_default)
         if (av.diritti_default)       setDirittiAsta(av.diritti_default)
-        if (av.termine_saldo)         setTermSaldo(av.termine_saldo)
+        if (av.termine_saldo != null)  setTermSaldo(av.termine_saldo)
         if (av.iban)                  setIbanProcedura(av.iban)
         if (av.intestaz_cc)           setIntestazioneProcedura(av.intestaz_cc)
         if (av.saldo_commiss != null) setSaldoGestoreCommiss(av.saldo_commiss)
@@ -1104,7 +1107,7 @@ function WizardAvviso({ proc, onClose, notify }) {
             <InpEur label="Rilancio minimo (€)" val={rilancioMin} set={(v)=>{setRilancioMin(v);save('rilancioMin',v)}} placeholder="Es: 250,00" />
             <Inp label="Deposito cauzionale (%)" val={cauzione} set={(v)=>{setCauzione(v);save('cauzione',v)}} placeholder="10" />
             <Inp label="Diritti d'asta (%)" val={dirittiAsta} set={(v)=>{setDirittiAsta(v);save('dirittiAsta',v)}} placeholder="2" />
-            <Inp label="Termine saldo prezzo (giorni)" val={termSaldo} set={(v)=>{setTermSaldo(v);save('termSaldo',v)}} placeholder="120 (PVP) / 30 (AsteMagazine)" />
+            <Inp label="Termine saldo prezzo (giorni)" val={termSaldo} set={setTermSaldo} placeholder="120 (PVP) / 30 (AsteMagazine)" />
             {/* Toggle commissionario saldo */}
             <div className="form-group form-col-full" style={{display:'flex',alignItems:'center',gap:12,padding:'4px 0'}}>
               <label style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer',fontSize:13}}>
@@ -1265,8 +1268,46 @@ function WizardAvviso({ proc, onClose, notify }) {
 
 // ─── Pagina principale ────────────────────────────────────────────────────────
 export default function Aste() {
-  const { currentProc, notify } = useStore()
-  const [showWizard, setShowWizard] = useState(false)
+  const { currentProc, notify, resetWizardAste } = useStore()
+  const [showWizard, setShowWizard]   = useState(false)
+  const [avvisi, setAvvisi]           = useState([])
+  const [loadingAv, setLoadingAv]     = useState(false)
+  const [editAvvisoId, setEditAvvisoId] = useState(null)
+
+  const loadAvvisi = async () => {
+    if (!currentProc) return
+    setLoadingAv(true)
+    const { data } = await supabase.from('avvisi').select('id,modalita,tipo_bene,n_esperimento,data_asta,prezzo_base,status,created_at,updated_at')
+      .eq('proc_id', currentProc.id).order('updated_at', { ascending: false })
+    setAvvisi(data || [])
+    setLoadingAv(false)
+  }
+
+  useEffect(() => { loadAvvisi() }, [currentProc?.id])
+
+  const apriNuovo = () => {
+    resetWizardAste()
+    setEditAvvisoId(null)
+    setShowWizard(true)
+  }
+
+  const apriModifica = (av) => {
+    setEditAvvisoId(av.id)
+    setShowWizard(true)
+  }
+
+  const eliminaBozza = async (id) => {
+    if (!confirm('Eliminare questa bozza avviso?')) return
+    await supabase.from('avvisi').delete().eq('id', id)
+    setAvvisi(av => av.filter(a => a.id !== id))
+    notify('Bozza eliminata', 'ok')
+  }
+
+  const fmtModalita = (m) => ({
+    asincrona_pvp: 'Asincrona PVP', sincrona_pvp: 'Sincrona PVP',
+    sincrona_amag: 'Sincrona AsteMagazine', asincrona_amag: 'Asincrona AsteMagazine',
+    mista: 'Sincrona Mista'
+  }[m] || m || '—')
 
   if (!currentProc) return (
     <>
@@ -1281,7 +1322,7 @@ export default function Aste() {
   return (
     <>
       <Topbar title="Aste e Vendite" subtitle={currentProc.nome||''} actions={
-        <button className="btn btn-primary btn-sm" onClick={()=>setShowWizard(true)}>
+        <button className="btn btn-primary btn-sm" onClick={apriNuovo}>
           <Plus size={14}/> Nuovo avviso
         </button>
       }/>
@@ -1301,6 +1342,62 @@ export default function Aste() {
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+
+          {/* Elenco avvisi salvati */}
+          <div className="card">
+            <div className="card-header">
+              <div className="card-title">📋 Avvisi di vendita salvati</div>
+              <button className="btn btn-ghost btn-sm" onClick={loadAvvisi}>↻ Aggiorna</button>
+            </div>
+            <div className="card-body" style={{padding:0}}>
+              {loadingAv ? (
+                <div style={{padding:24,textAlign:'center',color:'var(--text3)'}}>Caricamento…</div>
+              ) : avvisi.length === 0 ? (
+                <div style={{padding:24,textAlign:'center',color:'var(--text3)',fontSize:13}}>
+                  Nessun avviso salvato per questa procedura.<br/>
+                  <span style={{fontSize:12}}>Clicca "Nuovo avviso" per crearne uno.</span>
+                </div>
+              ) : (
+                <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
+                  <thead>
+                    <tr style={{borderBottom:'1px solid var(--border)',background:'var(--bg)'}}>
+                      {['Modalità','Tipo bene','Esperimento','Data asta','Prezzo base','Stato',''].map(h=>(
+                        <th key={h} style={{padding:'8px 16px',textAlign:'left',fontWeight:600,fontSize:11,color:'var(--text3)',textTransform:'uppercase'}}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {avvisi.map(av => (
+                      <tr key={av.id} style={{borderBottom:'1px solid var(--border)'}}
+                        onMouseEnter={e=>e.currentTarget.style.background='var(--bg)'}
+                        onMouseLeave={e=>e.currentTarget.style.background=''}>
+                        <td style={{padding:'10px 16px',fontWeight:500}}>{fmtModalita(av.modalita)}</td>
+                        <td style={{padding:'10px 16px',color:'var(--text2)'}}>{av.tipo_bene==='immobile'?'Immobili':'Mobili'}</td>
+                        <td style={{padding:'10px 16px',color:'var(--text2)'}}>{av.n_esperimento ? av.n_esperimento+'°' : '—'}</td>
+                        <td style={{padding:'10px 16px',color:'var(--text2)'}}>{av.data_asta ? new Date(av.data_asta).toLocaleDateString('it-IT') : '—'}</td>
+                        <td style={{padding:'10px 16px',color:'var(--text2)'}}>{av.prezzo_base ? '€ '+av.prezzo_base : '—'}</td>
+                        <td style={{padding:'10px 16px'}}>
+                          <span style={{fontSize:11,padding:'2px 8px',borderRadius:99,fontWeight:600,
+                            background: av.status==='pubblicato' ? 'rgba(0,200,100,0.15)' : 'rgba(255,180,0,0.15)',
+                            color: av.status==='pubblicato' ? 'var(--accent-g)' : '#f5a623'}}>
+                            {av.status||'bozza'}
+                          </span>
+                        </td>
+                        <td style={{padding:'10px 16px'}}>
+                          <div style={{display:'flex',gap:6,justifyContent:'flex-end'}}>
+                            <button className="btn btn-ghost btn-sm" onClick={()=>apriModifica(av)}
+                              title="Modifica e genera">✏️ Modifica</button>
+                            <button className="btn btn-ghost btn-sm" style={{color:'var(--accent-r)'}}
+                              onClick={()=>eliminaBozza(av.id)} title="Elimina">🗑</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </div>
           </div>
         </div>
@@ -1326,7 +1423,7 @@ export default function Aste() {
               color:'var(--text2)',fontSize:22,cursor:'pointer',lineHeight:1,padding:'2px 6px'}}>×</button>
           </div>
           <div style={{flex:1,overflowY:'auto',padding:24}}>
-            <WizardAvviso proc={currentProc} onClose={()=>setShowWizard(false)} notify={notify} />
+            <WizardAvviso proc={currentProc} onClose={()=>{ setShowWizard(false); loadAvvisi() }} notify={notify} initialAvvisoId={editAvvisoId} />
           </div>
         </div>
       </div>
