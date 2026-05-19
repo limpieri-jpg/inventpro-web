@@ -807,8 +807,8 @@ function WizardAvviso({ proc, onClose, notify }) {
             <Inp label="N° esperimento di vendita" val={nEsperimento} set={setNEsperimento} placeholder="Es: 1" />
           </div>
         </div>
-      </div>
       )}
+      </div>
 
       {/* Offerta irrevocabile */}
       <div className="card">
@@ -873,8 +873,8 @@ function WizardAvviso({ proc, onClose, notify }) {
             </div>
           </div>
         )}
-      </div>
       )}
+      </div>
 
       {/* Date */}
       <div className="card">
@@ -913,8 +913,8 @@ function WizardAvviso({ proc, onClose, notify }) {
             </>)}
           </div>
         </div>
-      </div>
       )}
+      </div>
 
       {/* Prezzi globali */}
       <div className="card">
@@ -947,8 +947,8 @@ function WizardAvviso({ proc, onClose, notify }) {
             <Inp label="Intestazione conto procedura" val={intestazioneProcedura} set={setIntestazioneProcedura} placeholder="Es: Liquidazione Giudiziale Rossi S.r.l." full />
           </div>
         </div>
-      </div>
       )}
+      </div>
 
       {/* Lotti */}
       <div className="card">
@@ -1001,8 +1001,8 @@ function WizardAvviso({ proc, onClose, notify }) {
             </div>
           )}
         </div>
-      </div>
       )}
+      </div>
 
       {/* Contatti e note */}
       <div className="card">
@@ -1021,8 +1021,8 @@ function WizardAvviso({ proc, onClose, notify }) {
             </div>
           </div>
         </div>
-      </div>
       )}
+      </div>
 
       {/* Azioni */}
       <div style={{display:'flex',justifyContent:'flex-end',gap:10,paddingBottom:24}}>
