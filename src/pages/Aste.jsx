@@ -33,7 +33,20 @@ const TIPI_ASTA = [
 const fmtEur = (n) => {
   const s = (n||'').toString().trim()
   if (!s) return '_______________'
-  const parsed = parseFloat(s.replace(/\./g,'').replace(',','.'))
+  let parsed
+  // Distingue formato italiano (virgola decimale) da anglosassone (punto decimale)
+  if (s.includes(',')) {
+    // Formato italiano: 50.000,00 oppure 50000,00
+    parsed = parseFloat(s.replace(/\./g,'').replace(',','.'))
+  } else {
+    // Solo punti: se il punto è seguito da esattamente 2 cifre finali → decimale JS (es. toFixed output)
+    const dotIdx = s.lastIndexOf('.')
+    if (dotIdx !== -1 && s.length - dotIdx - 1 === 2) {
+      parsed = parseFloat(s)                 // 50000.00 → 50000
+    } else {
+      parsed = parseFloat(s.replace(/\./g,''))  // 50.000 → 50000
+    }
+  }
   if (isNaN(parsed)) return s
   const parts = parsed.toFixed(2).split('.')
   parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.')
