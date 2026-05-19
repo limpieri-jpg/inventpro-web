@@ -60,6 +60,44 @@ function ProcForm({ proc, onSave, onClose }) {
         <div className="form-group"><label className="form-label">Codice Fiscale</label><input {...inp('cf')} /></div>
         <div className="form-group"><label className="form-label">P.IVA</label><input {...inp('piva')} /></div>
         <div className="form-col-full form-group"><label className="form-label">PEC procedura</label><input {...inp('pec', 'email')} /></div>
+
+        {/* Conti correnti procedura */}
+        <div className="form-section">Conti correnti procedura</div>
+        <div className="form-col-full" style={{display:'flex',flexDirection:'column',gap:10}}>
+          {(form.conti_cc || []).map((cc, i) => (
+            <div key={i} style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr auto',gap:8,alignItems:'end',background:'var(--bg2)',borderRadius:8,padding:'10px 12px'}}>
+              <div className="form-group" style={{margin:0}}>
+                <label className="form-label" style={{fontSize:11}}>IBAN</label>
+                <input className="form-input" value={cc.iban||''} style={{fontFamily:'monospace'}}
+                  onChange={e => set('conti_cc', form.conti_cc.map((x,j)=>j===i?{...x,iban:e.target.value}:x))}
+                  placeholder="IT00 X000 0000 0000 0000 0000 000"/>
+              </div>
+              <div className="form-group" style={{margin:0}}>
+                <label className="form-label" style={{fontSize:11}}>Banca</label>
+                <input className="form-input" value={cc.banca||''}
+                  onChange={e => set('conti_cc', form.conti_cc.map((x,j)=>j===i?{...x,banca:e.target.value}:x))}
+                  placeholder="Es. Deutsche Bank"/>
+              </div>
+              <div className="form-group" style={{margin:0}}>
+                <label className="form-label" style={{fontSize:11}}>Intestazione</label>
+                <input className="form-input" value={cc.intestazione||''}
+                  onChange={e => set('conti_cc', form.conti_cc.map((x,j)=>j===i?{...x,intestazione:e.target.value}:x))}
+                  placeholder="Es. Liquidazione Rossi S.r.l."/>
+              </div>
+              <button className="btn btn-ghost btn-sm" style={{color:'var(--accent-r)',alignSelf:'flex-end'}}
+                onClick={()=>set('conti_cc',(form.conti_cc||[]).filter((_,j)=>j!==i))}>
+                <Trash2 size={13}/>
+              </button>
+            </div>
+          ))}
+          <button className="btn btn-ghost btn-sm" style={{alignSelf:'flex-start'}}
+            onClick={()=>set('conti_cc',[...(form.conti_cc||[]),{iban:'',banca:'',intestazione:''}])}>
+            <Plus size={13}/> Aggiungi conto corrente
+          </button>
+          <div style={{fontSize:11,color:'var(--text3)'}}>
+            I conti correnti della procedura saranno selezionabili negli avvisi di vendita per il saldo prezzo.
+          </div>
+        </div>
       </div>
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
         <button className="btn btn-ghost" onClick={onClose}>Annulla</button>
@@ -91,6 +129,18 @@ function TabAnagrafica({ proc, onEdit }) {
             </div>
           ))}
         </div>
+        {(proc.conti_cc || []).length > 0 && (
+          <div style={{marginTop:16}}>
+            <div style={{fontWeight:600,fontSize:12,color:'var(--text3)',textTransform:'uppercase',letterSpacing:1,marginBottom:8}}>Conti correnti procedura</div>
+            {(proc.conti_cc || []).map((cc, i) => (
+              <div key={i} style={{display:'flex',gap:16,padding:'8px 0',borderBottom:'1px solid var(--border)',fontSize:13,flexWrap:'wrap'}}>
+                <span style={{fontFamily:'monospace',fontWeight:600}}>{cc.iban || '—'}</span>
+                {cc.banca && <span style={{color:'var(--text2)'}}>{cc.banca}</span>}
+                {cc.intestazione && <span style={{color:'var(--text3)'}}>{cc.intestazione}</span>}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

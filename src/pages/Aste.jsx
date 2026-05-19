@@ -640,7 +640,8 @@ function WizardAvviso({ proc, onClose, notify }) {
   const [intestazioneProcedura, setIntestazioneProcedura] = useState(savedState.intestazioneProcedura || '')
   const [saldoGestoreCommiss, setSaldoGestoreCommiss] = useState(savedState.saldoGestoreCommiss || false)
   const [ibanCommissionario, setIbanCommissionario]   = useState(savedState.ibanCommissionario || '')
-  const [ibanCauzione, setIbanCauzione]       = useState('')
+  const [contiCommiss, setContiCommiss]         = useState([])  // da settings Supabase
+  const [ibanCauzione, setIbanCauzione]         = useState('')
   const [bancaCauzione, setBancaCauzione]     = useState('')
   const [ibanDiritti, setIbanDiritti]         = useState('')
   const [bancaDiritti, setBancaDiritti]       = useState('')
@@ -704,7 +705,8 @@ function WizardAvviso({ proc, onClose, notify }) {
   useEffect(() => {
     const load = async () => {
       // IBAN da settings
-      const { data: s } = await supabase.from('settings').select('iban_cauzione,banca_cauzione,iban_diritti,banca_diritti').maybeSingle()
+      const { data: s } = await supabase.from('settings').select('iban_cauzione,banca_cauzione,iban_diritti,banca_diritti,conti_commissionario').maybeSingle()
+      if (s?.conti_commissionario?.length) setContiCommiss(s.conti_commissionario)
       if (s) {
         setIbanCauzione(s.iban_cauzione || 'IT63 Y031 0422 9030 0000 0400 014')
         setBancaCauzione(s.banca_cauzione || 'Deutsche Bank \u2014 Filiale di Lecco, Agenzia di Castello')
@@ -1098,29 +1100,74 @@ function WizardAvviso({ proc, onClose, notify }) {
               </label>
             </div>
             {!saldoGestoreCommiss && (
-              <Inp label="IBAN conto procedura (per saldo)" val={ibanProcedura} set={(v)=>{setIbanProcedura(v);save('ibanProcedura',v)}} placeholder="IT00 X000 0000 0000 0000 0000 000" full />
+              <div className="form-group form-col-full">
+                <label className="form-label">IBAN conto procedura (per saldo)</label>
+                {(proc?.conti_cc||[]).length > 0 ? (
+                  <>
+                    <select className="form-input" value={ibanProcedura}
+                      onChange={e=>{setIbanProcedura(e.target.value);save('ibanProcedura',e.target.value)}}>
+                      <option value="">— Seleziona IBAN procedura —</option>
+                      {(proc?.conti_cc||[]).map((cc,i)=>(
+                        <option key={i} value={cc.iban}>
+                          {cc.iban}{cc.banca ? ' — '+cc.banca : ''}{cc.intestazione ? ' ('+cc.intestazione+')' : ''}
+                        </option>
+                      ))}
+                      <option value="__manual">✏️ Inserisci manualmente…</option>
+                    </select>
+                    {ibanProcedura === '__manual' && (
+                      <input className="form-input" style={{marginTop:6,fontFamily:'monospace'}}
+                        placeholder="IT00 X000 0000 0000 0000 0000 000"
+                        onChange={e=>{setIbanProcedura(e.target.value);save('ibanProcedura',e.target.value)}} />
+                    )}
+                    <div style={{fontSize:11,color:'var(--text3)',marginTop:4}}>
+                      I conti procedura si gestiscono in <b>Procedura → Modifica → Conti correnti procedura</b>.
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <input className="form-input" value={ibanProcedura} style={{fontFamily:'monospace'}}
+                      onChange={e=>{setIbanProcedura(e.target.value);save('ibanProcedura',e.target.value)}}
+                      placeholder="IT00 X000 0000 0000 0000 0000 000" />
+                    <div style={{fontSize:11,color:'var(--text3)',marginTop:4}}>
+                      💡 Aggiungi conti correnti alla procedura (sezione <b>Modifica procedura</b>) per selezionarli rapidamente.
+                    </div>
+                  </>
+                )}
+              </div>
             )}
             {saldoGestoreCommiss && (
               <div className="form-group form-col-full">
                 <label className="form-label">IBAN conto Commissionario (per saldo)</label>
-                {(proc?.sedi||[]).filter(s=>s.iban).length > 0 ? (
-                  <select className="form-input" value={ibanCommissionario}
-                    onChange={e=>{setIbanCommissionario(e.target.value);save('ibanCommissionario',e.target.value)}}>
-                    <option value="">— Seleziona IBAN —</option>
-                    {(proc?.conti_commissionario||[]).map((cc,i)=>(
-                      <option key={i} value={cc.iban}>{cc.iban}{cc.banca ? ' — '+cc.banca : ''}</option>
-                    ))}
-                    <option value="__manual">Inserisci manualmente...</option>
-                  </select>
+                {contiCommiss.length > 0 ? (
+                  <>
+                    <select className="form-input" value={ibanCommissionario}
+                      onChange={e=>{setIbanCommissionario(e.target.value);save('ibanCommissionario',e.target.value)}}>
+                      <option value="">— Seleziona IBAN commissionario —</option>
+                      {contiCommiss.map((cc,i)=>(
+                        <option key={i} value={cc.iban}>
+                          {cc.iban}{cc.banca ? ' — '+cc.banca : ''}{cc.intestazione ? ' ('+cc.intestazione+')' : ''}
+                        </option>
+                      ))}
+                      <option value="__manual">✏️ Inserisci manualmente…</option>
+                    </select>
+                    {ibanCommissionario === '__manual' && (
+                      <input className="form-input" style={{marginTop:6,fontFamily:'monospace'}}
+                        placeholder="IT00 X000 0000 0000 0000 0000 000"
+                        onChange={e=>{setIbanCommissionario(e.target.value);save('ibanCommissionario',e.target.value)}} />
+                    )}
+                    <div style={{fontSize:11,color:'var(--text3)',marginTop:4}}>
+                      I conti commissionario si configurano in <b>Impostazioni → Studio / Logo</b>.
+                    </div>
+                  </>
                 ) : (
-                  <input className="form-input" value={ibanCommissionario}
-                    onChange={e=>{setIbanCommissionario(e.target.value);save('ibanCommissionario',e.target.value)}}
-                    placeholder="IT00 X000 0000 0000 0000 0000 000" />
-                )}
-                {ibanCommissionario === '__manual' && (
-                  <input className="form-input" style={{marginTop:6}}
-                    placeholder="IT00 X000 0000 0000 0000 0000 000"
-                    onChange={e=>{setIbanCommissionario(e.target.value);save('ibanCommissionario',e.target.value)}} />
+                  <>
+                    <input className="form-input" value={ibanCommissionario} style={{fontFamily:'monospace'}}
+                      onChange={e=>{setIbanCommissionario(e.target.value);save('ibanCommissionario',e.target.value)}}
+                      placeholder="IT00 X000 0000 0000 0000 0000 000" />
+                    <div style={{fontSize:11,color:'var(--text3)',marginTop:4}}>
+                      💡 Configura i conti commissionario in <b>Impostazioni → Studio / Logo</b> per selezionarli rapidamente.
+                    </div>
+                  </>
                 )}
               </div>
             )}

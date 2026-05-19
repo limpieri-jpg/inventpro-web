@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useStore } from '../store/useStore'
 import { Topbar } from '../components/layout'
 import { supabase } from '../lib/supabase'
-import { Eye, EyeOff, Save, Key, Building, User } from 'lucide-react'
+import { Eye, EyeOff, Save, Key, Building, User, Plus, Trash2 } from 'lucide-react'
 
 export default function Impostazioni() {
   const { profile, notify, fetchProfile } = useStore()
@@ -12,6 +12,39 @@ export default function Impostazioni() {
   const [studioNome, setStudioNome] = useState(localStorage.getItem('ip_studio_nome') || '')
   const [studioIndirizzo, setStudioIndirizzo] = useState(localStorage.getItem('ip_studio_indirizzo') || '')
   const [logoPreview, setLogoPreview] = useState(localStorage.getItem('ip_logo') || null)
+
+  // Conti commissionario — salvati in Supabase tabella settings (colonna conti_commissionario JSONB)
+  const [contiCommiss, setContiCommiss] = useState([])
+  const [loadingConti, setLoadingConti] = useState(false)
+  const [savingConti, setSavingConti] = useState(false)
+
+  useEffect(() => {
+    const loadConti = async () => {
+      setLoadingConti(true)
+      const { data } = await supabase.from('settings').select('conti_commissionario').maybeSingle()
+      if (data?.conti_commissionario) setContiCommiss(data.conti_commissionario)
+      setLoadingConti(false)
+    }
+    loadConti()
+  }, [])
+
+  const addConto = () => setContiCommiss(cc => [...cc, { iban: '', banca: '', intestazione: '' }])
+  const removeConto = (i) => setContiCommiss(cc => cc.filter((_, j) => j !== i))
+  const updateConto = (i, field, val) => setContiCommiss(cc => cc.map((c, j) => j === i ? { ...c, [field]: val } : c))
+
+  const salvaConti = async () => {
+    setSavingConti(true)
+    try {
+      const { data: existing } = await supabase.from('settings').select('id').maybeSingle()
+      if (existing?.id) {
+        await supabase.from('settings').update({ conti_commissionario: contiCommiss }).eq('id', existing.id)
+      } else {
+        await supabase.from('settings').insert({ conti_commissionario: contiCommiss })
+      }
+      notify('Conti commissionario salvati', 'ok')
+    } catch(e) { notify('Errore: ' + e.message, 'err') }
+    finally { setSavingConti(false) }
+  }
 
 
   useEffect(() => {
@@ -179,6 +212,59 @@ export default function Impostazioni() {
                 </div>
                 <div style={{ fontSize:11, color:'var(--text3)', marginTop:8 }}>
                   PNG, JPG o SVG. Il logo apparirà nell'intestazione di tutti i documenti generati.
+                </div>
+              </div>
+            </div>
+
+            {/* Conti commissionario */}
+            <div className="card" style={{marginTop:16}}>
+              <div className="card-header">
+                <div className="card-title">🏦 Conti correnti commissionario</div>
+                <button className="btn btn-ghost btn-sm" onClick={addConto}><Plus size={13}/> Aggiungi conto</button>
+              </div>
+              <div className="card-body">
+                {loadingConti ? (
+                  <div style={{textAlign:'center',padding:16,color:'var(--text3)'}}>Caricamento…</div>
+                ) : contiCommiss.length === 0 ? (
+                  <div style={{fontSize:13,color:'var(--text3)',padding:'8px 0'}}>
+                    Nessun conto inserito. Aggiungi i conti IBAN del commissionario da usare negli avvisi di vendita.
+                  </div>
+                ) : (
+                  <div style={{display:'flex',flexDirection:'column',gap:12}}>
+                    {contiCommiss.map((cc, i) => (
+                      <div key={i} style={{background:'var(--bg)',borderRadius:8,padding:'12px 14px',border:'1px solid var(--border)'}}>
+                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+                          <span style={{fontWeight:600,fontSize:13}}>Conto {i+1}</span>
+                          <button className="btn btn-ghost btn-sm" style={{color:'var(--accent-r)'}} onClick={()=>removeConto(i)}>
+                            <Trash2 size={13}/>
+                          </button>
+                        </div>
+                        <div className="form-grid">
+                          <div className="form-col-full form-group">
+                            <label className="form-label">IBAN</label>
+                            <input className="form-input" value={cc.iban} onChange={e=>updateConto(i,'iban',e.target.value)}
+                              placeholder="IT00 X000 0000 0000 0000 0000 000" style={{fontFamily:'monospace'}}/>
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">Banca</label>
+                            <input className="form-input" value={cc.banca} onChange={e=>updateConto(i,'banca',e.target.value)}
+                              placeholder="Es. Deutsche Bank"/>
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">Intestazione</label>
+                            <input className="form-input" value={cc.intestazione} onChange={e=>updateConto(i,'intestazione',e.target.value)}
+                              placeholder="Es. Mario Rossi — Liquidazione X"/>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div style={{display:'flex',justifyContent:'flex-end',marginTop:16,gap:10}}>
+                  <button className="btn btn-ghost btn-sm" onClick={addConto}><Plus size={13}/> Aggiungi conto</button>
+                  <button className="btn btn-primary" onClick={salvaConti} disabled={savingConti}>
+                    <Save size={13}/> {savingConti ? 'Salvataggio…' : 'Salva conti commissionario'}
+                  </button>
                 </div>
               </div>
             </div>
