@@ -254,8 +254,8 @@ export default function Impostazioni() {
                 )}
                 <div style={{display:'flex',justifyContent:'flex-end',marginTop:16,gap:10}}>
                   <button className="btn btn-ghost btn-sm" onClick={addConto}><Plus size={13}/> Aggiungi conto</button>
-                  <button className="btn btn-primary" onClick={salvaConti} disabled={savingConti}>
-                    <Save size={13}/> {savingConti ? 'Salvataggio…' : 'Salva conti commissionario'}
+                  <button className="btn btn-primary" onClick={salvaConti}>
+                    <Save size={13}/> Salva conti commissionario
                   </button>
                 </div>
               </div>
