@@ -807,8 +807,6 @@ function WizardAvviso({ proc, onClose, notify }) {
             <Inp label="N° esperimento di vendita" val={nEsperimento} set={setNEsperimento} placeholder="Es: 1" />
           </div>
         </div>
-      </div>
-
       </div>}
 
       {/* Offerta irrevocabile */}
@@ -874,8 +872,6 @@ function WizardAvviso({ proc, onClose, notify }) {
             </div>
           </div>
         )}
-      </div>
-
       </div>}
 
       {/* Date */}
@@ -915,8 +911,6 @@ function WizardAvviso({ proc, onClose, notify }) {
             </>)}
           </div>
         </div>
-      </div>
-
       </div>}
 
       {/* Prezzi globali */}
@@ -950,8 +944,6 @@ function WizardAvviso({ proc, onClose, notify }) {
             <Inp label="Intestazione conto procedura" val={intestazioneProcedura} set={setIntestazioneProcedura} placeholder="Es: Liquidazione Giudiziale Rossi S.r.l." full />
           </div>
         </div>
-      </div>
-
       </div>}
 
       {/* Lotti */}
@@ -1005,8 +997,6 @@ function WizardAvviso({ proc, onClose, notify }) {
             </div>
           )}
         </div>
-      </div>
-
       </div>}
 
       {/* Contatti e note */}
@@ -1026,8 +1016,6 @@ function WizardAvviso({ proc, onClose, notify }) {
             </div>
           </div>
         </div>
-      </div>
-
       </div>}
 
       {/* Azioni */}
