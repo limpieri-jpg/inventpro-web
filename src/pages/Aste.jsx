@@ -198,7 +198,7 @@ async function genAvviso(proc, lotti, opts, logoB64) {
     // Riga descrizione articolo: "n. Marca Modello — desc_breve (matricola: X)"
     const rigaArticolo = (a) => {
       const parti = []
-      if (a.quantita && a.quantita !== '1') parti.push(a.quantita + (a.unita_misura ? ' ' + a.unita_misura : '') + ' x')
+      if (a.qta && a.qta !== '1') parti.push(a.qta + (a.unita_misura ? ' ' + a.unita_misura : '') + ' x')
       if (a.marca)     parti.push(a.marca)
       if (a.modello)   parti.push(a.modello)
       if (a.desc_breve && a.desc_breve !== a.modello) parti.push('— ' + a.desc_breve)
@@ -698,7 +698,7 @@ function WizardAvviso({ proc, onClose, notify }) {
         if (ids.length === 0) return { ...l, articoli: [] }
         const { data: arts } = await supabase
           .from('articoli')
-          .select('id, desc_breve, marca, modello, matricola, anno, quantita, unita_misura, note')
+          .select('id, desc_breve, marca, modello, matricola, anno_prod, qta, unita_misura, note')
           .in('id', ids)
           .order('sort_order', { ascending: true })
         return { ...l, articoli: arts || [] }
@@ -820,7 +820,7 @@ function WizardAvviso({ proc, onClose, notify }) {
                 <option value="immobile">Beni immobili</option>
               </select>
             </div>
-            <Inp label="N° esperimento di vendita" val={nEsperimento} set={setNEsperimento} placeholder="Es: 1" />
+            <Inp label="N° esperimento di vendita" val={nEsperimento} set={(v)=>{setNEsperimento(v);save('nEsperimento',v)}} placeholder="Es: 1" />
           </div>
         </div>
       )}
@@ -835,7 +835,7 @@ function WizardAvviso({ proc, onClose, notify }) {
         {openCards.offerta && (
           <div style={{padding:'0 20px 16px'}}>
             <label style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer',fontSize:13,fontWeight:'normal'}}>
-              <input type="checkbox" checked={offertaIrrevocabile} onChange={e=>setOffertaIrrevocabile(e.target.checked)} />
+              <input type="checkbox" checked={offertaIrrevocabile} onChange={e=>setOffertaIrrevocabile(e.target.checked);save('offertaIrrevocabile',e.target.checked)} />
               È stata ricevuta un&apos;offerta irrevocabile cauzionata prima dell&apos;asta
             </label>
         {offertaIrrevocabile && (
@@ -844,11 +844,11 @@ function WizardAvviso({ proc, onClose, notify }) {
               <div className="form-group">
                 <label className="form-label">Data ricezione offerta irrevocabile</label>
                 <div style={{display:'flex',gap:6}}>
-                  <input className="form-input" value={offertaIrrevGg} onChange={e=>setOffertaIrrevGg(e.target.value)}
+                  <input className="form-input" value={offertaIrrevGg} onChange={e=>setOffertaIrrevGg(e.target.value);save('offertaIrrevGg',e.target.value)}
                     placeholder="GG" maxLength={2} style={{width:56,textAlign:'center'}} />
-                  <input className="form-input" value={offertaIrrevMm} onChange={e=>setOffertaIrrevMm(e.target.value)}
+                  <input className="form-input" value={offertaIrrevMm} onChange={e=>setOffertaIrrevMm(e.target.value);save('offertaIrrevMm',e.target.value)}
                     placeholder="MM" maxLength={2} style={{width:56,textAlign:'center'}} />
-                  <input className="form-input" value={offertaIrrevAa} onChange={e=>setOffertaIrrevAa(e.target.value)}
+                  <input className="form-input" value={offertaIrrevAa} onChange={e=>setOffertaIrrevAa(e.target.value);save('offertaIrrevAa',e.target.value)}
                     placeholder="AAAA" maxLength={4} style={{width:72,textAlign:'center'}} />
                 </div>
               </div>
@@ -856,7 +856,7 @@ function WizardAvviso({ proc, onClose, notify }) {
                 <label className="form-label">Importo offerta irrevocabile (€)</label>
                 <div style={{position:'relative'}}>
                   <input className="form-input" value={offertaIrrevImporto}
-                    onChange={e=>setOffertaIrrevImporto(e.target.value)}
+                    onChange={e=>setOffertaIrrevImporto(e.target.value);save('offertaIrrevImporto',e.target.value)}
                     placeholder="Es: 50.000,00" style={{paddingLeft:28}} />
                   <span style={{position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:'var(--text3)',fontSize:13,pointerEvents:'none'}}>€</span>
                 </div>
@@ -870,7 +870,7 @@ function WizardAvviso({ proc, onClose, notify }) {
               <textarea
                 className="form-input"
                 value={testoOfferta}
-                onChange={e=>setTestoOfferta(e.target.value)}
+                onChange={e=>setTestoOfferta(e.target.value);save('testoOfferta',e.target.value)}
                 rows={5}
                 style={{fontFamily:'inherit',fontSize:13,lineHeight:1.6}}
               />
@@ -972,25 +972,25 @@ function WizardAvviso({ proc, onClose, notify }) {
               }} placeholder="Es: 25" />
             </div>
             <InpEur label="Offerta minima ammissibile (€)" val={offertaMinima} set={setOffertaMinima} placeholder="Vuoto = uguale al prezzo base" />
-            <InpEur label="Rilancio minimo (€)" val={rilancioMin} set={setRilancioMin} placeholder="Es: 250,00" />
-            <Inp label="Deposito cauzionale (%)" val={cauzione} set={setCauzione} placeholder="10" />
-            <Inp label="Diritti d'asta (%)" val={dirittiAsta} set={setDirittiAsta} placeholder="2" />
-            <Inp label="Termine saldo prezzo (giorni)" val={termSaldo} set={setTermSaldo} placeholder="120 (PVP) / 30 (AsteMagazine)" />
+            <InpEur label="Rilancio minimo (€)" val={rilancioMin} set={(v)=>{setRilancioMin(v);save('rilancioMin',v)}} placeholder="Es: 250,00" />
+            <Inp label="Deposito cauzionale (%)" val={cauzione} set={(v)=>{setCauzione(v);save('cauzione',v)}} placeholder="10" />
+            <Inp label="Diritti d'asta (%)" val={dirittiAsta} set={(v)=>{setDirittiAsta(v);save('dirittiAsta',v)}} placeholder="2" />
+            <Inp label="Termine saldo prezzo (giorni)" val={termSaldo} set={(v)=>{setTermSaldo(v);save('termSaldo',v)}} placeholder="120 (PVP) / 30 (AsteMagazine)" />
             {/* Toggle commissionario saldo */}
             <div className="form-group form-col-full" style={{display:'flex',alignItems:'center',gap:12,padding:'4px 0'}}>
               <label style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer',fontSize:13}}>
-                <input type="checkbox" checked={saldoGestoreCommiss} onChange={e=>setSaldoGestoreCommiss(e.target.checked)}
+                <input type="checkbox" checked={saldoGestoreCommiss} onChange={e=>setSaldoGestoreCommiss(e.target.checked);save('saldoGestoreCommiss',e.target.checked)}
                   style={{width:16,height:16,cursor:'pointer'}}/>
                 <span>Saldo gestito dal Commissionario</span>
               </label>
             </div>
             {!saldoGestoreCommiss && (
-              <Inp label="IBAN conto procedura (per saldo)" val={ibanProcedura} set={setIbanProcedura} placeholder="IT00 X000 0000 0000 0000 0000 000" full />
+              <Inp label="IBAN conto procedura (per saldo)" val={ibanProcedura} set={(v)=>{setIbanProcedura(v);save('ibanProcedura',v)}} placeholder="IT00 X000 0000 0000 0000 0000 000" full />
             )}
             {saldoGestoreCommiss && (
-              <Inp label="IBAN conto Commissionario (per saldo)" val={ibanCommissionario} set={setIbanCommissionario} placeholder="IT00 X000 0000 0000 0000 0000 000" full />
+              <Inp label="IBAN conto Commissionario (per saldo)" val={ibanCommissionario} set={(v)=>{setIbanCommissionario(v);save('ibanCommissionario',v)}} placeholder="IT00 X000 0000 0000 0000 0000 000" full />
             )}
-            <Inp label="Intestazione conto procedura" val={intestazioneProcedura} set={setIntestazioneProcedura} placeholder="Es: Liquidazione Giudiziale Rossi S.r.l." full />
+            <Inp label="Intestazione conto procedura" val={intestazioneProcedura} set={(v)=>{setIntestazioneProcedura(v);save('intestazioneProcedura',v)}} placeholder="Es: Liquidazione Giudiziale Rossi S.r.l." full />
           </div>
         </div>
       )}
@@ -1010,7 +1010,7 @@ function WizardAvviso({ proc, onClose, notify }) {
               <Inp label="Ora inizio asta" val={oraAsta} set={setOraAsta} placeholder="12:00" />
               <Inp label="Data fine asta" val={dataTermine} set={setDataTermine} type="date" />
               <Inp label="Ora fine asta" val={oraTermine} set={setOraTermine} placeholder="12:00" />
-              <Inp label="Extra time / Durata rilanci (minuti)" val={durataRilancio} set={setDurataRilancio} placeholder="1" />
+              <Inp label="Extra time / Durata rilanci (minuti)" val={durataRilancio} set={(v)=>{setDurataRilancio(v);save('durataRilancio',v)}} placeholder="1" />
             </>)}
             {/* SINCRONA TELEMATICA: data/ora inizio + durata rilanci + termine offerte */}
             {isSincrona && !isMistaWiz && (<>
@@ -1018,7 +1018,7 @@ function WizardAvviso({ proc, onClose, notify }) {
               <Inp label="Ora inizio asta" val={oraAsta} set={setOraAsta} placeholder="12:00" />
               <Inp label="Termine presentazione offerte" val={termineOfferte} set={setTermineOfferte} type="date" />
               <Inp label="Ora termine offerte" val={oraTermine} set={setOraTermine} placeholder="12:00" />
-              <Inp label="Durata rilanci (minuti)" val={durataRilancio} set={setDurataRilancio} placeholder="1" />
+              <Inp label="Durata rilanci (minuti)" val={durataRilancio} set={(v)=>{setDurataRilancio(v);save('durataRilancio',v)}} placeholder="1" />
             </>)}
             {/* SINCRONA MISTA: data/ora asta in presenza + termine offerte cartacee + durata rilanci */}
             {isMistaWiz && (<>
@@ -1029,7 +1029,7 @@ function WizardAvviso({ proc, onClose, notify }) {
               <div className="form-group" style={{gridColumn:'1/-1',fontSize:12,color:'var(--text3)',marginTop:-8}}>
                 Le offerte cartacee devono pervenire entro l&apos;ora indicata del giorno selezionato
               </div>
-              <Inp label="Durata rilanci (minuti)" val={durataRilancio} set={setDurataRilancio} placeholder="1" />
+              <Inp label="Durata rilanci (minuti)" val={durataRilancio} set={(v)=>{setDurataRilancio(v);save('durataRilancio',v)}} placeholder="1" />
             </>)}
           </div>
         </div>
@@ -1044,7 +1044,7 @@ function WizardAvviso({ proc, onClose, notify }) {
         </div>
         {openCards.contatti && (<div className="card-body">
           <div className="form-grid">
-            <Inp label="Referente per informazioni e visite" val={referente} set={setReferente} full />
+            <Inp label="Referente per informazioni e visite" val={referente} set={(v)=>{setReferente(v);save('referente',v)}} full />
             <div className="form-col-full form-group">
               <label className="form-label">Note finali (facoltativo)</label>
               <textarea className="form-input" value={noteFinali}
