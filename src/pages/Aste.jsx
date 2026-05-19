@@ -527,8 +527,8 @@ function LottoRow({ lotto, idx, total, onChange, onRemove }) {
         <div className="form-group">
           <label className="form-label">Prezzo base (€) — vuoto = globale</label>
           <div style={{position:'relative'}}>
-            <input className="form-input" defaultValue={lotto.base}
-              onBlur={e => onChange(idx,'base',e.target.value)}
+            <input className="form-input" value={lotto.base ?? ''}
+              onChange={e => onChange(idx,'base',e.target.value)}
               placeholder="Es: 5.000,00" style={{paddingLeft:28}} />
             <span style={{position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:'var(--text3)',fontSize:13,pointerEvents:'none'}}>€</span>
           </div>
@@ -536,8 +536,8 @@ function LottoRow({ lotto, idx, total, onChange, onRemove }) {
         <div className="form-group">
           <label className="form-label">Offerta minima (€) — vuoto = prezzo base</label>
           <div style={{position:'relative'}}>
-            <input className="form-input" defaultValue={lotto.offertaMinima}
-              onBlur={e => onChange(idx,'offertaMinima',e.target.value)}
+            <input className="form-input" value={lotto.offertaMinima ?? ''}
+              onChange={e => onChange(idx,'offertaMinima',e.target.value)}
               placeholder="Es: 4.500,00" style={{paddingLeft:28}} />
             <span style={{position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:'var(--text3)',fontSize:13,pointerEvents:'none'}}>€</span>
           </div>
@@ -545,8 +545,8 @@ function LottoRow({ lotto, idx, total, onChange, onRemove }) {
         <div className="form-group">
           <label className="form-label">Rilancio min. (€) — vuoto = globale</label>
           <div style={{position:'relative'}}>
-            <input className="form-input" defaultValue={lotto.rilancio}
-              onBlur={e => onChange(idx,'rilancio',e.target.value)}
+            <input className="form-input" value={lotto.rilancio ?? ''}
+              onChange={e => onChange(idx,'rilancio',e.target.value)}
               placeholder="Es: 250,00" style={{paddingLeft:28}} />
             <span style={{position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:'var(--text3)',fontSize:13,pointerEvents:'none'}}>€</span>
           </div>
@@ -600,9 +600,9 @@ function WizardAvviso({ proc, onClose, notify }) {
   const [referente, setReferente]             = useState('Pro.Ges.S. Srl \u2014 procedure@progess-italia.it')
   const [noteFinali, setNoteFinali]           = useState('')
   // Lotti: 'manual' | 'db'
-  const [lottiMode, setLottiMode]             = useState('manual')
+  const [lottiMode, setLottiMode]             = useState(savedState.lottiMode || 'manual')
   const [lottiDb, setLottiDb]                 = useState([])
-  const [lottiDbSel, setLottiDbSel]           = useState([])
+  const [lottiDbSel, setLottiDbSel]           = useState(savedState.lottiDbSel || [])
   const [loadingLotti, setLoadingLotti]       = useState(false)
   const [lotti, setLotti]                     = useState([{ desc:'Lotto unico \u2014 tutti i beni inventariati', qta:1, base:'', offertaMinima:'', rilancio:'' }])
   // Offerta irrevocabile
@@ -639,12 +639,16 @@ function WizardAvviso({ proc, onClose, notify }) {
         cauzione, dirittiAsta, termSaldo, ibanProcedura, intestazioneProcedura,
         ibanCauzione, bancaCauzione, ibanDiritti, bancaDiritti,
         referente, noteFinali, offertaIrrevocabile, offertaIrrevGg, offertaIrrevMm,
-        offertaIrrevAa, offertaIrrevImporto, testoOfferta
+        offertaIrrevAa, offertaIrrevImporto, testoOfferta,
+        lotti, lottiDbSel, lottiMode
       })
     } catch {}
-  }, [tipoAsta, tipoBene, dataAsta, oraAsta, dataTermine, oraTermine,
-      prezzoBase, offertaMinima, rilancioMin, cauzione, ibanProcedura,
-      offertaIrrevocabile, offertaIrrevImporto])
+  }, [tipoAsta, tipoBene, nEsperimento, dataAsta, oraAsta, dataTermine, oraTermine,
+      durataRilancio, termineOfferte, prezzoBase, offertaMinima, rilancioMin, abbattimento,
+      cauzione, dirittiAsta, termSaldo, ibanProcedura, intestazioneProcedura,
+      saldoGestoreCommiss, ibanCommissionario, referente, noteFinali,
+      offertaIrrevocabile, offertaIrrevGg, offertaIrrevMm, offertaIrrevAa,
+      offertaIrrevImporto, testoOfferta, lotti, lottiDbSel, lottiMode])
 
   // Carica IBAN da settings e testo AVVISA dal DB all'apertura
   useEffect(() => {
