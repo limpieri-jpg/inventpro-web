@@ -122,6 +122,7 @@ async function genAvviso(proc, lotti, opts, logoB64) {
     durataRilancio, termineOfferte,
     prezzoBase, offertaMinima, rilancioMin, cauzione, dirittiAsta,
     termSaldo, ibanProcedura, intestazioneProcedura,
+    saldoGestoreCommiss, ibanCommissionario,
     ibanCauzione: _ibanCau, bancaCauzione: _bancaCau,
     ibanDiritti: _ibanDir, bancaDiritti: _bancaDir,
     referente, noteFinali,
@@ -587,8 +588,10 @@ function WizardAvviso({ proc, onClose, notify }) {
   const [cauzione, setCauzione]               = useState(savedState.cauzione || '10')
   const [dirittiAsta, setDirittiAsta]         = useState(savedState.dirittiAsta || '2')
   const [termSaldo, setTermSaldo]             = useState(savedState.termSaldo || '120')
-  const [ibanProcedura, setIbanProcedura]     = useState('')
-  const [intestazioneProcedura, setIntestazioneProcedura] = useState('')
+  const [ibanProcedura, setIbanProcedura]     = useState(savedState.ibanProcedura || '')
+  const [intestazioneProcedura, setIntestazioneProcedura] = useState(savedState.intestazioneProcedura || '')
+  const [saldoGestoreCommiss, setSaldoGestoreCommiss] = useState(savedState.saldoGestoreCommiss || false)
+  const [ibanCommissionario, setIbanCommissionario]   = useState(savedState.ibanCommissionario || '')
   const [ibanCauzione, setIbanCauzione]       = useState('')
   const [bancaCauzione, setBancaCauzione]     = useState('')
   const [ibanDiritti, setIbanDiritti]         = useState('')
@@ -631,6 +634,7 @@ function WizardAvviso({ proc, onClose, notify }) {
       sessionStorage.setItem(SS_KEY, JSON.stringify({
         tipoAsta, tipoBene, nEsperimento, dataAsta, oraAsta, dataTermine, oraTermine,
         durataRilancio, termineOfferte, prezzoBase, offertaMinima, rilancioMin,
+        saldoGestoreCommiss, ibanCommissionario,
         cauzione, dirittiAsta, termSaldo, ibanProcedura, intestazioneProcedura,
         ibanCauzione, bancaCauzione, ibanDiritti, bancaDiritti,
         referente, noteFinali, offertaIrrevocabile, offertaIrrevGg, offertaIrrevMm,
@@ -1051,58 +1055,50 @@ export default function Aste() {
   )
 
   return (
-    <>
-      <Topbar title="Aste e Vendite" subtitle={currentProc.nome||''} />
-      <div style={{flex:1,overflowY:'auto',padding:24}}>
-        <div style={{maxWidth:900,margin:'0 auto',display:'flex',flexDirection:'column',gap:20}}>
-
-          <div className="card" style={{cursor:'pointer'}} onClick={()=>setShowWizard(true)}>
-            <div className="card-body" style={{display:'flex',alignItems:'center',gap:20,padding:28}}>
-              <div style={{fontSize:48}}>📄</div>
-              <div style={{flex:1}}>
-                <div style={{fontWeight:700,fontSize:16,marginBottom:6}}>Avviso di Vendita</div>
-                <div style={{fontSize:13,color:'var(--text3)',marginBottom:12}}>
-                  Genera l&apos;avviso di vendita per aste telematiche: PVP, AsteMagazine, sincrona, asincrona, mista.
-                </div>
-                <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
-                  {TIPI_ASTA.map(t=>(
-                    <span key={t.id} style={{background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:4,padding:'2px 8px',fontSize:11}}>
-                      {t.label.split('\u2014')[0].trim()}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              <button className="btn btn-primary" onClick={e=>{e.stopPropagation();setShowWizard(true)}}>
-                <Plus size={14}/> Nuovo avviso
-              </button>
-            </div>
-          </div>
-
+    <div style={{display:'flex', height:'100%', overflow:'hidden'}}>
+      {/* ── Colonna sinistra: info + pulsante ── */}
+      <div style={{
+        width: showWizard ? 260 : '100%',
+        minWidth: showWizard ? 260 : undefined,
+        borderRight: showWizard ? '1px solid var(--border)' : 'none',
+        display:'flex', flexDirection:'column', overflow:'hidden', transition:'width 0.2s'
+      }}>
+        <Topbar title="Aste e Vendite" subtitle={currentProc.nome||''} />
+        <div style={{flex:1, overflowY:'auto', padding:16, display:'flex', flexDirection:'column', gap:12}}>
+          <button className="btn btn-primary" style={{width:'100%'}} onClick={()=>setShowWizard(w=>!w)}>
+            {showWizard ? '✕ Chiudi wizard' : <><Plus size={14}/> Nuovo avviso di vendita</>}
+          </button>
           <div className="card">
-            <div className="card-header"><div className="card-title">🏛 Procedura attiva</div></div>
+            <div className="card-header"><div className="card-title" style={{fontSize:13}}>🏛 Procedura</div></div>
             <div className="card-body">
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'6px 24px',fontSize:13}}>
-                {[['Procedura',currentProc.nome],['Tipo',currentProc.tipo],
-                  ['N. R.G.',(currentProc.num||'')+(currentProc.anno?'/'+currentProc.anno:'')],
+              <div style={{display:'flex',flexDirection:'column',gap:4,fontSize:12}}>
+                {[['Nome',currentProc.nome],['Tipo',currentProc.tipo],
+                  ['R.G.',(currentProc.num||'')+(currentProc.anno?'/'+currentProc.anno:'')],
                   ['Tribunale',currentProc.tribunale],['Giudice',currentProc.giudice],
                   ['Curatore',currentProc.curatore]].map(([l,v])=>(
-                  <div key={l} style={{display:'flex',gap:8}}>
-                    <span style={{color:'var(--text3)',minWidth:110}}>{l}</span>
+                  <div key={l} style={{display:'flex',gap:6}}>
+                    <span style={{color:'var(--text3)',minWidth:70}}>{l}</span>
                     <span style={{fontWeight:500}}>{v||'\u2014'}</span>
                   </div>
                 ))}
               </div>
             </div>
           </div>
-
         </div>
       </div>
 
+      {/* ── Colonna destra: wizard (sempre montato, non si smonta) ── */}
       {showWizard && (
-        <Modal open={showWizard} onClose={()=>setShowWizard(false)} title="Genera Avviso di Vendita" wide>
-          <WizardAvviso proc={currentProc} onClose={()=>setShowWizard(false)} notify={notify} />
-        </Modal>
+        <div style={{flex:1, display:'flex', flexDirection:'column', overflow:'hidden'}}>
+          <div style={{height:48,background:'var(--bg2)',borderBottom:'1px solid var(--border)',
+            display:'flex',alignItems:'center',padding:'0 20px',flexShrink:0}}>
+            <span style={{fontWeight:600,fontSize:15}}>Genera Avviso di Vendita</span>
+          </div>
+          <div style={{flex:1, overflowY:'auto'}}>
+            <WizardAvviso proc={currentProc} onClose={()=>setShowWizard(false)} notify={notify} />
+          </div>
+        </div>
       )}
-    </>
+    </div>
   )
 }
