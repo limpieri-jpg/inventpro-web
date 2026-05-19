@@ -835,7 +835,7 @@ function WizardAvviso({ proc, onClose, notify }) {
         {openCards.offerta && (
           <div style={{padding:'0 20px 16px'}}>
             <label style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer',fontSize:13,fontWeight:'normal'}}>
-              <input type="checkbox" checked={offertaIrrevocabile} onChange={e=>setOffertaIrrevocabile(e.target.checked);save('offertaIrrevocabile',e.target.checked)} />
+              <input type="checkbox" checked={offertaIrrevocabile} onChange={e=>{setOffertaIrrevocabile(e.target.checked);save('offertaIrrevocabile',e.target.checked)}} />
               È stata ricevuta un&apos;offerta irrevocabile cauzionata prima dell&apos;asta
             </label>
         {offertaIrrevocabile && (
@@ -844,11 +844,11 @@ function WizardAvviso({ proc, onClose, notify }) {
               <div className="form-group">
                 <label className="form-label">Data ricezione offerta irrevocabile</label>
                 <div style={{display:'flex',gap:6}}>
-                  <input className="form-input" value={offertaIrrevGg} onChange={e=>setOffertaIrrevGg(e.target.value);save('offertaIrrevGg',e.target.value)}
+                  <input className="form-input" value={offertaIrrevGg} onChange={e=>{setOffertaIrrevGg(e.target.value);save('offertaIrrevGg',e.target.value)}}
                     placeholder="GG" maxLength={2} style={{width:56,textAlign:'center'}} />
-                  <input className="form-input" value={offertaIrrevMm} onChange={e=>setOffertaIrrevMm(e.target.value);save('offertaIrrevMm',e.target.value)}
+                  <input className="form-input" value={offertaIrrevMm} onChange={e=>{setOffertaIrrevMm(e.target.value);save('offertaIrrevMm',e.target.value)}}
                     placeholder="MM" maxLength={2} style={{width:56,textAlign:'center'}} />
-                  <input className="form-input" value={offertaIrrevAa} onChange={e=>setOffertaIrrevAa(e.target.value);save('offertaIrrevAa',e.target.value)}
+                  <input className="form-input" value={offertaIrrevAa} onChange={e=>{setOffertaIrrevAa(e.target.value);save('offertaIrrevAa',e.target.value)}}
                     placeholder="AAAA" maxLength={4} style={{width:72,textAlign:'center'}} />
                 </div>
               </div>
@@ -856,7 +856,7 @@ function WizardAvviso({ proc, onClose, notify }) {
                 <label className="form-label">Importo offerta irrevocabile (€)</label>
                 <div style={{position:'relative'}}>
                   <input className="form-input" value={offertaIrrevImporto}
-                    onChange={e=>setOffertaIrrevImporto(e.target.value);save('offertaIrrevImporto',e.target.value)}
+                    onChange={e=>{setOffertaIrrevImporto(e.target.value);save('offertaIrrevImporto',e.target.value)}}
                     placeholder="Es: 50.000,00" style={{paddingLeft:28}} />
                   <span style={{position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:'var(--text3)',fontSize:13,pointerEvents:'none'}}>€</span>
                 </div>
@@ -870,7 +870,7 @@ function WizardAvviso({ proc, onClose, notify }) {
               <textarea
                 className="form-input"
                 value={testoOfferta}
-                onChange={e=>setTestoOfferta(e.target.value);save('testoOfferta',e.target.value)}
+                onChange={e=>{setTestoOfferta(e.target.value);save('testoOfferta',e.target.value)}}
                 rows={5}
                 style={{fontFamily:'inherit',fontSize:13,lineHeight:1.6}}
               />
@@ -979,7 +979,7 @@ function WizardAvviso({ proc, onClose, notify }) {
             {/* Toggle commissionario saldo */}
             <div className="form-group form-col-full" style={{display:'flex',alignItems:'center',gap:12,padding:'4px 0'}}>
               <label style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer',fontSize:13}}>
-                <input type="checkbox" checked={saldoGestoreCommiss} onChange={e=>setSaldoGestoreCommiss(e.target.checked);save('saldoGestoreCommiss',e.target.checked)}
+                <input type="checkbox" checked={saldoGestoreCommiss} onChange={e=>{setSaldoGestoreCommiss(e.target.checked);save('saldoGestoreCommiss',e.target.checked)}}
                   style={{width:16,height:16,cursor:'pointer'}}/>
                 <span>Saldo gestito dal Commissionario</span>
               </label>
