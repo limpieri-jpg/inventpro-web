@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore'
 import { Topbar, Spinner, Modal, Empty } from '../components/layout'
 import { supabase } from '../lib/supabase'
+import { callAI } from '../lib/ai'
 import { Plus, Search, X, Trash2, Camera, FileDown, Sparkles, AlertTriangle } from 'lucide-react'
 import * as XLSX from 'xlsx'
 
@@ -88,14 +89,12 @@ function ArticoloForm({ articolo, procId, onSave, onClose }) {
     setPhotos(p => p.filter(f => f.id !== foto.id))
   }
 
-  // Analisi AI — invia le foto e i dati già compilati
+  // Analisi AI — usa Edge Function come proxy (nessuna chiave API nel browser)
   const analizzaConAI = async () => {
-    const apiKey = localStorage.getItem('ip_apikey') || ''
-    if (!apiKey) { notify('Inserisci la chiave API in Impostazioni', 'warn'); return }
     if (photos.length === 0) { notify('Carica almeno una foto prima di analizzare', 'warn'); return }
     setAnalyzing(true)
     try {
-      // Converti la prima foto (o le prime 3) in base64
+      // Converti le prime 3 foto in base64
       const fotoUrls = photos.slice(0,3).map(f => f.url)
       const toBase64 = async (url) => {
         const res = await fetch(url)
@@ -143,18 +142,7 @@ Rispondi SOLO con JSON valido (no markdown, no commenti):
 }` }
       ]
 
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method:'POST',
-        headers:{
-          'Content-Type':'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version':'2023-06-01',
-          'anthropic-dangerous-direct-browser-access':'true'
-        },
-        body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:1000, messages:[{role:'user', content}] })
-      })
-      const data = await res.json()
-      const text = data.content?.[0]?.text || ''
+      const text = await callAI({ messages: [{ role: 'user', content }], max_tokens: 1000 })
       const json = JSON.parse(text.replace(/```json|```/g,'').trim())
 
       setForm(f => ({
