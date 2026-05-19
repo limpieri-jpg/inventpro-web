@@ -861,20 +861,22 @@ function WizardAvviso({ proc, onClose, notify }) {
   const salvaBozza = async () => {
     setSaving(true)
     try {
+      // Helper: stringa vuota → null (Supabase rifiuta "" per colonne DATE/BOOLEAN)
+      const nn = (v) => (v === '' || v === undefined) ? null : v
       const payload = {
         proc_id: proc.id, modalita: tipoAsta, tipo_bene: tipoBene,
-        n_esperimento: nEsperimento, data_asta: dataAsta, ora_asta: oraAsta,
-        data_avviso: dataTermine, durata_rilancio: durataRilancio,
-        prezzo_base: prezzoBase, offerta_minima: offertaMinima,
-        abbattimento: abbattimento, rilancio_min: rilancioMin,
-        cauz_default: cauzione, diritti_default: dirittiAsta, termine_saldo: termSaldo,
-        iban: ibanProcedura, intestaz_cc: intestazioneProcedura,
-        saldo_commiss: saldoGestoreCommiss, iban_commiss: ibanCommissionario,
-        referente: referente, note_finali: noteFinali,
+        n_esperimento: nn(nEsperimento), data_asta: nn(dataAsta), ora_asta: nn(oraAsta),
+        data_avviso: nn(dataTermine), durata_rilancio: nn(durataRilancio),
+        prezzo_base: nn(prezzoBase), offerta_minima: nn(offertaMinima),
+        abbattimento: nn(abbattimento), rilancio_min: nn(rilancioMin),
+        cauz_default: nn(cauzione), diritti_default: nn(dirittiAsta), termine_saldo: nn(termSaldo),
+        iban: nn(ibanProcedura), intestaz_cc: nn(intestazioneProcedura),
+        saldo_commiss: saldoGestoreCommiss, iban_commiss: nn(ibanCommissionario),
+        referente: nn(referente), note_finali: nn(noteFinali),
         offerta_irrev: offertaIrrevocabile,
-        offerta_irrev_data: offertaIrrevData,
-        offerta_irrev_importo: offertaIrrevImporto,
-        testo_avvisa: testoOfferta,
+        offerta_irrev_data: nn(offertaIrrevData),
+        offerta_irrev_importo: nn(offertaIrrevImporto),
+        testo_avvisa: nn(testoOfferta),
         lotti_manual: JSON.stringify(lotti), lotti_ids: lottiDbSel,
         status: 'bozza',
       }
