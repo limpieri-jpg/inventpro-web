@@ -568,6 +568,34 @@ const mkTestoOfferta = (data, importo) => {
 const TESTO_OFFERTA_DEFAULT = mkTestoOfferta('', '')
 
 // ─── Wizard ───────────────────────────────────────────────────────────────────
+function Inp({ label, val, set, placeholder='', type='text', full=false }) {
+  return (
+    <div className={full ? 'form-col-full form-group' : 'form-group'}>
+      <label className="form-label">{label}</label>
+      <input type={type} className="form-input"
+        value={val ?? ''}
+        onChange={e => set(e.target.value)}
+        placeholder={placeholder} />
+    </div>
+  )
+}
+
+function InpEur({ label, val, set, placeholder='Es: 5.000,00', full=false }) {
+  return (
+    <div className={full ? 'form-col-full form-group' : 'form-group'}>
+      <label className="form-label">{label}</label>
+      <div style={{position:'relative'}}>
+        <input className="form-input"
+          value={val ?? ''}
+          onChange={e => set(e.target.value)}
+          placeholder={placeholder}
+          style={{paddingLeft:28}} />
+        <span style={{position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:'var(--text3)',fontSize:13,pointerEvents:'none'}}>€</span>
+      </div>
+    </div>
+  )
+}
+
 function WizardAvviso({ proc, onClose, notify }) {
   const today = new Date().toISOString().slice(0,10)
   // ── Stato wizard persistente via Zustand store ──────────────────────────
@@ -688,7 +716,7 @@ function WizardAvviso({ proc, onClose, notify }) {
         if (av.offerta_minima)        setOffertaMinima_(av.offerta_minima)
         if (av.abbattimento)          setAbbattimento_(av.abbattimento)
         if (av.rilancio_min)          setRilancioMin_(av.rilancio_min)
-        if (av.cauzione)              setCauzione(av.cauzione)
+        if (av.cauz_default)          setCauzione(av.cauz_default)
         if (av.diritti_default)       setDirittiAsta(av.diritti_default)
         if (av.termine_saldo)         setTermSaldo(av.termine_saldo)
         if (av.iban)                  setIbanProcedura(av.iban)
@@ -707,7 +735,7 @@ function WizardAvviso({ proc, onClose, notify }) {
         if (av.offerta_irrev_importo) setOffertaIrrevImporto(av.offerta_irrev_importo)
         if (av.testo_avvisa)          setTestoOfferta(av.testo_avvisa)
         if (av.lotti_manual)          try { setLotti(JSON.parse(av.lotti_manual)) } catch(e) {}
-        if (av.lotti_ids)             try { const ids = JSON.parse(av.lotti_ids); setLottiDbSel(ids); if (ids.length > 0) setLottiMode('db') } catch(e) {}
+        if (av.lotti_ids?.length)     { setLottiDbSel(av.lotti_ids); setLottiMode('db') }
         setAvvisoId(av.id)
       } else {
         setTestoOfferta(TESTO_OFFERTA_DEFAULT)
@@ -816,13 +844,15 @@ function WizardAvviso({ proc, onClose, notify }) {
         data_avviso: dataTermine, durata_rilancio: durataRilancio,
         prezzo_base: prezzoBase, offerta_minima: offertaMinima,
         abbattimento: abbattimento, rilancio_min: rilancioMin,
-        cauzione: cauzione, diritti_default: dirittiAsta, termine_saldo: termSaldo,
+        cauz_default: cauzione, diritti_default: dirittiAsta, termine_saldo: termSaldo,
         iban: ibanProcedura, intestaz_cc: intestazioneProcedura,
         saldo_commiss: saldoGestoreCommiss, iban_commiss: ibanCommissionario,
         referente: referente, note_finali: noteFinali,
-        offerta_irrev: offertaIrrevocabile, offerta_irrev_data: offertaIrrevData,
-        offerta_irrev_importo: offertaIrrevImporto, testo_avvisa: testoOfferta,
-        lotti_manual: JSON.stringify(lotti), lotti_ids: JSON.stringify(lottiDbSel),
+        offerta_irrev: offertaIrrevocabile,
+        offerta_irrev_data: offertaIrrevData,
+        offerta_irrev_importo: offertaIrrevImporto,
+        testo_avvisa: testoOfferta,
+        lotti_manual: JSON.stringify(lotti), lotti_ids: lottiDbSel,
         status: 'bozza',
       }
       let res
@@ -864,30 +894,7 @@ function WizardAvviso({ proc, onClose, notify }) {
   // Inp definito FUORI dalla funzione (sopra) sarebbe ideale, ma qui usiamo
   // un componente inline semplice con setter diretto — ok perché i setter
   // di useState hanno identità stabile, quindi non causano re-mount
-  const Inp = ({ label, val, set, placeholder='', type='text', full=false }) => (
-    <div className={full ? 'form-col-full form-group' : 'form-group'}>
-      <label className="form-label">{label}</label>
-      <input type={type} className="form-input"
-        value={val ?? ''}
-        onChange={e => set(e.target.value)}
-        placeholder={placeholder} />
-    </div>
-  )
 
-  // Input importo italiano — defaultValue + onBlur per evitare ogni problema di focus
-  const InpEur = ({ label, val, set, placeholder='Es: 5.000,00', full=false }) => (
-    <div className={full ? 'form-col-full form-group' : 'form-group'}>
-      <label className="form-label">{label}</label>
-      <div style={{position:'relative'}}>
-        <input className="form-input"
-          value={val ?? ''}
-          onChange={e => set(e.target.value)}
-          placeholder={placeholder}
-          style={{paddingLeft:28}} />
-        <span style={{position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:'var(--text3)',fontSize:13,pointerEvents:'none'}}>€</span>
-      </div>
-    </div>
-  )
 
   return (
     <div style={{display:'flex',flexDirection:'column',gap:16}}>
@@ -1081,7 +1088,28 @@ function WizardAvviso({ proc, onClose, notify }) {
               <Inp label="IBAN conto procedura (per saldo)" val={ibanProcedura} set={(v)=>{setIbanProcedura(v);save('ibanProcedura',v)}} placeholder="IT00 X000 0000 0000 0000 0000 000" full />
             )}
             {saldoGestoreCommiss && (
-              <Inp label="IBAN conto Commissionario (per saldo)" val={ibanCommissionario} set={(v)=>{setIbanCommissionario(v);save('ibanCommissionario',v)}} placeholder="IT00 X000 0000 0000 0000 0000 000" full />
+              <div className="form-group form-col-full">
+                <label className="form-label">IBAN conto Commissionario (per saldo)</label>
+                {(proc?.sedi||[]).filter(s=>s.iban).length > 0 ? (
+                  <select className="form-input" value={ibanCommissionario}
+                    onChange={e=>{setIbanCommissionario(e.target.value);save('ibanCommissionario',e.target.value)}}>
+                    <option value="">— Seleziona IBAN —</option>
+                    {(proc?.conti_commissionario||[]).map((cc,i)=>(
+                      <option key={i} value={cc.iban}>{cc.iban}{cc.banca ? ' — '+cc.banca : ''}</option>
+                    ))}
+                    <option value="__manual">Inserisci manualmente...</option>
+                  </select>
+                ) : (
+                  <input className="form-input" value={ibanCommissionario}
+                    onChange={e=>{setIbanCommissionario(e.target.value);save('ibanCommissionario',e.target.value)}}
+                    placeholder="IT00 X000 0000 0000 0000 0000 000" />
+                )}
+                {ibanCommissionario === '__manual' && (
+                  <input className="form-input" style={{marginTop:6}}
+                    placeholder="IT00 X000 0000 0000 0000 0000 000"
+                    onChange={e=>{setIbanCommissionario(e.target.value);save('ibanCommissionario',e.target.value)}} />
+                )}
+              </div>
             )}
             <Inp label="Intestazione conto procedura" val={intestazioneProcedura} set={(v)=>{setIntestazioneProcedura(v);save('intestazioneProcedura',v)}} placeholder="Es: Liquidazione Giudiziale Rossi S.r.l." full />
           </div>
