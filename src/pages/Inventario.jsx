@@ -131,7 +131,7 @@ Rispondi SOLO con JSON valido (no markdown, no commenti):
   "modello": "modello se visibile, stringa vuota se non visibile",
   "anno_prod": "anno se stimabile, stringa vuota altrimenti",
   "stato": "Ottimo|Buono|Discreto|Deteriorato|Non funzionante",
-  "danni": "descrizione danni visibili, stringa vuota se nessun danno",
+  "danni": "descrizione dettagliata di TUTTI i danni, difetti, usure, graffi, ammaccature, rotture, ossidazioni, macchie o anomalie visibili nelle foto. Sii specifico su tipo e posizione del danno. Scrivi \"Nessun danno rilevato\" solo se il bene è visibilmente integro",
   "val_mercato": numero intero euro (valore mercato realistico per bene usato),
   "val_giud": numero intero euro (vendita giudiziaria, tipicamente 60-75% del mercato),
   "targa": "se veicolo, stringa vuota altrimenti",
@@ -155,7 +155,7 @@ Rispondi SOLO con JSON valido (no markdown, no commenti):
         modello:     f.modello     || json.modello     || '',
         anno_prod:   f.anno_prod   || json.anno_prod   || '',
         stato:       json.stato    || f.stato,
-        danni:       json.danni    || f.danni          || '',
+        danni:       json.danni !== undefined ? json.danni : (f.danni || ''),
         val_mercato: json.val_mercato || f.val_mercato,
         val_giud:    json.val_giud    || f.val_giud,
         // campi veicolo
