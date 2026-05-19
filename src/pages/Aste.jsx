@@ -1103,9 +1103,30 @@ export default function Aste() {
         </div>
       </div>
 
-      <Modal open={showWizard} onClose={()=>setShowWizard(false)} title="Genera Avviso di Vendita" wide>
-        <WizardAvviso proc={currentProc} onClose={()=>setShowWizard(false)} notify={notify} />
-      </Modal>
+      {/* Overlay modale — WizardAvviso SEMPRE montato, nascosto con visibility */}
+      <div style={{
+        position:'fixed', inset:0, zIndex:100,
+        display: showWizard ? 'flex' : 'none',
+        alignItems:'center', justifyContent:'center',
+        background:'rgba(0,0,0,0.75)', padding:24
+      }} onClick={e => { if (e.target === e.currentTarget) setShowWizard(false) }}>
+        <div style={{
+          background:'var(--bg2)', border:'1px solid var(--border)',
+          borderRadius:'var(--radius-lg)', width:'100%', maxWidth:920,
+          maxHeight:'92vh', display:'flex', flexDirection:'column',
+          boxShadow:'var(--shadow)'
+        }}>
+          <div style={{padding:'18px 24px',borderBottom:'1px solid var(--border)',
+            display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0}}>
+            <div style={{fontSize:15,fontWeight:600}}>Genera Avviso di Vendita</div>
+            <button onClick={()=>setShowWizard(false)} style={{background:'none',border:'none',
+              color:'var(--text2)',fontSize:22,cursor:'pointer',lineHeight:1,padding:'2px 6px'}}>×</button>
+          </div>
+          <div style={{flex:1,overflowY:'auto',padding:24}}>
+            <WizardAvviso proc={currentProc} onClose={()=>setShowWizard(false)} notify={notify} />
+          </div>
+        </div>
+      </div>
     </>
   )
 }
