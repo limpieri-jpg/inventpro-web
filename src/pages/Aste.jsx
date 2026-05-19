@@ -789,7 +789,7 @@ function WizardAvviso({ proc, onClose, notify }) {
           <div className="card-title">📋 Modalità di vendita</div>
           <span style={{fontSize:11,color:'var(--text3)'}}>{openCards.modalita ? '▲' : '▼'}</span>
         </div>
-        {openCards.modalita && <div className="card-body">
+        {openCards.modalita && (<div className="card-body">
           <div className="form-grid">
             <div className="form-col-full form-group">
               <label className="form-label">Tipo di vendita</label>
@@ -807,7 +807,8 @@ function WizardAvviso({ proc, onClose, notify }) {
             <Inp label="N° esperimento di vendita" val={nEsperimento} set={setNEsperimento} placeholder="Es: 1" />
           </div>
         </div>
-      </div>}
+      </div>
+      )}
 
       {/* Offerta irrevocabile */}
       <div className="card">
@@ -815,7 +816,7 @@ function WizardAvviso({ proc, onClose, notify }) {
           <div className="card-title">📩 Offerta irrevocabile pre-asta</div>
           <span style={{fontSize:11,color:'var(--text3)'}}>{openCards.offerta ? '▲' : '▼'}</span>
         </div>
-        {openCards.offerta && <div style={{padding:'0 20px 16px'}}>
+        {openCards.offerta && (<div style={{padding:'0 20px 16px'}}>
           <label style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer',fontSize:13,padding:'8px 0'}}>
           <label style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer',fontSize:13,fontWeight:'normal'}}>
             <input type="checkbox" checked={offertaIrrevocabile} onChange={e=>setOffertaIrrevocabile(e.target.checked)} />
@@ -872,7 +873,8 @@ function WizardAvviso({ proc, onClose, notify }) {
             </div>
           </div>
         )}
-      </div>}
+      </div>
+      )}
 
       {/* Date */}
       <div className="card">
@@ -880,7 +882,7 @@ function WizardAvviso({ proc, onClose, notify }) {
           <div className="card-title">📅 Date e orari</div>
           <span style={{fontSize:11,color:'var(--text3)'}}>{openCards.date ? '▲' : '▼'}</span>
         </div>
-        {openCards.date && <div className="card-body">
+        {openCards.date && (<div className="card-body">
           <div className="form-grid">
             {/* ASINCRONA: data inizio + data fine */}
             {isAsincrona && (<>
@@ -911,7 +913,8 @@ function WizardAvviso({ proc, onClose, notify }) {
             </>)}
           </div>
         </div>
-      </div>}
+      </div>
+      )}
 
       {/* Prezzi globali */}
       <div className="card">
@@ -919,7 +922,7 @@ function WizardAvviso({ proc, onClose, notify }) {
           <div className="card-title">💶 Prezzi e condizioni</div>
           <span style={{fontSize:11,color:'var(--text3)'}}>{openCards.prezzi ? '▲' : '▼'}</span>
         </div>
-        {openCards.prezzi && <div className="card-body">
+        {openCards.prezzi && (<div className="card-body">
           <div className="form-grid">
             <InpEur label="Prezzo base (€)" val={prezzoBase} set={setPrezzoBase} />
             <InpEur label="Offerta minima ammissibile (€)" val={offertaMinima} set={setOffertaMinima} placeholder="Vuoto = uguale al prezzo base" />
@@ -944,7 +947,8 @@ function WizardAvviso({ proc, onClose, notify }) {
             <Inp label="Intestazione conto procedura" val={intestazioneProcedura} set={setIntestazioneProcedura} placeholder="Es: Liquidazione Giudiziale Rossi S.r.l." full />
           </div>
         </div>
-      </div>}
+      </div>
+      )}
 
       {/* Lotti */}
       <div className="card">
@@ -957,7 +961,7 @@ function WizardAvviso({ proc, onClose, notify }) {
               onClick={()=>setLottiMode('db')}>🗄 Da procedura</button>
           </div>
         </div>
-        {openCards.lotti && <div className="card-body" style={{display:'flex',flexDirection:'column',gap:12}}>
+        {openCards.lotti && (<div className="card-body" style={{display:'flex',flexDirection:'column',gap:12}}>
           {lottiMode === 'manual' ? (<>
             {lotti.map((l,i) => (
               <LottoRow key={i} lotto={l} idx={i} total={lotti.length}
@@ -997,7 +1001,8 @@ function WizardAvviso({ proc, onClose, notify }) {
             </div>
           )}
         </div>
-      </div>}
+      </div>
+      )}
 
       {/* Contatti e note */}
       <div className="card">
@@ -1005,7 +1010,7 @@ function WizardAvviso({ proc, onClose, notify }) {
           <div className="card-title">📞 Contatti e note</div>
           <span style={{fontSize:11,color:'var(--text3)'}}>{openCards.contatti ? '▲' : '▼'}</span>
         </div>
-        {openCards.contatti && <div className="card-body">
+        {openCards.contatti && (<div className="card-body">
           <div className="form-grid">
             <Inp label="Referente per informazioni e visite" val={referente} set={setReferente} full />
             <div className="form-col-full form-group">
@@ -1016,7 +1021,8 @@ function WizardAvviso({ proc, onClose, notify }) {
             </div>
           </div>
         </div>
-      </div>}
+      </div>
+      )}
 
       {/* Azioni */}
       <div style={{display:'flex',justifyContent:'flex-end',gap:10,paddingBottom:24}}>
