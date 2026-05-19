@@ -618,6 +618,8 @@ function WizardAvviso({ proc, onClose, notify }) {
   const [testoOfferta, setTestoOfferta]       = useState('')
   const [savingTesto, setSavingTesto]         = useState(false)
   const [gen, setGen]                         = useState(false)
+  const [openCards, setOpenCards] = useState({modalita:true,lotti:false,prezzi:false,date:false,offerta:false,contatti:false})
+  const toggleCard = (k) => setOpenCards(s=>({...s,[k]:!s[k]}))
 
   const isAsincrona  = tipoAsta === 'asincrona_pvp' || tipoAsta === 'asincrona_amag'
   const isMistaWiz   = tipoAsta === 'mista'
@@ -783,8 +785,11 @@ function WizardAvviso({ proc, onClose, notify }) {
 
       {/* Modalità + Tipo bene + Esperimento */}
       <div className="card">
-        <div className="card-header"><div className="card-title">📋 Modalità di vendita</div></div>
-        <div className="card-body">
+        <div className="card-header" style={{cursor:'pointer'}} onClick={()=>toggleCard('modalita')}>
+          <div className="card-title">📋 Modalità di vendita</div>
+          <span style={{fontSize:11,color:'var(--text3)'}}>{openCards.modalita ? '▲' : '▼'}</span>
+        </div>
+        {openCards.modalita && <div className="card-body">
           <div className="form-grid">
             <div className="form-col-full form-group">
               <label className="form-label">Tipo di vendita</label>
@@ -804,10 +809,16 @@ function WizardAvviso({ proc, onClose, notify }) {
         </div>
       </div>
 
+      </div>}
+
       {/* Offerta irrevocabile */}
       <div className="card">
-        <div className="card-header" style={{flexDirection:'column',alignItems:'flex-start',gap:8}}>
+        <div className="card-header" style={{cursor:'pointer'}} onClick={()=>toggleCard('offerta')}>
           <div className="card-title">📩 Offerta irrevocabile pre-asta</div>
+          <span style={{fontSize:11,color:'var(--text3)'}}>{openCards.offerta ? '▲' : '▼'}</span>
+        </div>
+        {openCards.offerta && <div style={{padding:'0 20px 16px'}}>
+          <label style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer',fontSize:13,padding:'8px 0'}}>
           <label style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer',fontSize:13,fontWeight:'normal'}}>
             <input type="checkbox" checked={offertaIrrevocabile} onChange={e=>setOffertaIrrevocabile(e.target.checked)} />
             È stata ricevuta un&apos;offerta irrevocabile cauzionata prima dell&apos;asta
@@ -865,10 +876,15 @@ function WizardAvviso({ proc, onClose, notify }) {
         )}
       </div>
 
+      </div>}
+
       {/* Date */}
       <div className="card">
-        <div className="card-header"><div className="card-title">📅 Date e orari</div></div>
-        <div className="card-body">
+        <div className="card-header" style={{cursor:'pointer'}} onClick={()=>toggleCard('date')}>
+          <div className="card-title">📅 Date e orari</div>
+          <span style={{fontSize:11,color:'var(--text3)'}}>{openCards.date ? '▲' : '▼'}</span>
+        </div>
+        {openCards.date && <div className="card-body">
           <div className="form-grid">
             {/* ASINCRONA: data inizio + data fine */}
             {isAsincrona && (<>
@@ -901,10 +917,15 @@ function WizardAvviso({ proc, onClose, notify }) {
         </div>
       </div>
 
+      </div>}
+
       {/* Prezzi globali */}
       <div className="card">
-        <div className="card-header"><div className="card-title">💶 Prezzi e condizioni</div></div>
-        <div className="card-body">
+        <div className="card-header" style={{cursor:'pointer'}} onClick={()=>toggleCard('prezzi')}>
+          <div className="card-title">💶 Prezzi e condizioni</div>
+          <span style={{fontSize:11,color:'var(--text3)'}}>{openCards.prezzi ? '▲' : '▼'}</span>
+        </div>
+        {openCards.prezzi && <div className="card-body">
           <div className="form-grid">
             <InpEur label="Prezzo base (€)" val={prezzoBase} set={setPrezzoBase} />
             <InpEur label="Offerta minima ammissibile (€)" val={offertaMinima} set={setOffertaMinima} placeholder="Vuoto = uguale al prezzo base" />
@@ -931,9 +952,11 @@ function WizardAvviso({ proc, onClose, notify }) {
         </div>
       </div>
 
+      </div>}
+
       {/* Lotti */}
       <div className="card">
-        <div className="card-header">
+        <div className="card-header" style={{cursor:'pointer'}} onClick={()=>toggleCard('lotti')}>
           <div className="card-title">📦 Lotti in vendita</div>
           <div style={{display:'flex',gap:6}}>
             <button className="btn btn-ghost btn-sm" style={{fontWeight: lottiMode==='manual'?700:'normal'}}
@@ -942,7 +965,7 @@ function WizardAvviso({ proc, onClose, notify }) {
               onClick={()=>setLottiMode('db')}>🗄 Da procedura</button>
           </div>
         </div>
-        <div className="card-body" style={{display:'flex',flexDirection:'column',gap:12}}>
+        {openCards.lotti && <div className="card-body" style={{display:'flex',flexDirection:'column',gap:12}}>
           {lottiMode === 'manual' ? (<>
             {lotti.map((l,i) => (
               <LottoRow key={i} lotto={l} idx={i} total={lotti.length}
@@ -984,10 +1007,15 @@ function WizardAvviso({ proc, onClose, notify }) {
         </div>
       </div>
 
+      </div>}
+
       {/* Contatti e note */}
       <div className="card">
-        <div className="card-header"><div className="card-title">📞 Contatti e note</div></div>
-        <div className="card-body">
+        <div className="card-header" style={{cursor:'pointer'}} onClick={()=>toggleCard('contatti')}>
+          <div className="card-title">📞 Contatti e note</div>
+          <span style={{fontSize:11,color:'var(--text3)'}}>{openCards.contatti ? '▲' : '▼'}</span>
+        </div>
+        {openCards.contatti && <div className="card-body">
           <div className="form-grid">
             <Inp label="Referente per informazioni e visite" val={referente} set={setReferente} full />
             <div className="form-col-full form-group">
@@ -999,6 +1027,8 @@ function WizardAvviso({ proc, onClose, notify }) {
           </div>
         </div>
       </div>
+
+      </div>}
 
       {/* Azioni */}
       <div style={{display:'flex',justifyContent:'flex-end',gap:10,paddingBottom:24}}>
