@@ -132,6 +132,11 @@ export const useStore = create((set, get) => ({
     return data || []
   },
 
+  // ── Wizard Aste (persiste tra le navigazioni) ───
+  wizardAste: {},
+  setWizardAste: (data) => set(s => ({ wizardAste: { ...s.wizardAste, ...data } })),
+  resetWizardAste: () => set({ wizardAste: {} }),
+
   // ── Avvisi ────────────────────────────────────
   fetchAvvisi: async (procId) => {
     const { data, error } = await supabase

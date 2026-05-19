@@ -3,6 +3,7 @@ import { getGenereTermini } from '../lib/genere'
 import { supabase } from '../lib/supabase'
 import { useStore } from '../store/useStore'
 import { Topbar, Modal, Empty } from '../components/layout'
+import { useStore as useStoreHook } from '../store/useStore'
 import { Download, Plus } from 'lucide-react'
 import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
          AlignmentType, BorderStyle, WidthType, ShadingType, LevelFormat,
@@ -569,9 +570,8 @@ const TESTO_OFFERTA_DEFAULT = mkTestoOfferta('', '')
 // ─── Wizard ───────────────────────────────────────────────────────────────────
 function WizardAvviso({ proc, onClose, notify }) {
   const today = new Date().toISOString().slice(0,10)
-  // ── Punto 1: ripristino stato da sessionStorage ────────────────────────────
-  const SS_KEY = 'inventpro_wizard_aste'
-  const savedState = (() => { try { return JSON.parse(sessionStorage.getItem(SS_KEY) || '{}') } catch { return {} } })()
+  // ── Stato wizard persistente via Zustand store ──────────────────────────
+  const { wizardAste: savedState, setWizardAste } = useStoreHook()
 
   const [tipoAsta, setTipoAsta]               = useState(savedState.tipoAsta || 'asincrona_pvp')
   const [tipoBene, setTipoBene]               = useState(savedState.tipoBene || 'mobile')
@@ -582,8 +582,9 @@ function WizardAvviso({ proc, onClose, notify }) {
   const [oraTermine, setOraTermine]           = useState(savedState.oraTermine || '12:00')
   const [durataRilancio, setDurataRilancio]   = useState(savedState.durataRilancio || '1')           // minuti
   const [termineOfferte, setTermineOfferte]   = useState(today)         // sincrona: termine offerte cartacee
-  const [prezzoBase, setPrezzoBase]           = useState('')
-  const [offertaMinima, setOffertaMinima]     = useState('')
+  const [prezzoBase, setPrezzoBase]           = useState(savedState.prezzoBase || '')
+  const [offertaMinima, setOffertaMinima]     = useState(savedState.offertaMinima || '')
+  const [abbattimento, setAbbattimento]       = useState(savedState.abbattimento || '')
   const [rilancioMin, setRilancioMin]         = useState('')
   const [cauzione, setCauzione]               = useState(savedState.cauzione || '10')
   const [dirittiAsta, setDirittiAsta]         = useState(savedState.dirittiAsta || '2')
@@ -628,18 +629,18 @@ function WizardAvviso({ proc, onClose, notify }) {
   const isMistaWiz   = tipoAsta === 'mista'
   const isSincrona   = tipoAsta === 'sincrona_pvp' || tipoAsta === 'sincrona_amag'
 
-  // ── Salva stato wizard in sessionStorage ────────────────────────────────────
+  // ── Salva stato wizard nello store Zustand ────────────────────────────────
   useEffect(() => {
     try {
-      sessionStorage.setItem(SS_KEY, JSON.stringify({
+      setWizardAste({
         tipoAsta, tipoBene, nEsperimento, dataAsta, oraAsta, dataTermine, oraTermine,
-        durataRilancio, termineOfferte, prezzoBase, offertaMinima, rilancioMin,
+        durataRilancio, termineOfferte, prezzoBase, offertaMinima, rilancioMin, abbattimento,
         saldoGestoreCommiss, ibanCommissionario,
         cauzione, dirittiAsta, termSaldo, ibanProcedura, intestazioneProcedura,
         ibanCauzione, bancaCauzione, ibanDiritti, bancaDiritti,
         referente, noteFinali, offertaIrrevocabile, offertaIrrevGg, offertaIrrevMm,
         offertaIrrevAa, offertaIrrevImporto, testoOfferta
-      }))
+      })
     } catch {}
   }, [tipoAsta, tipoBene, dataAsta, oraAsta, dataTermine, oraTermine,
       prezzoBase, offertaMinima, rilancioMin, cauzione, ibanProcedura,
@@ -763,8 +764,8 @@ function WizardAvviso({ proc, onClose, notify }) {
     <div className={full ? 'form-col-full form-group' : 'form-group'}>
       <label className="form-label">{label}</label>
       <input type={type} className="form-input"
-        defaultValue={val}
-        onBlur={e => set(e.target.value)}
+        value={val ?? ''}
+        onChange={e => set(e.target.value)}
         placeholder={placeholder} />
     </div>
   )
@@ -775,8 +776,8 @@ function WizardAvviso({ proc, onClose, notify }) {
       <label className="form-label">{label}</label>
       <div style={{position:'relative'}}>
         <input className="form-input"
-          defaultValue={val}
-          onBlur={e => set(e.target.value)}
+          value={val ?? ''}
+          onChange={e => set(e.target.value)}
           placeholder={placeholder}
           style={{paddingLeft:28}} />
         <span style={{position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:'var(--text3)',fontSize:13,pointerEvents:'none'}}>€</span>
@@ -880,80 +881,6 @@ function WizardAvviso({ proc, onClose, notify }) {
         )}
       </div>
 
-      {/* Date */}
-      <div className="card">
-        <div className="card-header" style={{cursor:'pointer'}} onClick={()=>toggleCard('date')}>
-          <div className="card-title">📅 Date e orari</div>
-          <span style={{fontSize:11,color:'var(--text3)'}}>{openCards.date ? '▲' : '▼'}</span>
-        </div>
-        {openCards.date && (<div className="card-body">
-          <div className="form-grid">
-            {/* ASINCRONA: data inizio + data fine */}
-            {isAsincrona && (<>
-              <Inp label="Data inizio asta" val={dataAsta} set={setDataAsta} type="date" />
-              <Inp label="Ora inizio asta" val={oraAsta} set={setOraAsta} placeholder="12:00" />
-              <Inp label="Data fine asta" val={dataTermine} set={setDataTermine} type="date" />
-              <Inp label="Ora fine asta" val={oraTermine} set={setOraTermine} placeholder="12:00" />
-              <Inp label="Extra time / Durata rilanci (minuti)" val={durataRilancio} set={setDurataRilancio} placeholder="1" />
-            </>)}
-            {/* SINCRONA TELEMATICA: data/ora inizio + durata rilanci + termine offerte */}
-            {isSincrona && !isMistaWiz && (<>
-              <Inp label="Data asta" val={dataAsta} set={setDataAsta} type="date" />
-              <Inp label="Ora inizio asta" val={oraAsta} set={setOraAsta} placeholder="12:00" />
-              <Inp label="Termine presentazione offerte" val={termineOfferte} set={setTermineOfferte} type="date" />
-              <Inp label="Ora termine offerte" val={oraTermine} set={setOraTermine} placeholder="12:00" />
-              <Inp label="Durata rilanci (minuti)" val={durataRilancio} set={setDurataRilancio} placeholder="1" />
-            </>)}
-            {/* SINCRONA MISTA: data/ora asta in presenza + termine offerte cartacee + durata rilanci */}
-            {isMistaWiz && (<>
-              <Inp label="Data asta in presenza" val={dataAsta} set={setDataAsta} type="date" />
-              <Inp label="Ora inizio asta" val={oraAsta} set={setOraAsta} placeholder="12:00" />
-              <Inp label="Termine offerte cartacee" val={termineOfferte} set={setTermineOfferte} type="date" />
-              <Inp label="Ora termine offerte" val={oraTermine} set={setOraTermine} placeholder="12:00" />
-              <div className="form-group" style={{gridColumn:'1/-1',fontSize:12,color:'var(--text3)',marginTop:-8}}>
-                Le offerte cartacee devono pervenire entro l&apos;ora indicata del giorno selezionato
-              </div>
-              <Inp label="Durata rilanci (minuti)" val={durataRilancio} set={setDurataRilancio} placeholder="1" />
-            </>)}
-          </div>
-        </div>
-      )}
-      </div>
-
-      {/* Prezzi globali */}
-      <div className="card">
-        <div className="card-header" style={{cursor:'pointer'}} onClick={()=>toggleCard('prezzi')}>
-          <div className="card-title">💶 Prezzi e condizioni</div>
-          <span style={{fontSize:11,color:'var(--text3)'}}>{openCards.prezzi ? '▲' : '▼'}</span>
-        </div>
-        {openCards.prezzi && (<div className="card-body">
-          <div className="form-grid">
-            <InpEur label="Prezzo base (€)" val={prezzoBase} set={setPrezzoBase} />
-            <InpEur label="Offerta minima ammissibile (€)" val={offertaMinima} set={setOffertaMinima} placeholder="Vuoto = uguale al prezzo base" />
-            <InpEur label="Rilancio minimo (€)" val={rilancioMin} set={setRilancioMin} placeholder="Es: 250,00" />
-            <Inp label="Deposito cauzionale (%)" val={cauzione} set={setCauzione} placeholder="10" />
-            <Inp label="Diritti d'asta (%)" val={dirittiAsta} set={setDirittiAsta} placeholder="2" />
-            <Inp label="Termine saldo prezzo (giorni)" val={termSaldo} set={setTermSaldo} placeholder="120 (PVP) / 30 (AsteMagazine)" />
-            {/* Toggle commissionario saldo */}
-            <div className="form-group form-col-full" style={{display:'flex',alignItems:'center',gap:12,padding:'4px 0'}}>
-              <label style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer',fontSize:13}}>
-                <input type="checkbox" checked={saldoGestoreCommiss} onChange={e=>setSaldoGestoreCommiss(e.target.checked)}
-                  style={{width:16,height:16,cursor:'pointer'}}/>
-                <span>Saldo gestito dal Commissionario</span>
-              </label>
-            </div>
-            {!saldoGestoreCommiss && (
-              <Inp label="IBAN conto procedura (per saldo)" val={ibanProcedura} set={setIbanProcedura} placeholder="IT00 X000 0000 0000 0000 0000 000" full />
-            )}
-            {saldoGestoreCommiss && (
-              <Inp label="IBAN conto Commissionario (per saldo)" val={ibanCommissionario} set={setIbanCommissionario} placeholder="IT00 X000 0000 0000 0000 0000 000" full />
-            )}
-            <Inp label="Intestazione conto procedura" val={intestazioneProcedura} set={setIntestazioneProcedura} placeholder="Es: Liquidazione Giudiziale Rossi S.r.l." full />
-          </div>
-        </div>
-      )}
-      </div>
-
       {/* Lotti */}
       <div className="card">
         <div className="card-header" style={{cursor:'pointer'}} onClick={()=>toggleCard('lotti')}>
@@ -1008,6 +935,96 @@ function WizardAvviso({ proc, onClose, notify }) {
       )}
       </div>
 
+      {/* Prezzi globali */}
+      <div className="card">
+        <div className="card-header" style={{cursor:'pointer'}} onClick={()=>toggleCard('prezzi')}>
+          <div className="card-title">💶 Prezzi e condizioni</div>
+          <span style={{fontSize:11,color:'var(--text3)'}}>{openCards.prezzi ? '▲' : '▼'}</span>
+        </div>
+        {openCards.prezzi && (<div className="card-body">
+          <div className="form-grid">
+            <InpEur label="Prezzo base (€)" val={prezzoBase} set={(v) => {
+              setPrezzoBase(v)
+              const base = parseFloat((v||'').replace(/\./g,'').replace(',','.')) || 0
+              const pct  = Number(abbattimento) || 0
+              if (base > 0 && pct > 0) setOffertaMinima((base*(1-pct/100)).toFixed(2).replace('.',','))
+              else setOffertaMinima('')
+            }} />
+            <div className="form-group">
+              <label className="form-label">Abbattimento (%)</label>
+              <input className="form-input" value={abbattimento ?? ''} onChange={e => {
+                setAbbattimento(e.target.value)
+                const base = parseFloat((prezzoBase||'').replace(/\./g,'').replace(',','.')) || 0
+                const pct  = Number(e.target.value) || 0
+                if (base > 0 && pct > 0) setOffertaMinima((base*(1-pct/100)).toFixed(2).replace('.',','))
+                else setOffertaMinima('')
+              }} placeholder="Es: 25" />
+            </div>
+            <InpEur label="Offerta minima ammissibile (€)" val={offertaMinima} set={setOffertaMinima} placeholder="Vuoto = uguale al prezzo base" />
+            <InpEur label="Rilancio minimo (€)" val={rilancioMin} set={setRilancioMin} placeholder="Es: 250,00" />
+            <Inp label="Deposito cauzionale (%)" val={cauzione} set={setCauzione} placeholder="10" />
+            <Inp label="Diritti d'asta (%)" val={dirittiAsta} set={setDirittiAsta} placeholder="2" />
+            <Inp label="Termine saldo prezzo (giorni)" val={termSaldo} set={setTermSaldo} placeholder="120 (PVP) / 30 (AsteMagazine)" />
+            {/* Toggle commissionario saldo */}
+            <div className="form-group form-col-full" style={{display:'flex',alignItems:'center',gap:12,padding:'4px 0'}}>
+              <label style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer',fontSize:13}}>
+                <input type="checkbox" checked={saldoGestoreCommiss} onChange={e=>setSaldoGestoreCommiss(e.target.checked)}
+                  style={{width:16,height:16,cursor:'pointer'}}/>
+                <span>Saldo gestito dal Commissionario</span>
+              </label>
+            </div>
+            {!saldoGestoreCommiss && (
+              <Inp label="IBAN conto procedura (per saldo)" val={ibanProcedura} set={setIbanProcedura} placeholder="IT00 X000 0000 0000 0000 0000 000" full />
+            )}
+            {saldoGestoreCommiss && (
+              <Inp label="IBAN conto Commissionario (per saldo)" val={ibanCommissionario} set={setIbanCommissionario} placeholder="IT00 X000 0000 0000 0000 0000 000" full />
+            )}
+            <Inp label="Intestazione conto procedura" val={intestazioneProcedura} set={setIntestazioneProcedura} placeholder="Es: Liquidazione Giudiziale Rossi S.r.l." full />
+          </div>
+        </div>
+      )}
+      </div>
+
+      {/* Date */}
+      <div className="card">
+        <div className="card-header" style={{cursor:'pointer'}} onClick={()=>toggleCard('date')}>
+          <div className="card-title">📅 Date e orari</div>
+          <span style={{fontSize:11,color:'var(--text3)'}}>{openCards.date ? '▲' : '▼'}</span>
+        </div>
+        {openCards.date && (<div className="card-body">
+          <div className="form-grid">
+            {/* ASINCRONA: data inizio + data fine */}
+            {isAsincrona && (<>
+              <Inp label="Data inizio asta" val={dataAsta} set={setDataAsta} type="date" />
+              <Inp label="Ora inizio asta" val={oraAsta} set={setOraAsta} placeholder="12:00" />
+              <Inp label="Data fine asta" val={dataTermine} set={setDataTermine} type="date" />
+              <Inp label="Ora fine asta" val={oraTermine} set={setOraTermine} placeholder="12:00" />
+              <Inp label="Extra time / Durata rilanci (minuti)" val={durataRilancio} set={setDurataRilancio} placeholder="1" />
+            </>)}
+            {/* SINCRONA TELEMATICA: data/ora inizio + durata rilanci + termine offerte */}
+            {isSincrona && !isMistaWiz && (<>
+              <Inp label="Data asta" val={dataAsta} set={setDataAsta} type="date" />
+              <Inp label="Ora inizio asta" val={oraAsta} set={setOraAsta} placeholder="12:00" />
+              <Inp label="Termine presentazione offerte" val={termineOfferte} set={setTermineOfferte} type="date" />
+              <Inp label="Ora termine offerte" val={oraTermine} set={setOraTermine} placeholder="12:00" />
+              <Inp label="Durata rilanci (minuti)" val={durataRilancio} set={setDurataRilancio} placeholder="1" />
+            </>)}
+            {/* SINCRONA MISTA: data/ora asta in presenza + termine offerte cartacee + durata rilanci */}
+            {isMistaWiz && (<>
+              <Inp label="Data asta in presenza" val={dataAsta} set={setDataAsta} type="date" />
+              <Inp label="Ora inizio asta" val={oraAsta} set={setOraAsta} placeholder="12:00" />
+              <Inp label="Termine offerte cartacee" val={termineOfferte} set={setTermineOfferte} type="date" />
+              <Inp label="Ora termine offerte" val={oraTermine} set={setOraTermine} placeholder="12:00" />
+              <div className="form-group" style={{gridColumn:'1/-1',fontSize:12,color:'var(--text3)',marginTop:-8}}>
+                Le offerte cartacee devono pervenire entro l&apos;ora indicata del giorno selezionato
+              </div>
+              <Inp label="Durata rilanci (minuti)" val={durataRilancio} set={setDurataRilancio} placeholder="1" />
+            </>)}
+          </div>
+        </div>
+      )}
+      </div>
+
       {/* Contatti e note */}
       <div className="card">
         <div className="card-header" style={{cursor:'pointer'}} onClick={()=>toggleCard('contatti')}>
@@ -1055,29 +1072,24 @@ export default function Aste() {
   )
 
   return (
-    <div style={{display:'flex', height:'100%', overflow:'hidden'}}>
-      {/* ── Colonna sinistra: info + pulsante ── */}
-      <div style={{
-        width: showWizard ? 260 : '100%',
-        minWidth: showWizard ? 260 : undefined,
-        borderRight: showWizard ? '1px solid var(--border)' : 'none',
-        display:'flex', flexDirection:'column', overflow:'hidden', transition:'width 0.2s'
-      }}>
-        <Topbar title="Aste e Vendite" subtitle={currentProc.nome||''} />
-        <div style={{flex:1, overflowY:'auto', padding:16, display:'flex', flexDirection:'column', gap:12}}>
-          <button className="btn btn-primary" style={{width:'100%'}} onClick={()=>setShowWizard(w=>!w)}>
-            {showWizard ? '✕ Chiudi wizard' : <><Plus size={14}/> Nuovo avviso di vendita</>}
-          </button>
+    <>
+      <Topbar title="Aste e Vendite" subtitle={currentProc.nome||''} actions={
+        <button className="btn btn-primary btn-sm" onClick={()=>setShowWizard(true)}>
+          <Plus size={14}/> Nuovo avviso
+        </button>
+      }/>
+      <div style={{flex:1,overflowY:'auto',padding:24}}>
+        <div style={{maxWidth:900,margin:'0 auto',display:'flex',flexDirection:'column',gap:20}}>
           <div className="card">
-            <div className="card-header"><div className="card-title" style={{fontSize:13}}>🏛 Procedura</div></div>
+            <div className="card-header"><div className="card-title">🏛 Procedura attiva</div></div>
             <div className="card-body">
-              <div style={{display:'flex',flexDirection:'column',gap:4,fontSize:12}}>
-                {[['Nome',currentProc.nome],['Tipo',currentProc.tipo],
-                  ['R.G.',(currentProc.num||'')+(currentProc.anno?'/'+currentProc.anno:'')],
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'6px 24px',fontSize:13}}>
+                {[['Procedura',currentProc.nome],['Tipo',currentProc.tipo],
+                  ['N. R.G.',(currentProc.num||'')+(currentProc.anno?'/'+currentProc.anno:'')],
                   ['Tribunale',currentProc.tribunale],['Giudice',currentProc.giudice],
                   ['Curatore',currentProc.curatore]].map(([l,v])=>(
-                  <div key={l} style={{display:'flex',gap:6}}>
-                    <span style={{color:'var(--text3)',minWidth:70}}>{l}</span>
+                  <div key={l} style={{display:'flex',gap:8}}>
+                    <span style={{color:'var(--text3)',minWidth:110}}>{l}</span>
                     <span style={{fontWeight:500}}>{v||'\u2014'}</span>
                   </div>
                 ))}
@@ -1087,18 +1099,9 @@ export default function Aste() {
         </div>
       </div>
 
-      {/* ── Colonna destra: wizard (sempre montato, non si smonta) ── */}
-      {showWizard && (
-        <div style={{flex:1, display:'flex', flexDirection:'column', overflow:'hidden'}}>
-          <div style={{height:48,background:'var(--bg2)',borderBottom:'1px solid var(--border)',
-            display:'flex',alignItems:'center',padding:'0 20px',flexShrink:0}}>
-            <span style={{fontWeight:600,fontSize:15}}>Genera Avviso di Vendita</span>
-          </div>
-          <div style={{flex:1, overflowY:'auto'}}>
-            <WizardAvviso proc={currentProc} onClose={()=>setShowWizard(false)} notify={notify} />
-          </div>
-        </div>
-      )}
-    </div>
+      <Modal open={showWizard} onClose={()=>setShowWizard(false)} title="Genera Avviso di Vendita" wide>
+        <WizardAvviso proc={currentProc} onClose={()=>setShowWizard(false)} notify={notify} />
+      </Modal>
+    </>
   )
 }
