@@ -648,7 +648,7 @@ function WizardAvviso({ proc, onClose, notify }) {
   const [intestazioneProcedura, setIntestazioneProcedura] = useState(savedState.intestazioneProcedura || '')
   const [saldoGestoreCommiss, setSaldoGestoreCommiss] = useState(savedState.saldoGestoreCommiss || false)
   const [ibanCommissionario, setIbanCommissionario]   = useState(savedState.ibanCommissionario || '')
-  const [contiCommiss, setContiCommiss]         = useState([])  // da settings Supabase
+  const [contiCommiss, setContiCommiss]         = useState(() => { try { return JSON.parse(localStorage.getItem('ip_conti_commissionario') || '[]') } catch { return [] } })
   const [ibanCauzione, setIbanCauzione]         = useState('')
   const [bancaCauzione, setBancaCauzione]     = useState('')
   const [ibanDiritti, setIbanDiritti]         = useState('')
@@ -713,8 +713,8 @@ function WizardAvviso({ proc, onClose, notify }) {
   useEffect(() => {
     const load = async () => {
       // IBAN da settings
-      const { data: s } = await supabase.from('settings').select('iban_cauzione,banca_cauzione,iban_diritti,banca_diritti,conti_commissionario').maybeSingle()
-      if (s?.conti_commissionario?.length) setContiCommiss(s.conti_commissionario)
+      const { data: s } = await supabase.from('settings').select('iban_cauzione,banca_cauzione,iban_diritti,banca_diritti').maybeSingle()
+      // contiCommiss già caricati da localStorage nello useState iniziale
       if (s) {
         setIbanCauzione(s.iban_cauzione || 'IT63 Y031 0422 9030 0000 0400 014')
         setBancaCauzione(s.banca_cauzione || 'Deutsche Bank \u2014 Filiale di Lecco, Agenzia di Castello')

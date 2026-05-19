@@ -13,37 +13,31 @@ export default function Impostazioni() {
   const [studioIndirizzo, setStudioIndirizzo] = useState(localStorage.getItem('ip_studio_indirizzo') || '')
   const [logoPreview, setLogoPreview] = useState(localStorage.getItem('ip_logo') || null)
 
-  // Conti commissionario — salvati in Supabase tabella settings (colonna conti_commissionario JSONB)
-  const [contiCommiss, setContiCommiss] = useState([])
-  const [loadingConti, setLoadingConti] = useState(false)
-  const [savingConti, setSavingConti] = useState(false)
+  // Conti commissionario — salvati in localStorage (chiave ip_conti_commissionario)
+  // Lettura diretta dal localStorage ogni volta che il tab studio viene montato
+  const readConti = () => { try { return JSON.parse(localStorage.getItem('ip_conti_commissionario') || '[]') } catch { return [] } }
+  const [contiCommiss, setContiCommiss] = useState(readConti)
 
+  // Ricarica dal localStorage ogni volta che si apre il tab studio
   useEffect(() => {
-    const loadConti = async () => {
-      setLoadingConti(true)
-      const { data } = await supabase.from('settings').select('conti_commissionario').maybeSingle()
-      if (data?.conti_commissionario) setContiCommiss(data.conti_commissionario)
-      setLoadingConti(false)
-    }
-    loadConti()
-  }, [])
+    if (tab === 'studio') setContiCommiss(readConti())
+  }, [tab])
 
-  const addConto = () => setContiCommiss(cc => [...cc, { iban: '', banca: '', intestazione: '' }])
-  const removeConto = (i) => setContiCommiss(cc => cc.filter((_, j) => j !== i))
-  const updateConto = (i, field, val) => setContiCommiss(cc => cc.map((c, j) => j === i ? { ...c, [field]: val } : c))
+  // Helper: aggiorna stato E salva subito in localStorage (autoSave)
+  const setContiAndSave = (nuovi) => {
+    setContiCommiss(nuovi)
+    try { localStorage.setItem('ip_conti_commissionario', JSON.stringify(nuovi)) } catch {}
+  }
 
-  const salvaConti = async () => {
-    setSavingConti(true)
+  const addConto = () => setContiAndSave([...contiCommiss, { iban: '', banca: '', intestazione: '' }])
+  const removeConto = (i) => setContiAndSave(contiCommiss.filter((_, j) => j !== i))
+  const updateConto = (i, field, val) => setContiAndSave(contiCommiss.map((c, j) => j === i ? { ...c, [field]: val } : c))
+
+  const salvaConti = () => {
     try {
-      const { data: existing } = await supabase.from('settings').select('id').maybeSingle()
-      if (existing?.id) {
-        await supabase.from('settings').update({ conti_commissionario: contiCommiss }).eq('id', existing.id)
-      } else {
-        await supabase.from('settings').insert({ conti_commissionario: contiCommiss })
-      }
+      localStorage.setItem('ip_conti_commissionario', JSON.stringify(contiCommiss))
       notify('Conti commissionario salvati', 'ok')
     } catch(e) { notify('Errore: ' + e.message, 'err') }
-    finally { setSavingConti(false) }
   }
 
 
@@ -223,9 +217,7 @@ export default function Impostazioni() {
                 <button className="btn btn-ghost btn-sm" onClick={addConto}><Plus size={13}/> Aggiungi conto</button>
               </div>
               <div className="card-body">
-                {loadingConti ? (
-                  <div style={{textAlign:'center',padding:16,color:'var(--text3)'}}>Caricamento…</div>
-                ) : contiCommiss.length === 0 ? (
+                {contiCommiss.length === 0 ? (
                   <div style={{fontSize:13,color:'var(--text3)',padding:'8px 0'}}>
                     Nessun conto inserito. Aggiungi i conti IBAN del commissionario da usare negli avvisi di vendita.
                   </div>
