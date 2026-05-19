@@ -578,12 +578,12 @@ function WizardAvviso({ proc, onClose, notify }) {
   const [tipoAsta, setTipoAsta]               = useState(savedState.tipoAsta || 'asincrona_pvp')
   const [tipoBene, setTipoBene]               = useState(savedState.tipoBene || 'mobile')
   const [nEsperimento, setNEsperimento]       = useState(savedState.nEsperimento || '1')
-  const [dataAsta, setDataAsta]               = useState(today)
+  const [dataAsta, setDataAsta]               = useState(savedState.dataAsta || today)
   const [oraAsta, setOraAsta]                 = useState(savedState.oraAsta || '12:00')
-  const [dataTermine, setDataTermine]         = useState(today)
+  const [dataTermine, setDataTermine]         = useState(savedState.dataTermine || today)
   const [oraTermine, setOraTermine]           = useState(savedState.oraTermine || '12:00')
   const [durataRilancio, setDurataRilancio]   = useState(savedState.durataRilancio || '1')           // minuti
-  const [termineOfferte, setTermineOfferte]   = useState(today)         // sincrona: termine offerte cartacee
+  const [termineOfferte, setTermineOfferte]   = useState(savedState.termineOfferte || today)         // sincrona: termine offerte cartacee
   const [prezzoBase, setPrezzoBase_]          = useState(savedState.prezzoBase || '')
   const setPrezzoBase = (v) => { setPrezzoBase_(v); save('prezzoBase', v) }
   const [offertaMinima, setOffertaMinima_]    = useState(savedState.offertaMinima || '')
@@ -613,11 +613,11 @@ function WizardAvviso({ proc, onClose, notify }) {
   const [loadingLotti, setLoadingLotti]       = useState(false)
   const [lotti, setLotti]                     = useState([{ desc:'Lotto unico \u2014 tutti i beni inventariati', qta:1, base:'', offertaMinima:'', rilancio:'' }])
   // Offerta irrevocabile
-  const [offertaIrrevocabile, setOffertaIrrevocabile] = useState(false)
-  const [offertaIrrevGg,    setOffertaIrrevGg]    = useState('')
-  const [offertaIrrevMm,    setOffertaIrrevMm]    = useState('')
-  const [offertaIrrevAa,    setOffertaIrrevAa]    = useState('')
-  const [offertaIrrevImporto, setOffertaIrrevImporto] = useState('')
+  const [offertaIrrevocabile, setOffertaIrrevocabile] = useState(savedState.offertaIrrevocabile || false)
+  const [offertaIrrevGg,    setOffertaIrrevGg]    = useState(savedState.offertaIrrevGg || '')
+  const [offertaIrrevMm,    setOffertaIrrevMm]    = useState(savedState.offertaIrrevMm || '')
+  const [offertaIrrevAa,    setOffertaIrrevAa]    = useState(savedState.offertaIrrevAa || '')
+  const [offertaIrrevImporto, setOffertaIrrevImporto] = useState(savedState.offertaIrrevImporto || '')
   // computa data formattata gg/mm/aaaa
   const offertaIrrevData = [offertaIrrevGg, offertaIrrevMm, offertaIrrevAa].filter(Boolean).join('/')
 
@@ -712,11 +712,19 @@ function WizardAvviso({ proc, onClose, notify }) {
 
   // useCallback evita che la funzione cambi identità ad ogni render → LottoRow non si rimonta
   const handleLottoChange = useCallback((idx, field, val) => {
-    setLotti(ls => ls.map((x, j) => j === idx ? {...x, [field]: val} : x))
+    setLotti(ls => {
+      const next = ls.map((x, j) => j === idx ? {...x, [field]: val} : x)
+      save('lotti', next)
+      return next
+    })
   }, [])
 
   const handleLottoRemove = useCallback((idx) => {
-    setLotti(ls => ls.filter((_, j) => j !== idx))
+    setLotti(ls => {
+      const next = ls.filter((_, j) => j !== idx)
+      save('lotti', next)
+      return next
+    })
   }, [])
 
   // Lotti effettivi da passare a genAvviso
@@ -898,9 +906,9 @@ function WizardAvviso({ proc, onClose, notify }) {
           <div className="card-title">📦 Lotti in vendita</div>
           <div style={{display:'flex',gap:6}}>
             <button className="btn btn-ghost btn-sm" style={{fontWeight: lottiMode==='manual'?700:'normal'}}
-              onClick={()=>setLottiMode('manual')}>✏️ Manuale</button>
+              onClick={()=>{setLottiMode('manual');save('lottiMode','manual')}}>✏️ Manuale</button>
             <button className="btn btn-ghost btn-sm" style={{fontWeight: lottiMode==='db'?700:'normal'}}
-              onClick={()=>setLottiMode('db')}>🗄 Da procedura</button>
+              onClick={()=>{setLottiMode('db');save('lottiMode','db')}}>🗄 Da procedura</button>
           </div>
         </div>
         {openCards.lotti && (<div className="card-body" style={{display:'flex',flexDirection:'column',gap:12}}>
@@ -910,7 +918,7 @@ function WizardAvviso({ proc, onClose, notify }) {
                 onChange={handleLottoChange} onRemove={() => handleLottoRemove(i)} />
             ))}
             <button className="btn btn-ghost btn-sm" style={{alignSelf:'flex-start'}}
-              onClick={()=>setLotti(l=>[...l,{desc:'',qta:1,base:'',offertaMinima:'',rilancio:''}])}>
+              onClick={()=>setLotti(l=>{const n=[...l,{desc:'',qta:1,base:'',offertaMinima:'',rilancio:''}];save('lotti',n);return n})}>
               <Plus size={13}/> Aggiungi lotto
             </button>
           </>) : loadingLotti ? (
