@@ -740,11 +740,50 @@ function WizardAvviso({ proc, onClose, notify }) {
         return { ...l, articoli: arts || [] }
       }))
       setLottiDb(lottiConArticoli)
-      setLottiDbSel(lottiConArticoli.map(l => l.id))
+      const allIds = lottiConArticoli.map(l => l.id)
+      setLottiDbSel(allIds)
+      // Calcola prezzo base come somma dei prezzi base dei lotti
+      const totale = lottiConArticoli.reduce((s, l) => {
+        const v = parseFloat((l.prezzo_base||'').toString().replace(/\./g,'').replace(',','.')) || 0
+        return s + v
+      }, 0)
+      if (totale > 0) {
+        const fmtVal = totale.toFixed(2).replace('.', ',')
+        setPrezzoBase_(fmtVal)
+        save('prezzoBase', fmtVal)
+        // Calcola offerta minima se c'è abbattimento
+        const abbPct = parseFloat(abbattimento) || 0
+        if (abbPct > 0) {
+          const offMin = (totale * (1 - abbPct/100)).toFixed(2).replace('.', ',')
+          setOffertaMinima_(offMin)
+          save('offertaMinima', offMin)
+        }
+      }
       setLoadingLotti(false)
     }
     load()
   }, [lottiMode, proc.id])
+
+  // Ricalcola prezzo base quando cambiano i lotti selezionati
+  useEffect(() => {
+    if (lottiMode !== 'db' || lottiDb.length === 0) return
+    const selezionati = lottiDb.filter(l => lottiDbSel.includes(l.id))
+    const totale = selezionati.reduce((s, l) => {
+      const v = parseFloat((l.prezzo_base||'').toString().replace(/\./g,'').replace(',','.')) || 0
+      return s + v
+    }, 0)
+    if (totale > 0) {
+      const fmtVal = totale.toFixed(2).replace('.', ',')
+      setPrezzoBase_(fmtVal)
+      save('prezzoBase', fmtVal)
+      const abbPct = parseFloat(abbattimento) || 0
+      if (abbPct > 0) {
+        const offMin = (totale * (1 - abbPct/100)).toFixed(2).replace('.', ',')
+        setOffertaMinima_(offMin)
+        save('offertaMinima', offMin)
+      }
+    }
+  }, [lottiDbSel, lottiMode])
 
   // useCallback evita che la funzione cambi identità ad ogni render → LottoRow non si rimonta
   const handleLottoChange = useCallback((idx, field, val) => {
