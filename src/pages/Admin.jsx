@@ -388,10 +388,12 @@ function ProcedureUtente({ user, onClose }) {
 
   const load = async () => {
     setLoading(true)
-    const [{ data: procs }, { data: ass }] = await Promise.all([
-      supabase.from('procedure').select('id,nome,tipo,num,anno,tribunale,status').order('nome'),
-      supabase.from('procedure_utenti').select('proc_id').eq('user_id', user.id)
-    ])
+    const { data: procs } = await supabase
+      .from('procedure').select('id,nome,tipo,num,anno,tribunale,status').order('nome')
+    // Usa RPC SECURITY DEFINER per bypassare RLS e leggere assegnazioni di qualsiasi utente
+    const { data: ass, error: assErr } = await supabase
+      .rpc('get_procedure_utente', { target_user_id: user.id })
+    if (assErr) console.error('get_procedure_utente RPC error:', assErr.message)
     setTutte(procs || [])
     setAssegnate((ass || []).map(r => r.proc_id))
     setLoading(false)
