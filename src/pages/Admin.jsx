@@ -403,12 +403,17 @@ function ProcedureUtente({ user, onClose }) {
     setSaving(procId)
     try {
       if (isAssegnata) {
-        await supabase.from('procedure_utenti').delete()
-          .eq('user_id', user.id).eq('proc_id', procId)
+        const { error } = await supabase.rpc('remove_procedura_utente', {
+          target_user_id: user.id, target_proc_id: procId
+        })
+        if (error) throw error
         setAssegnate(a => a.filter(id => id !== procId))
         notify('Procedura rimossa', 'ok')
       } else {
-        await supabase.from('procedure_utenti').insert({ user_id: user.id, proc_id: procId })
+        const { error } = await supabase.rpc('assign_procedura_utente', {
+          target_user_id: user.id, target_proc_id: procId
+        })
+        if (error) throw error
         setAssegnate(a => [...a, procId])
         notify('Procedura assegnata', 'ok')
       }
@@ -421,7 +426,9 @@ function ProcedureUtente({ user, onClose }) {
     setSaving('all')
     const nuove = tutte.filter(p => !assegnate.includes(p.id))
     for (const p of nuove) {
-      await supabase.from('procedure_utenti').insert({ user_id: user.id, proc_id: p.id }).maybeSingle()
+      await supabase.rpc('assign_procedura_utente', {
+        target_user_id: user.id, target_proc_id: p.id
+      })
     }
     setAssegnate(tutte.map(p => p.id))
     setSaving(null)
