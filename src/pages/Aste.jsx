@@ -144,7 +144,7 @@ async function genAvviso(proc, lotti, opts, logoB64) {
     durataRilancio, termineOfferte,
     prezzoBase, offertaMinima, rilancioMin, cauzione, dirittiAsta,
     termSaldo, ibanProcedura, intestazioneProcedura,
-    saldoGestoreCommiss, ibanCommissionario,
+    saldoGestoreCommiss, ibanCommissionario, bancaCommissionario, intestCommissionario,
     ibanCauzione: _ibanCau, bancaCauzione: _bancaCau,
     ibanDiritti: _ibanDir, bancaDiritti: _bancaDir,
     referente, noteFinali,
@@ -402,7 +402,7 @@ async function genAvviso(proc, lotti, opts, logoB64) {
     P([B('IBAN:\u00a0 ' + IBAN_DIR)]),
     P([B('Causale: \u201c'), T(causale('dir')), B('\u201d')]),
     BR(),
-    BLT([T('Il saldo prezzo, dedotta la cauzione gi\u00e0 versata, dovr\u00e0 essere corrisposto entro '+saldo+' giorni dall\u2019aggiudicazione definitiva, a mezzo bonifico bancario sul conto corrente '), B(saldoGestoreCommiss ? 'del Commissionario' : ('della procedura intestato a ' + (intestazioneProcedura || proc.nome || '').toUpperCase())), T(' \u2013 IBAN: '), B(saldoGestoreCommiss ? (ibanCommissionario || '______________________________') : (ibanProcedura || '______________________________')), T('.')]),
+    BLT([T('Il saldo prezzo, dedotta la cauzione gi\u00e0 versata, dovr\u00e0 essere corrisposto entro '+saldo+' giorni dall\u2019aggiudicazione definitiva, a mezzo bonifico bancario sul conto corrente '), B(saldoGestoreCommiss ? ('del Commissionario intestato a ' + (intestCommissionario || proc.commissionario || 'Commissionario').toUpperCase()) : ('della procedura intestato a ' + (intestazioneProcedura || proc.nome || '').toUpperCase())), T(' \u2013 IBAN: '), B(saldoGestoreCommiss ? (ibanCommissionario || '______________________________') : (ibanProcedura || '______________________________')), T('.')]),
     BLT(T("In caso di mancato versamento del saldo prezzo, l\u2019aggiudicatario sar\u00e0 dichiarato decaduto e la procedura incamerer\u00e0 la cauzione a titolo di penale, salvo il diritto al risarcimento del maggior danno.")),
     BLT([T('Le eventuali offerte migliorative per un importo non inferiore al 10% del prezzo di aggiudicazione a norma dell\u2019art. 584 c.p.c. dovranno pervenire a mezzo PEC all\u2019indirizzo della procedura e in c.c. a '), B('progess@arubapec.it'), T(', entro 10 giorni dall\u2019aggiudicazione provvisoria.')]),
   ] : [
@@ -410,7 +410,8 @@ async function genAvviso(proc, lotti, opts, logoB64) {
     PSC([B('PAGAMENTO DEL SALDO PREZZO \u2013 ONERI FISCALI \u2013 DIRITTI D\u2019ASTA')]),
     P([T('Entro il termine di '), B(saldo + ' giorni'), T(' dalla data di aggiudicazione, oppure nel minor termine contenuto nell\u2019offerta irrevocabile (termine migliorativo), l\u2019aggiudicatario dovr\u00e0 provvedere al versamento integrale del saldo prezzo dovuto (oltre oneri di Legge ove dovuti), dedotta la cauzione gi\u00e0 versata, a mezzo bonifico bancario sul c/c '), B(saldoGestoreCommiss ? 'del Commissionario:' : 'intestato a:')]),
     BR(),
-    P([B('Beneficiario: '), T(saldoGestoreCommiss ? (proc.commissionario || 'Commissionario') : (intestazioneProcedura || proc.nome || '').toUpperCase())]),
+    P([B('Beneficiario: '), T(saldoGestoreCommiss ? (intestCommissionario || proc.commissionario || 'Commissionario').toUpperCase() : (intestazioneProcedura || proc.nome || '').toUpperCase())]),
+    P([B('Banca: '), T(saldoGestoreCommiss ? (bancaCommissionario || '______________________________') : '')]),
     P([B('IBAN: '), T(saldoGestoreCommiss ? (ibanCommissionario || '______________________________') : (ibanProcedura || '______________________________'))]),
     P([B('Causale: \u201c'), T(causale('saldo')), B('\u201d')]),
     BR(),
@@ -648,7 +649,9 @@ function WizardAvviso({ proc, onClose, notify, initialAvvisoId = null }) {
   const [ibanProcedura, setIbanProcedura]     = useState(savedState.ibanProcedura || '')
   const [intestazioneProcedura, setIntestazioneProcedura] = useState(savedState.intestazioneProcedura || '')
   const [saldoGestoreCommiss, setSaldoGestoreCommiss] = useState(savedState.saldoGestoreCommiss || false)
-  const [ibanCommissionario, setIbanCommissionario]   = useState(savedState.ibanCommissionario || '')
+  const [ibanCommissionario, setIbanCommissionario]         = useState(savedState.ibanCommissionario || '')
+  const [bancaCommissionario, setBancaCommissionario]       = useState(savedState.bancaCommissionario || '')
+  const [intestCommissionario, setIntestCommissionario]     = useState(savedState.intestCommissionario || '')
   const [contiCommiss, setContiCommiss]         = useState(() => { try { return JSON.parse(localStorage.getItem('ip_conti_commissionario') || '[]') } catch { return [] } })
   const [ibanCauzione, setIbanCauzione]         = useState('')
   const [bancaCauzione, setBancaCauzione]     = useState('')
@@ -749,6 +752,8 @@ function WizardAvviso({ proc, onClose, notify, initialAvvisoId = null }) {
         if (av.intestaz_cc)           setIntestazioneProcedura(av.intestaz_cc)
         if (av.saldo_commiss != null) setSaldoGestoreCommiss(av.saldo_commiss)
         if (av.iban_commiss)          setIbanCommissionario(av.iban_commiss)
+        if (av.banca_commiss)         setBancaCommissionario(av.banca_commiss)
+        if (av.intest_commiss)        setIntestCommissionario(av.intest_commiss)
         if (av.referente)             setReferente_(av.referente)
         if (av.note_finali)           setNoteFinali_(av.note_finali)
         if (av.offerta_irrev != null) setOffertaIrrevocabile(av.offerta_irrev)
@@ -875,6 +880,7 @@ function WizardAvviso({ proc, onClose, notify, initialAvvisoId = null }) {
         cauz_default: nn(cauzione), diritti_default: nn(dirittiAsta), termine_saldo: nn(termSaldo),
         iban: nn(ibanProcedura), intestaz_cc: nn(intestazioneProcedura),
         saldo_commiss: saldoGestoreCommiss, iban_commiss: nn(ibanCommissionario),
+        banca_commiss: nn(bancaCommissionario), intest_commiss: nn(intestCommissionario),
         referente: nn(referente), note_finali: nn(noteFinali),
         offerta_irrev: offertaIrrevocabile,
         offerta_irrev_data: nn(offertaIrrevData),
@@ -1158,7 +1164,13 @@ function WizardAvviso({ proc, onClose, notify, initialAvvisoId = null }) {
                 {contiCommiss.length > 0 ? (
                   <>
                     <select className="form-input" value={ibanCommissionario}
-                      onChange={e=>{setIbanCommissionario(e.target.value);save('ibanCommissionario',e.target.value)}}>
+                      onChange={e=>{
+                        const val = e.target.value
+                        const cc = contiCommiss.find(x=>x.iban===val)
+                        setIbanCommissionario(val); save('ibanCommissionario', val)
+                        setBancaCommissionario(cc?.banca||''); save('bancaCommissionario', cc?.banca||'')
+                        setIntestCommissionario(cc?.intestazione||''); save('intestCommissionario', cc?.intestazione||'')
+                      }}>
                       <option value="">— Seleziona IBAN commissionario —</option>
                       {contiCommiss.map((cc,i)=>(
                         <option key={i} value={cc.iban}>
