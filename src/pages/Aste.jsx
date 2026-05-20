@@ -402,7 +402,7 @@ async function genAvviso(proc, lotti, opts, logoB64) {
     P([B('IBAN:\u00a0 ' + IBAN_DIR)]),
     P([B('Causale: \u201c'), T(causale('dir')), B('\u201d')]),
     BR(),
-    BLT([T('Il saldo prezzo, dedotta la cauzione gi\u00e0 versata, dovr\u00e0 essere corrisposto entro '+saldo+' giorni dall\u2019aggiudicazione definitiva, a mezzo bonifico bancario sul conto corrente '), B(saldoGestoreCommiss ? ('del Commissionario intestato a ' + (intestCommissionario || proc.commissionario || 'Commissionario').toUpperCase()) : ('della procedura intestato a ' + (intestazioneProcedura || proc.nome || '').toUpperCase())), T(' \u2013 IBAN: '), B(saldoGestoreCommiss ? (ibanCommissionario || '______________________________') : (ibanProcedura || '______________________________')), T('.')]),
+    BLT([T('Il saldo prezzo, dedotta la cauzione gi\u00e0 versata, dovr\u00e0 essere corrisposto entro '+saldo+' giorni dall\u2019aggiudicazione definitiva, a mezzo bonifico bancario sul conto corrente '), B(saldoGestoreCommiss ? ('del Commissionario intestato a ' + (proc.commissionario || 'Commissionario').toUpperCase()) : ('della procedura intestato a ' + (intestazioneProcedura || proc.nome || '').toUpperCase())), T(' \u2013 IBAN: '), B(saldoGestoreCommiss ? (ibanCommissionario || '______________________________') : (ibanProcedura || '______________________________')), T('.')]),
     BLT(T("In caso di mancato versamento del saldo prezzo, l\u2019aggiudicatario sar\u00e0 dichiarato decaduto e la procedura incamerer\u00e0 la cauzione a titolo di penale, salvo il diritto al risarcimento del maggior danno.")),
     BLT([T('Le eventuali offerte migliorative per un importo non inferiore al 10% del prezzo di aggiudicazione a norma dell\u2019art. 584 c.p.c. dovranno pervenire a mezzo PEC all\u2019indirizzo della procedura e in c.c. a '), B('progess@arubapec.it'), T(', entro 10 giorni dall\u2019aggiudicazione provvisoria.')]),
   ] : [
@@ -410,7 +410,7 @@ async function genAvviso(proc, lotti, opts, logoB64) {
     PSC([B('PAGAMENTO DEL SALDO PREZZO \u2013 ONERI FISCALI \u2013 DIRITTI D\u2019ASTA')]),
     P([T('Entro il termine di '), B(saldo + ' giorni'), T(' dalla data di aggiudicazione, oppure nel minor termine contenuto nell\u2019offerta irrevocabile (termine migliorativo), l\u2019aggiudicatario dovr\u00e0 provvedere al versamento integrale del saldo prezzo dovuto (oltre oneri di Legge ove dovuti), dedotta la cauzione gi\u00e0 versata, a mezzo bonifico bancario sul c/c '), B(saldoGestoreCommiss ? 'del Commissionario:' : 'intestato a:')]),
     BR(),
-    P([B('Beneficiario: '), T(saldoGestoreCommiss ? (intestCommissionario || proc.commissionario || 'Commissionario').toUpperCase() : (intestazioneProcedura || proc.nome || '').toUpperCase())]),
+    P([B('Beneficiario: '), T(saldoGestoreCommiss ? (proc.commissionario || 'Commissionario').toUpperCase() : (intestazioneProcedura || proc.nome || '').toUpperCase())]),
     P([B('Banca: '), T(saldoGestoreCommiss ? (bancaCommissionario || '______________________________') : '')]),
     P([B('IBAN: '), T(saldoGestoreCommiss ? (ibanCommissionario || '______________________________') : (ibanProcedura || '______________________________'))]),
     P([B('Causale: \u201c'), T(causale('saldo')), B('\u201d')]),
