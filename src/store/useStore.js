@@ -79,10 +79,22 @@ export const useStore = create((set, get) => ({
 
   // ── Procedure ────────────────────────────────
   fetchProcedure: async (filters = {}) => {
+    const { profile } = get()
     let q = supabase
       .from('v_procedure_riepilogo')
       .select('*')
       .order('created_at', { ascending: false })
+
+    // Utenti non-admin vedono solo le procedure assegnate
+    if (profile && !profile.is_admin) {
+      const { data: assegnate } = await supabase
+        .from('procedure_utenti')
+        .select('proc_id')
+        .eq('user_id', profile.id)
+      const ids = (assegnate || []).map(r => r.proc_id)
+      if (ids.length === 0) return []
+      q = q.in('id', ids)
+    }
 
     if (filters.status) q = q.eq('status', filters.status)
     if (filters.search) q = q.ilike('nome', `%${filters.search}%`)
@@ -93,6 +105,20 @@ export const useStore = create((set, get) => ({
   },
 
   fetchProc: async (id) => {
+    const { profile } = get()
+    // Verifica accesso per utenti non-admin
+    if (profile && !profile.is_admin) {
+      const { data: acc } = await supabase
+        .from('procedure_utenti')
+        .select('proc_id')
+        .eq('user_id', profile.id)
+        .eq('proc_id', id)
+        .maybeSingle()
+      if (!acc) {
+        set({ currentProc: null })
+        return null
+      }
+    }
     const { data, error } = await supabase
       .from('procedure')
       .select(`*, sedi(*)`)

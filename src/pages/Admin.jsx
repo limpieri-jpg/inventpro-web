@@ -120,7 +120,9 @@ function TabUtenti({ profile }) {
   const [showForm, setShowForm] = useState(false)
   const [editUser, setEditUser] = useState(null)
   const [search, setSearch]     = useState('')
-  const [resetting, setResetting] = useState(null)
+  const [resetting, setResetting]   = useState(null)
+  const [showProc, setShowProc]     = useState(false)
+  const [procUser, setProcUser]     = useState(null)
 
   useEffect(() => { loadUsers() }, [])
 
@@ -223,8 +225,12 @@ function TabUtenti({ profile }) {
                     <div style={{display:'flex',gap:4}}>
                       <button className="btn btn-ghost btn-sm" title="Modifica"
                         onClick={()=>{setEditUser(u);setShowForm(true)}}><Edit size={13}/></button>
+                      <button className="btn btn-ghost btn-sm" title="Procedure assegnate"
+                        style={{color:'var(--accent-b)'}} onClick={()=>{setProcUser(u);setShowProc(true)}}>
+                        <Activity size={13}/>
+                      </button>
                       <button className="btn btn-ghost btn-sm" title="Reset password"
-                        disabled={resetting===u.id} style={{color:'var(--accent-b)'}}
+                        disabled={resetting===u.id} style={{color:'var(--text3)'}}
                         onClick={()=>resetPassword(u)}><Key size={13}/></button>
                       {u.id!==profile.id&&(
                         <button className="btn btn-ghost btn-sm"
@@ -247,6 +253,11 @@ function TabUtenti({ profile }) {
         title={editUser?'Modifica utente':'Nuovo utente'} wide>
         <UserForm user={editUser} onClose={()=>setShowForm(false)}
           onSave={()=>{setShowForm(false);loadUsers()}}/>
+      </Modal>
+
+      <Modal open={showProc} onClose={()=>setShowProc(false)}
+        title="Procedure assegnate" wide>
+        {procUser && <ProcedureUtente user={procUser} onClose={()=>setShowProc(false)}/>}
       </Modal>
     </>
   )
@@ -360,6 +371,115 @@ CREATE POLICY "Admin only" ON activity_log
         </div>
       )}
     </>
+  )
+}
+
+
+// ─── Modal procedure assegnate ad un utente ───────────────────────────────────
+function ProcedureUtente({ user, onClose }) {
+  const { notify } = useStore()
+  const [tutte, setTutte]           = useState([])
+  const [assegnate, setAssegnate]   = useState([])
+  const [loading, setLoading]       = useState(true)
+  const [saving, setSaving]         = useState(null)
+  const [search, setSearch]         = useState('')
+
+  useEffect(() => { load() }, [user.id])
+
+  const load = async () => {
+    setLoading(true)
+    const [{ data: procs }, { data: ass }] = await Promise.all([
+      supabase.from('procedure').select('id,nome,tipo,num,anno,tribunale,status').order('nome'),
+      supabase.from('procedure_utenti').select('proc_id').eq('user_id', user.id)
+    ])
+    setTutte(procs || [])
+    setAssegnate((ass || []).map(r => r.proc_id))
+    setLoading(false)
+  }
+
+  const toggle = async (procId, isAssegnata) => {
+    setSaving(procId)
+    try {
+      if (isAssegnata) {
+        await supabase.from('procedure_utenti').delete()
+          .eq('user_id', user.id).eq('proc_id', procId)
+        setAssegnate(a => a.filter(id => id !== procId))
+        notify('Procedura rimossa', 'ok')
+      } else {
+        await supabase.from('procedure_utenti').insert({ user_id: user.id, proc_id: procId })
+        setAssegnate(a => [...a, procId])
+        notify('Procedura assegnata', 'ok')
+      }
+    } catch(e) { notify('Errore: ' + e.message, 'err') }
+    finally { setSaving(null) }
+  }
+
+  const assegnatutte = async () => {
+    if (!confirm('Assegnare TUTTE le procedure a questo utente?')) return
+    setSaving('all')
+    const nuove = tutte.filter(p => !assegnate.includes(p.id))
+    for (const p of nuove) {
+      await supabase.from('procedure_utenti').insert({ user_id: user.id, proc_id: p.id }).maybeSingle()
+    }
+    setAssegnate(tutte.map(p => p.id))
+    setSaving(null)
+    notify('Tutte le procedure assegnate', 'ok')
+  }
+
+  const filtered = tutte.filter(p =>
+    !search || `${p.nome} ${p.tribunale||''} ${p.tipo||''}`.toLowerCase().includes(search.toLowerCase())
+  )
+
+  return (
+    <div>
+      <div style={{marginBottom:12,padding:'10px 14px',background:'rgba(59,111,255,0.08)',border:'1px solid rgba(59,111,255,0.2)',borderRadius:8,fontSize:13}}>
+        Utente: <strong>{user.titolo ? user.titolo + ' ' : ''}{user.nome} {user.cognome}</strong>
+        {' — '}<span style={{color:'var(--text3)'}}>{assegnate.length} procedure assegnate su {tutte.length}</span>
+      </div>
+
+      <div style={{display:'flex',gap:10,marginBottom:14,alignItems:'center'}}>
+        <input className="form-input" placeholder="Cerca procedura…" style={{maxWidth:280}}
+          value={search} onChange={e=>setSearch(e.target.value)}/>
+        <button className="btn btn-ghost btn-sm" onClick={assegnatutte} disabled={saving==='all'}>
+          ✅ Assegna tutte
+        </button>
+      </div>
+
+      {loading ? <Spinner/> : (
+        <div style={{display:'flex',flexDirection:'column',gap:6,maxHeight:400,overflowY:'auto'}}>
+          {filtered.map(p => {
+            const ass = assegnate.includes(p.id)
+            return (
+              <div key={p.id} style={{display:'flex',alignItems:'center',gap:12,padding:'10px 14px',
+                background: ass ? 'rgba(0,200,100,0.06)' : 'var(--bg)',
+                border: `1px solid ${ass ? 'rgba(0,200,100,0.25)' : 'var(--border)'}`,
+                borderRadius:8,cursor:'pointer',transition:'all 0.15s'}}
+                onClick={()=>toggle(p.id, ass)}>
+                <div style={{width:20,height:20,borderRadius:4,border:`2px solid ${ass?'var(--accent-g)':'var(--border)'}`,
+                  background:ass?'var(--accent-g)':'transparent',display:'flex',alignItems:'center',
+                  justifyContent:'center',flexShrink:0,fontSize:12,color:'#fff'}}>
+                  {ass && '✓'}
+                </div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontWeight:500,fontSize:13}}>{p.nome}</div>
+                  <div style={{fontSize:11,color:'var(--text3)'}}>
+                    {p.tipo||''}{p.num?' · N.'+p.num+(p.anno?'/'+p.anno:''):''}{p.tribunale?' · '+p.tribunale:''}
+                    {p.status&&p.status!=='attiva'&&<span style={{color:'var(--accent-r)',marginLeft:6}}>({p.status})</span>}
+                  </div>
+                </div>
+                {saving===p.id && <div className="spinner" style={{width:14,height:14}}/>}
+              </div>
+            )
+          })}
+          {filtered.length === 0 && (
+            <div style={{textAlign:'center',padding:24,color:'var(--text3)',fontSize:13}}>Nessuna procedura trovata</div>
+          )}
+        </div>
+      )}
+      <div style={{display:'flex',justifyContent:'flex-end',marginTop:16}}>
+        <button className="btn btn-primary" onClick={onClose}>Chiudi</button>
+      </div>
+    </div>
   )
 }
 
