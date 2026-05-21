@@ -7,6 +7,26 @@ import { Plus, Edit, Shield, ShieldOff, Eye, EyeOff, Key, Activity, Trash2, User
 function fmtDate(d) { if (!d) return '—'; return new Date(d).toLocaleDateString('it-IT') }
 function fmtDateTime(d) { if (!d) return '—'; return new Date(d).toLocaleString('it-IT') }
 
+const TRIBUNALI_IT = [
+  'Agrigento','Alba','Alessandria','Ancona','Aosta','Arezzo','Ariano Irpino','Ascoli Piceno',
+  'Asti','Avellino','Avezzano','Bari','Barletta','Bassano del Grappa','Belluno','Benevento',
+  'Bergamo','Biella','Bologna','Bolzano','Brescia','Brindisi','Busto Arsizio','Cagliari',
+  'Caltagirone','Caltanissetta','Campobasso','Casale Monferrato','Cassino','Castrovillari',
+  'Catania','Catanzaro','Chiavari','Chieti','Civitavecchia','Como','Cosenza','Cremona',
+  'Crotone','Cuneo','Enna','Fermo','Ferrara','Firenze','Foggia','Forlì','Frosinone',
+  'Genova','Gela','Grosseto','Imperia','Isernia',"L'Aquila",'La Spezia','Lamezia Terme',
+  'Lanciano','Larino','Latina','Lecce','Lecco','Livorno','Locri','Lodi','Lucca','Lucera',
+  'Macerata','Mantova','Marsala','Massa','Matera','Messina','Milano','Modena','Monza',
+  'Napoli','Napoli Nord','Nola','Novara','Nuoro','Oristano','Padova','Palermo','Paola',
+  'Parma','Pavia','Perugia','Pesaro','Pescara','Piacenza','Pisa','Pistoia','Pordenone',
+  'Potenza','Prato','Ragusa','Ravenna','Reggio Calabria','Reggio Emilia','Rieti','Rimini',
+  'Roma','Rossano','Rovereto','Rovigo','Salerno','Sassari','Savona','Sciacca','Siena',
+  'Siracusa','Sondrio','Spoleto','Taranto','Tempio Pausania','Teramo','Terni','Torino',
+  'Torre Annunziata','Trapani','Trento','Treviso','Trieste','Udine','Urbino','Varese',
+  'Venezia','Vercelli','Verona','Vibo Valentia','Vicenza','Viterbo'
+]
+function fmtDateTime(d) { if (!d) return '—'; return new Date(d).toLocaleString('it-IT') }
+
 // ─── Form nuovo/modifica utente ───────────────────────────────────────────────
 function UserForm({ user, onSave, onClose }) {
   const { notify } = useStore()
@@ -28,7 +48,8 @@ function UserForm({ user, onSave, onClose }) {
         const { error } = await supabase.from('profiles').update({
           nome: form.nome, cognome: form.cognome, titolo: form.titolo,
           ruolo: form.ruolo, cf: form.cf, tel: form.tel, pec: form.pec,
-          is_admin: form.is_admin, is_active: form.is_active
+          is_admin: form.is_admin, is_active: form.is_active,
+          tribunali: form.tribunali || []
         }).eq('id', user.id)
         if (error) throw error
         notify('Utente aggiornato', 'ok')
@@ -563,26 +584,13 @@ function TabComunicazioni() {
     load()
   }, [])
 
-  // Procedure per filtro tribunale
-  const [procedure, setProcedure] = useState([])
-  const [tribunali, setTribunali] = useState([])
-  useEffect(() => {
-    supabase.from('procedure_utenti').select('user_id, procedure(tribunale)').then(({data}) => {
-      const map = {}
-      for (const r of (data||[])) {
-        if (!map[r.user_id]) map[r.user_id] = []
-        if (r.procedure?.tribunale) map[r.user_id].push(r.procedure.tribunale)
-      }
-      setProcedure(map)
-      const trib = [...new Set(Object.values(map).flat())].sort()
-      setTribunali(trib)
-    })
-  }, [])
+  // Tribunali disponibili — unione di tutti i tribunali degli utenti
+  const tribunali = [...new Set(users.flatMap(u => u.tribunali||[]))].sort()
 
   const filtered = users.filter(u => {
     const txt = `${u.nome} ${u.cognome} ${u.email}`.toLowerCase()
     const matchSearch = !search || txt.includes(search.toLowerCase())
-    const matchTrib = !filtroTribunale || (procedure[u.id]||[]).includes(filtroTribunale)
+    const matchTrib = !filtroTribunale || (u.tribunali||[]).includes(filtroTribunale)
     return matchSearch && matchTrib
   })
 
@@ -682,7 +690,7 @@ function TabComunicazioni() {
                     </div>
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{fontWeight:500,fontSize:13}}>{u.titolo?u.titolo+' ':''}{u.nome} {u.cognome}</div>
-                      <div style={{fontSize:11,color:'var(--text3)'}}>{u.email}{(procedure[u.id]||[]).length>0?' · '+procedure[u.id].join(', '):''}</div>
+                      <div style={{fontSize:11,color:'var(--text3)'}}>{u.email}{(u.tribunali||[]).length>0?' · '+(u.tribunali||[]).join(', '):''}</div>
                     </div>
                   </div>
                 )
