@@ -128,9 +128,15 @@ function TabUtenti({ profile }) {
 
   const loadUsers = async () => {
     setLoading(true)
-    const { data, error } = await supabase.from('profiles').select('*').order('cognome')
-    if (error) notify('Errore: ' + error.message, 'err')
-    setUsers(data || [])
+    // Usa rpc per bypassare RLS e leggere tutti gli utenti (attivi e inattivi)
+    const { data, error } = await supabase.rpc('get_all_profiles')
+    if (error) {
+      // Fallback alla query diretta se la RPC non esiste ancora
+      const { data: data2 } = await supabase.from('profiles').select('*').order('cognome')
+      setUsers(data2 || [])
+    } else {
+      setUsers((data || []).sort((a,b) => (a.cognome||'').localeCompare(b.cognome||'')))
+    }
     setLoading(false)
   }
 
@@ -187,12 +193,19 @@ function TabUtenti({ profile }) {
 
   return (
     <>
-      {/* Stats */}
-      <div className="stats-grid" style={{gridTemplateColumns:'repeat(3,1fr)',marginBottom:20}}>
-        <div className="stat-card"><div className="stat-label">Utenti totali</div><div className="stat-value stat-blue">{users.length}</div></div>
-        <div className="stat-card"><div className="stat-label">Amministratori</div><div className="stat-value stat-yellow">{users.filter(u=>u.is_admin).length}</div></div>
-        <div className="stat-card"><div className="stat-label">Utenti attivi</div><div className="stat-value stat-green">{users.filter(u=>u.is_active!==false).length}</div></div>
-        <div className="stat-card"><div className="stat-label">Utenti inattivi</div><div className="stat-value stat-red">{users.filter(u=>u.is_active===false).length}</div></div>
+      {/* Stats — riga compatta */}
+      <div style={{display:'flex',gap:8,marginBottom:16,flexWrap:'wrap'}}>
+        {[
+          ['Totali', users.length, 'var(--accent-b)'],
+          ['Admin', users.filter(u=>u.is_admin).length, 'var(--accent-y)'],
+          ['Attivi', users.filter(u=>u.is_active!==false).length, 'var(--accent-g)'],
+          ['Inattivi', users.filter(u=>u.is_active===false).length, 'var(--accent-r)'],
+        ].map(([label, val, color]) => (
+          <div key={label} style={{display:'flex',alignItems:'center',gap:8,padding:'6px 14px',background:'var(--bg)',border:'1px solid var(--border)',borderRadius:8,fontSize:13}}>
+            <span style={{fontWeight:700,color,fontSize:16}}>{val}</span>
+            <span style={{color:'var(--text3)'}}>{label}</span>
+          </div>
+        ))}
       </div>
 
       {/* Filtro + tasto nuovo */}
