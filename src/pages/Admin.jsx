@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useStore } from '../store/useStore'
 import { Topbar, Spinner, Modal, Empty } from '../components/layout'
 import { supabase } from '../lib/supabase'
-import { Plus, Edit, Shield, ShieldOff, Eye, EyeOff, Key, Activity } from 'lucide-react'
+import { Plus, Edit, Shield, ShieldOff, Eye, EyeOff, Key, Activity, Trash2, UserX } from 'lucide-react'
 
 function fmtDate(d) { if (!d) return '—'; return new Date(d).toLocaleDateString('it-IT') }
 function fmtDateTime(d) { if (!d) return '—'; return new Date(d).toLocaleString('it-IT') }
@@ -146,6 +146,25 @@ function TabUtenti({ profile }) {
     loadUsers()
   }
 
+  const eliminaUtente = async (user) => {
+    if (!confirm(`Eliminare definitivamente ${user.nome} ${user.cognome}?\nL'utente perderà l'accesso e tutti i suoi dati saranno rimossi.`)) return
+    try {
+      // Elimina profilo (le procedure_utenti vengono eliminate in cascade)
+      await supabase.from('profiles').delete().eq('id', user.id)
+      // Elimina utente auth tramite Admin API
+      const { data: { session } } = await supabase.auth.getSession()
+      await fetch(\`https://gsmhhmyxpqwmssfdeslf.supabase.co/auth/v1/admin/users/\${user.id}\`, {
+        method: 'DELETE',
+        headers: {
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+          'Authorization': \`Bearer \${session?.access_token}\`
+        }
+      })
+      notify('Utente eliminato', 'ok')
+      loadUsers()
+    } catch(e) { notify('Errore: ' + e.message, 'err') }
+  }
+
   const resetPassword = async (user) => {
     if (!user.email) { notify('Email non disponibile', 'warn'); return }
     if (!confirm(`Inviare email di reset password a ${user.email}?`)) return
@@ -171,6 +190,7 @@ function TabUtenti({ profile }) {
         <div className="stat-card"><div className="stat-label">Utenti totali</div><div className="stat-value stat-blue">{users.length}</div></div>
         <div className="stat-card"><div className="stat-label">Amministratori</div><div className="stat-value stat-yellow">{users.filter(u=>u.is_admin).length}</div></div>
         <div className="stat-card"><div className="stat-label">Utenti attivi</div><div className="stat-value stat-green">{users.filter(u=>u.is_active!==false).length}</div></div>
+        <div className="stat-card"><div className="stat-label">Utenti inattivi</div><div className="stat-value stat-red">{users.filter(u=>u.is_active===false).length}</div></div>
       </div>
 
       {/* Filtro + tasto nuovo */}
@@ -196,14 +216,19 @@ function TabUtenti({ profile }) {
             <tbody>
               {filtered.map(u => (
                 <tr key={u.id}>
-                  <td style={{fontWeight:500}}>
+                  <td style={{fontWeight:500,opacity:u.is_active===false?0.5:1}}>
                     <div style={{display:'flex',alignItems:'center',gap:10}}>
-                      <div style={{width:32,height:32,borderRadius:'50%',background:'var(--accent)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,color:'#fff',flexShrink:0}}>
-                        {(u.nome?.[0]||'')+(u.cognome?.[0]||'')}
+                      <div style={{width:32,height:32,borderRadius:'50%',
+                        background:u.is_active===false?'var(--text3)':'var(--accent)',
+                        display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,color:'#fff',flexShrink:0}}>
+                        {u.is_active===false ? <UserX size={14}/> : (u.nome?.[0]||'')+(u.cognome?.[0]||'')}
                       </div>
                       <div>
-                        <div>{u.titolo?u.titolo+' ':''}{u.nome} {u.cognome}</div>
-                        {u.tel&&<div style={{fontSize:11,color:'var(--text3)'}}>{u.tel}</div>}
+                        <div style={{textDecoration:u.is_active===false?'line-through':'none',color:u.is_active===false?'var(--text3)':'inherit'}}>
+                          {u.titolo?u.titolo+' ':''}{u.nome} {u.cognome}
+                        </div>
+                        {u.is_active===false && <div style={{fontSize:11,color:'var(--accent-r)',fontWeight:600}}>⚠ Utente disattivato</div>}
+                        {u.tel&&u.is_active!==false&&<div style={{fontSize:11,color:'var(--text3)'}}>{u.tel}</div>}
                       </div>
                     </div>
                   </td>
@@ -233,12 +258,20 @@ function TabUtenti({ profile }) {
                         disabled={resetting===u.id} style={{color:'var(--text3)'}}
                         onClick={()=>resetPassword(u)}><Key size={13}/></button>
                       {u.id!==profile.id&&(
-                        <button className="btn btn-ghost btn-sm"
-                          title={u.is_active!==false?'Disattiva':'Attiva'}
-                          style={{color:u.is_active!==false?'var(--accent-r)':'var(--accent-g)'}}
-                          onClick={()=>toggleActive(u)}>
-                          {u.is_active!==false?<EyeOff size={13}/>:<Eye size={13}/>}
-                        </button>
+                        <>
+                          <button className="btn btn-ghost btn-sm"
+                            title={u.is_active!==false?'Disattiva':'Attiva'}
+                            style={{color:u.is_active!==false?'var(--accent-r)':'var(--accent-g)'}}
+                            onClick={()=>toggleActive(u)}>
+                            {u.is_active!==false?<EyeOff size={13}/>:<Eye size={13}/>}
+                          </button>
+                          <button className="btn btn-ghost btn-sm"
+                            title="Elimina utente"
+                            style={{color:'var(--accent-r)'}}
+                            onClick={()=>eliminaUtente(u)}>
+                            <Trash2 size={13}/>
+                          </button>
+                        </>
                       )}
                     </div>
                   </td>
