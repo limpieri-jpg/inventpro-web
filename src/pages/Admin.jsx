@@ -135,15 +135,17 @@ function TabUtenti({ profile }) {
   }
 
   const toggleAdmin = async (user) => {
-    await supabase.from('profiles').update({ is_admin: !user.is_admin }).eq('id', user.id)
+    const { error } = await supabase.from('profiles').update({ is_admin: !user.is_admin }).eq('id', user.id)
+    if (error) { notify('Errore: ' + error.message, 'err'); return }
+    setUsers(prev => prev.map(u => u.id === user.id ? { ...u, is_admin: !u.is_admin } : u))
     notify(user.is_admin ? 'Rimosso da admin' : 'Promosso ad admin', 'ok')
-    loadUsers()
   }
 
   const toggleActive = async (user) => {
-    await supabase.from('profiles').update({ is_active: !user.is_active }).eq('id', user.id)
+    const { error } = await supabase.from('profiles').update({ is_active: !user.is_active }).eq('id', user.id)
+    if (error) { notify('Errore: ' + error.message, 'err'); return }
+    setUsers(prev => prev.map(u => u.id === user.id ? { ...u, is_active: !u.is_active } : u))
     notify(user.is_active ? 'Utente disattivato' : 'Utente attivato', 'ok')
-    loadUsers()
   }
 
   const eliminaUtente = async (user) => {
@@ -160,8 +162,8 @@ function TabUtenti({ profile }) {
           'Authorization': `Bearer ${session?.access_token}`
         }
       })
+      setUsers(prev => prev.filter(u => u.id !== user.id))
       notify('Utente eliminato', 'ok')
-      loadUsers()
     } catch(e) { notify('Errore: ' + e.message, 'err') }
   }
 

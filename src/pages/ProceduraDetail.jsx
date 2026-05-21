@@ -160,16 +160,19 @@ function TabAnagrafica({ proc, onEdit }) {
     setExportingFoto(true)
     setFotoProgress('Caricamento lista foto…')
     try {
-      // Legge tutte le foto degli articoli della procedura
-      const { data: articoli } = await supabase
-        .from('v_articoli_con_foto').select('id,desc_breve,foto').eq('proc_id', proc.id)
-      const tutte = []
-      for (const art of (articoli || [])) {
-        for (const f of (art.foto || [])) {
-          if (f.url) tutte.push({ url: f.url, articolo: art.desc_breve || art.id, nome: f.nome || f.id })
-        }
+      // Legge le foto dalla tabella foto tramite proc_id
+      const { data: fotoRows } = await supabase
+        .from('foto')
+        .select('id, url, storage_path, sort_order')
+        .eq('proc_id', proc.id)
+        .order('sort_order')
+
+      const tutte = (fotoRows || []).filter(f => f.url)
+
+      if (tutte.length === 0) { 
+        notify('Nessuna foto trovata per questa procedura', 'warn')
+        setExportingFoto(false); return 
       }
-      if (tutte.length === 0) { notify('Nessuna foto trovata per questa procedura', 'warn'); setExportingFoto(false); return }
 
       // Selezione cartella
       setFotoProgress('Selezione cartella…')
@@ -184,8 +187,9 @@ function TabAnagrafica({ proc, onEdit }) {
           const res = await fetch(f.url)
           const blob = await res.blob()
           const ext = blob.type.split('/')[1] || 'jpg'
-          const nomePulito = f.nome.replace(/[^a-zA-Z0-9_\-\.]/g, '_')
-          const fileName = `${String(i+1).padStart(3,'0')}_${nomePulito}.${ext}`
+          // Usa storage_path come nome file se disponibile, altrimenti id
+          const baseName = f.storage_path ? f.storage_path.split('/').pop() : f.id
+          const fileName = `${String(i+1).padStart(3,'0')}_${baseName}`
           const fileHandle = await dirHandle.getFileHandle(fileName, { create: true })
           const writable = await fileHandle.createWritable()
           await writable.write(blob)
