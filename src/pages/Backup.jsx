@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { useStore } from '../../store/useStore'
+import { useStore } from '../store/useStore'
 import { supabase } from '../lib/supabase'
 import { Topbar } from '../components/layout'
 import { Download, Upload, Database } from 'lucide-react'
