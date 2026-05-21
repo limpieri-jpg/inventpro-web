@@ -5,7 +5,6 @@ import { supabase } from '../lib/supabase'
 import { Plus, Edit, Shield, ShieldOff, Eye, EyeOff, Key, Activity, Trash2, UserX, Mail, Send, CheckSquare, Square } from 'lucide-react'
 
 function fmtDate(d) { if (!d) return '—'; return new Date(d).toLocaleDateString('it-IT') }
-function fmtDateTime(d) { if (!d) return '—'; return new Date(d).toLocaleString('it-IT') }
 
 const TRIBUNALI_IT = [
   'Agrigento','Alba','Alessandria','Ancona','Aosta','Arezzo','Ariano Irpino','Ascoli Piceno',
