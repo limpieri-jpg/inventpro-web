@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useStore } from '../store/useStore'
 import { Topbar, Spinner, Modal, Empty } from '../components/layout'
 import { supabase } from '../lib/supabase'
-import { Plus, Edit, Shield, ShieldOff, Eye, EyeOff, Key, Activity, Trash2, UserX } from 'lucide-react'
+import { Plus, Edit, Shield, ShieldOff, Eye, EyeOff, Key, Activity, Trash2, UserX, Mail, Send, CheckSquare, Square } from 'lucide-react'
 
 function fmtDate(d) { if (!d) return '—'; return new Date(d).toLocaleDateString('it-IT') }
 function fmtDateTime(d) { if (!d) return '—'; return new Date(d).toLocaleString('it-IT') }
@@ -540,14 +540,185 @@ function ProcedureUtente({ user, onClose }) {
   )
 }
 
+
+// ─── Tab Comunicazioni ────────────────────────────────────────────────────────
+function TabComunicazioni() {
+  const { notify } = useStore()
+  const [users, setUsers]           = useState([])
+  const [loading, setLoading]       = useState(true)
+  const [selezionati, setSelezionati] = useState([])
+  const [filtroTribunale, setFiltroTribunale] = useState('')
+  const [search, setSearch]         = useState('')
+  const [oggetto, setOggetto]       = useState('')
+  const [corpo, setCorpo]           = useState('')
+  const [inviando, setInviando]     = useState(false)
+  const [risultato, setRisultato]   = useState(null)
+
+  useEffect(() => {
+    const load = async () => {
+      const { data } = await supabase.rpc('get_all_profiles')
+      setUsers((data||[]).filter(u=>u.email && u.is_active!==false).sort((a,b)=>(a.cognome||'').localeCompare(b.cognome||'')))
+      setLoading(false)
+    }
+    load()
+  }, [])
+
+  // Procedure per filtro tribunale
+  const [procedure, setProcedure] = useState([])
+  const [tribunali, setTribunali] = useState([])
+  useEffect(() => {
+    supabase.from('procedure_utenti').select('user_id, procedure(tribunale)').then(({data}) => {
+      const map = {}
+      for (const r of (data||[])) {
+        if (!map[r.user_id]) map[r.user_id] = []
+        if (r.procedure?.tribunale) map[r.user_id].push(r.procedure.tribunale)
+      }
+      setProcedure(map)
+      const trib = [...new Set(Object.values(map).flat())].sort()
+      setTribunali(trib)
+    })
+  }, [])
+
+  const filtered = users.filter(u => {
+    const txt = `${u.nome} ${u.cognome} ${u.email}`.toLowerCase()
+    const matchSearch = !search || txt.includes(search.toLowerCase())
+    const matchTrib = !filtroTribunale || (procedure[u.id]||[]).includes(filtroTribunale)
+    return matchSearch && matchTrib
+  })
+
+  const toggleUser = (id) => setSelezionati(s => s.includes(id) ? s.filter(x=>x!==id) : [...s, id])
+  const selezionaTutti = () => setSelezionati(filtered.map(u=>u.id))
+  const deselezionaTutti = () => setSelezionati([])
+  const tuttiSelezionati = filtered.length > 0 && filtered.every(u => selezionati.includes(u.id))
+
+  const invia = async () => {
+    if (!selezionati.length) { notify('Seleziona almeno un destinatario', 'warn'); return }
+    if (!oggetto.trim()) { notify('Inserisci un oggetto', 'warn'); return }
+    if (!corpo.trim()) { notify('Inserisci il corpo del messaggio', 'warn'); return }
+    setInviando(true)
+    setRisultato(null)
+    try {
+      const destinatari = users.filter(u => selezionati.includes(u.id))
+        .map(u => ({ email: u.email, nome: u.nome, cognome: u.cognome, titolo: u.titolo }))
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({ destinatari, oggetto, corpo })
+        }
+      )
+      const data = await res.json()
+      if (data.ok) {
+        setRisultato({ ok: true, inviati: data.inviati, errori: data.errori, errors: data.errors })
+        notify(`✅ ${data.inviati} email inviate${data.errori>0?' ('+data.errori+' errori)':''}`, 'ok', 5000)
+        if (data.errori === 0) { setOggetto(''); setCorpo(''); setSelezionati([]) }
+      } else {
+        throw new Error(data.error)
+      }
+    } catch(e) { notify('Errore: ' + e.message, 'err') }
+    finally { setInviando(false) }
+  }
+
+  return (
+    <div style={{display:'flex',flexDirection:'column',gap:16}}>
+      <div className="card">
+        <div className="card-header"><div className="card-title">📧 Nuova comunicazione</div></div>
+        <div className="card-body" style={{display:'flex',flexDirection:'column',gap:12}}>
+          <div className="form-group">
+            <label className="form-label">Oggetto *</label>
+            <input className="form-input" value={oggetto} onChange={e=>setOggetto(e.target.value)} placeholder="Es: Aggiornamento procedura — nuovo avviso di vendita"/>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Messaggio *</label>
+            <textarea className="form-input" value={corpo} onChange={e=>setCorpo(e.target.value)}
+              rows={8} style={{resize:'vertical',fontFamily:'inherit',lineHeight:1.7}}
+              placeholder="Testo del messaggio… Puoi usare a capo per separare i paragrafi."/>
+          </div>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-header">
+          <div className="card-title">👥 Destinatari</div>
+          <div style={{display:'flex',gap:8,alignItems:'center'}}>
+            <span style={{fontSize:12,color:'var(--text3)'}}>{selezionati.length} selezionati</span>
+            <button className="btn btn-ghost btn-sm" onClick={tuttiSelezionati?deselezionaTutti:selezionaTutti}>
+              {tuttiSelezionati ? <><CheckSquare size={13}/> Deseleziona tutti</> : <><Square size={13}/> Seleziona tutti</>}
+            </button>
+          </div>
+        </div>
+        <div className="card-body">
+          {/* Filtri */}
+          <div style={{display:'flex',gap:10,marginBottom:12,flexWrap:'wrap'}}>
+            <input className="form-input" placeholder="Cerca per nome o email…" style={{maxWidth:250}}
+              value={search} onChange={e=>setSearch(e.target.value)}/>
+            <select className="form-input" style={{maxWidth:200}} value={filtroTribunale} onChange={e=>setFiltroTribunale(e.target.value)}>
+              <option value="">Tutti i tribunali</option>
+              {tribunali.map(t=><option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+
+          {/* Lista utenti */}
+          {loading ? <div style={{textAlign:'center',padding:16,color:'var(--text3)'}}>Caricamento…</div> : (
+            <div style={{display:'flex',flexDirection:'column',gap:6,maxHeight:350,overflowY:'auto'}}>
+              {filtered.map(u => {
+                const sel = selezionati.includes(u.id)
+                return (
+                  <div key={u.id} onClick={()=>toggleUser(u.id)}
+                    style={{display:'flex',alignItems:'center',gap:12,padding:'10px 14px',
+                      background:sel?'rgba(59,111,255,0.08)':'var(--bg)',
+                      border:`1px solid ${sel?'rgba(59,111,255,0.3)':'var(--border)'}`,
+                      borderRadius:8,cursor:'pointer'}}>
+                    <div style={{width:18,height:18,borderRadius:4,border:`2px solid ${sel?'var(--accent)':'var(--border)'}`,
+                      background:sel?'var(--accent)':'transparent',display:'flex',alignItems:'center',
+                      justifyContent:'center',flexShrink:0,color:'#fff',fontSize:12}}>
+                      {sel&&'✓'}
+                    </div>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontWeight:500,fontSize:13}}>{u.titolo?u.titolo+' ':''}{u.nome} {u.cognome}</div>
+                      <div style={{fontSize:11,color:'var(--text3)'}}>{u.email}{(procedure[u.id]||[]).length>0?' · '+procedure[u.id].join(', '):''}</div>
+                    </div>
+                  </div>
+                )
+              })}
+              {filtered.length===0&&<div style={{textAlign:'center',padding:16,color:'var(--text3)',fontSize:13}}>Nessun utente trovato</div>}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {risultato && (
+        <div style={{padding:'12px 16px',background:risultato.ok?'rgba(0,200,100,0.08)':'rgba(255,80,80,0.08)',
+          border:`1px solid ${risultato.ok?'rgba(0,200,100,0.3)':'rgba(255,80,80,0.3)'}`,borderRadius:8,fontSize:13}}>
+          {risultato.ok ? `✅ ${risultato.inviati} email inviate con successo${risultato.errori>0?' — '+risultato.errori+' errori':''}.` : '❌ Errore invio'}
+          {risultato.errors?.map((e,i)=><div key={i} style={{fontSize:12,color:'var(--accent-r)',marginTop:4}}>• {e.email}: {e.error}</div>)}
+        </div>
+      )}
+
+      <div style={{display:'flex',justifyContent:'flex-end'}}>
+        <button className="btn btn-primary" onClick={invia} disabled={inviando||!selezionati.length||!oggetto||!corpo}>
+          <Send size={14}/> {inviando?'Invio in corso…':`Invia a ${selezionati.length} destinatar${selezionati.length===1?'io':'i'}`}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ─── Pagina Admin principale ──────────────────────────────────────────────────
 export default function Admin() {
   const { profile } = useStore()
   const [tab, setTab] = useState('utenti')
 
   const TABS = [
-    { id: 'utenti',   label: 'Gestione utenti', icon: Shield },
-    { id: 'log',      label: 'Log attività',    icon: Activity },
+    { id: 'utenti',        label: 'Gestione utenti',  icon: Shield },
+    { id: 'comunicazioni', label: 'Comunicazioni',     icon: Mail },
+    { id: 'log',           label: 'Log attività',      icon: Activity },
   ]
 
   if (!profile?.is_admin) return (
@@ -572,8 +743,9 @@ export default function Admin() {
           ))}
         </div>
 
-        {tab==='utenti' && <TabUtenti profile={profile}/>}
-        {tab==='log'    && <TabLog/>}
+        {tab==='utenti'        && <TabUtenti profile={profile}/>}
+        {tab==='comunicazioni' && <TabComunicazioni/>}
+        {tab==='log'           && <TabLog/>}
       </div>
     </>
   )
