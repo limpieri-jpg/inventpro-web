@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore'
 import { Topbar, Spinner, Modal, Empty } from '../components/layout'
 import { supabase } from '../lib/supabase'
-import { ArrowLeft, Edit, MapPin, Package, Layers, FileText, Plus, Trash2, Download } from 'lucide-react'
+import { ArrowLeft, Edit, MapPin, Package, Layers, FileText, Plus, Trash2, Download, Archive, Image } from 'lucide-react'
 import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, AlignmentType, BorderStyle, WidthType, ShadingType, LevelFormat, ImageRun, Header, Footer } from 'docx'
 
 function fmtDate(d) { if (!d) return '—'; return new Date(d).toLocaleDateString('it-IT') }
@@ -108,17 +108,105 @@ function ProcForm({ proc, onSave, onClose }) {
 }
 
 function TabAnagrafica({ proc, onEdit }) {
+  const { notify } = useStore()
+  const [exporting, setExporting] = useState(false)
+  const [exportingFoto, setExportingFoto] = useState(false)
+  const [fotoProgress, setFotoProgress] = useState('')
+
   const fields = [
     ['Tipo procedura', proc.tipo], ['N. R.G.', proc.num && proc.anno ? proc.num+'/'+proc.anno : proc.num],
     ['Tribunale', proc.tribunale], ['Giudice Delegato', proc.giudice], ['Curatore', proc.curatore],
     ['Commissionario', proc.commissionario], ['Data apertura', fmtDate(proc.data_apertura)],
     ['N. sentenza', proc.sentenza_num], ['Codice Fiscale', proc.cf], ['P.IVA', proc.piva], ['PEC', proc.pec], ['Stato', proc.status],
   ]
+
+  // ── Backup JSON completo ─────────────────────────────────────────────────
+  const esportaBackup = async () => {
+    setExporting(true)
+    try {
+      const [{ data: articoli }, { data: lotti }, { data: avvisi }, { data: sedi }] = await Promise.all([
+        supabase.from('v_articoli_con_foto').select('*').eq('proc_id', proc.id).order('sort_order'),
+        supabase.from('lotti').select('*, lotti_articoli(articolo_id)').eq('proc_id', proc.id).order('numero'),
+        supabase.from('avvisi').select('*').eq('proc_id', proc.id).order('created_at'),
+        supabase.from('sedi').select('*').eq('proc_id', proc.id),
+      ])
+      const backup = {
+        versione: '1.0',
+        data_export: new Date().toISOString(),
+        procedura: proc,
+        sedi: sedi || [],
+        articoli: articoli || [],
+        lotti: lotti || [],
+        avvisi: avvisi || [],
+      }
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      const nomePulito = (proc.nome || 'procedura').replace(/[^a-zA-Z0-9_\-]/g, '_')
+      const data = new Date().toISOString().slice(0,10)
+      a.href = url; a.download = `backup_${nomePulito}_${data}.json`
+      a.click(); URL.revokeObjectURL(url)
+      notify('Backup esportato', 'ok')
+    } catch(e) { notify('Errore: ' + e.message, 'err') }
+    finally { setExporting(false) }
+  }
+
+  // ── Export foto in cartella scelta ───────────────────────────────────────
+  const esportaFoto = async () => {
+    // Verifica supporto File System Access API
+    if (!window.showDirectoryPicker) {
+      notify('Il tuo browser non supporta la selezione cartella. Usa Chrome o Edge.', 'warn', 6000); return
+    }
+    setExportingFoto(true)
+    setFotoProgress('Caricamento lista foto…')
+    try {
+      // Legge tutte le foto degli articoli della procedura
+      const { data: articoli } = await supabase
+        .from('v_articoli_con_foto').select('id,desc_breve,foto').eq('proc_id', proc.id)
+      const tutte = []
+      for (const art of (articoli || [])) {
+        for (const f of (art.foto || [])) {
+          if (f.url) tutte.push({ url: f.url, articolo: art.desc_breve || art.id, nome: f.nome || f.id })
+        }
+      }
+      if (tutte.length === 0) { notify('Nessuna foto trovata per questa procedura', 'warn'); setExportingFoto(false); return }
+
+      // Selezione cartella
+      setFotoProgress('Selezione cartella…')
+      const dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' })
+
+      // Scarica ogni foto
+      let ok = 0, err = 0
+      for (let i = 0; i < tutte.length; i++) {
+        const f = tutte[i]
+        setFotoProgress(`Download foto ${i+1}/${tutte.length}…`)
+        try {
+          const res = await fetch(f.url)
+          const blob = await res.blob()
+          const ext = blob.type.split('/')[1] || 'jpg'
+          const nomePulito = f.nome.replace(/[^a-zA-Z0-9_\-\.]/g, '_')
+          const fileName = `${String(i+1).padStart(3,'0')}_${nomePulito}.${ext}`
+          const fileHandle = await dirHandle.getFileHandle(fileName, { create: true })
+          const writable = await fileHandle.createWritable()
+          await writable.write(blob)
+          await writable.close()
+          ok++
+        } catch { err++ }
+      }
+      notify(`Export completato: ${ok} foto salvate${err>0?' ('+err+' errori)':''}`, ok>0?'ok':'warn', 6000)
+    } catch(e) {
+      if (e.name !== 'AbortError') notify('Errore: ' + e.message, 'err')
+    } finally { setExportingFoto(false); setFotoProgress('') }
+  }
+
   return (
+    <div style={{display:'flex',flexDirection:'column',gap:16}}>
     <div className="card">
       <div className="card-header">
         <div className="card-title">Dati procedura</div>
-        <button className="btn btn-ghost btn-sm" onClick={onEdit}><Edit size={13} /> Modifica</button>
+        <div style={{display:'flex',gap:8}}>
+          <button className="btn btn-ghost btn-sm" onClick={onEdit}><Edit size={13} /> Modifica</button>
+        </div>
       </div>
       <div className="card-body">
         <div className="detail-grid">
@@ -142,6 +230,29 @@ function TabAnagrafica({ proc, onEdit }) {
           </div>
         )}
       </div>
+    </div>
+
+    {/* Card Export */}
+    <div className="card">
+      <div className="card-header"><div className="card-title">📦 Esporta dati procedura</div></div>
+      <div className="card-body">
+        <div style={{display:'flex',gap:12,flexWrap:'wrap',alignItems:'center'}}>
+          <button className="btn btn-ghost" onClick={esportaBackup} disabled={exporting}>
+            <Download size={14}/> {exporting ? 'Esportazione…' : 'Backup JSON completo'}
+          </button>
+          <button className="btn btn-ghost" onClick={esportaFoto} disabled={exportingFoto}>
+            <Image size={14}/> {exportingFoto ? (fotoProgress || 'Export in corso…') : 'Esporta foto in cartella'}
+          </button>
+        </div>
+        {exportingFoto && fotoProgress && (
+          <div style={{marginTop:10,fontSize:12,color:'var(--text3)'}}>{fotoProgress}</div>
+        )}
+        <div style={{marginTop:10,fontSize:11,color:'var(--text3)'}}>
+          <strong>Backup JSON</strong>: include anagrafica, sedi, articoli, lotti e avvisi in un unico file.<br/>
+          <strong>Esporta foto</strong>: scarica tutte le foto della procedura in una cartella a tua scelta (Chrome/Edge).
+        </div>
+      </div>
+    </div>
     </div>
   )
 }
