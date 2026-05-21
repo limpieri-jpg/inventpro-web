@@ -14,7 +14,7 @@ import Aste from './pages/Aste'
 import Contratti from './pages/Contratti'
 import Impostazioni from './pages/Impostazioni'
 import Admin from './pages/Admin'
-import Migrazione from './pages/Migrazione'
+import Backup from './pages/Backup'
 import Documenti from './pages/Documenti'
 
 function AppLayout({ children }) {
@@ -82,7 +82,7 @@ export default function App() {
         <Route path="/documenti" element={<ProtectedRoute><Documenti /></ProtectedRoute>} />
         <Route path="/impostazioni" element={<ProtectedRoute><Impostazioni /></ProtectedRoute>} />
         <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
-        <Route path="/migrazione" element={<ProtectedRoute><Migrazione /></ProtectedRoute>} />
+        <Route path="/backup" element={<ProtectedRoute><Backup /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <Toast />
