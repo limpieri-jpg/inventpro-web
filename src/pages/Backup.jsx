@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import { useStore } from '../../store/useStore'
 import { supabase } from '../lib/supabase'
 import { Topbar } from '../components/layout'
 import { Download, Upload, Database } from 'lucide-react'
@@ -12,9 +13,9 @@ const TIPO_MAP = {
 
 // ─── Tab Backup totale ─────────────────────────────────────────────────────────
 function TabBackup() {
+  const { notify } = useStore()
   const [exporting, setExporting] = useState(false)
   const [progress, setProgress]   = useState('')
-  const { notify } = { notify: (m,t) => alert(m) }
 
   const esportaTutto = async () => {
     setExporting(true)
@@ -68,14 +69,32 @@ function TabBackup() {
       }
 
       setProgress('Generazione file…')
-      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
+      const json = JSON.stringify(backup, null, 2)
+      const blob = new Blob([json], { type: 'application/json' })
       const data = new Date().toISOString().slice(0,10)
-      a.href = url
-      a.download = `inventpro_backup_completo_${data}.json`
-      a.click()
-      URL.revokeObjectURL(url)
+      const fileName = `inventpro_backup_completo_${data}.json`
+
+      // Prova con File System Access API (selezione cartella)
+      if (window.showSaveFilePicker) {
+        try {
+          const fileHandle = await window.showSaveFilePicker({
+            suggestedName: fileName,
+            types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }]
+          })
+          const writable = await fileHandle.createWritable()
+          await writable.write(blob)
+          await writable.close()
+        } catch(e) {
+          if (e.name === 'AbortError') { setExporting(false); setProgress(''); return }
+          // Fallback download standard
+          const url = URL.createObjectURL(blob)
+          const a = document.createElement('a'); a.href = url; a.download = fileName; a.click(); URL.revokeObjectURL(url)
+        }
+      } else {
+        // Fallback per browser senza File System Access API
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a'); a.href = url; a.download = fileName; a.click(); URL.revokeObjectURL(url)
+      }
       setProgress(`✅ Backup completato — ${backup.stats.procedure} procedure, ${backup.stats.articoli} articoli, ${backup.stats.foto} foto`)
     } catch(e) {
       setProgress('❌ Errore: ' + e.message)

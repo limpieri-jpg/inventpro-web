@@ -139,13 +139,28 @@ function TabAnagrafica({ proc, onEdit }) {
         lotti: lotti || [],
         avvisi: avvisi || [],
       }
-      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      const nomePulito = (proc.nome || 'procedura').replace(/[^a-zA-Z0-9_\-]/g, '_')
+      const json = JSON.stringify(backup, null, 2)
+      const blob = new Blob([json], { type: 'application/json' })
+      const nomePulito = (proc.nome || 'procedura').replace(/[^a-zA-Z0-9_]/g, '_')
       const data = new Date().toISOString().slice(0,10)
-      a.href = url; a.download = `backup_${nomePulito}_${data}.json`
-      a.click(); URL.revokeObjectURL(url)
+      const fileName = `backup_${nomePulito}_${data}.json`
+
+      if (window.showSaveFilePicker) {
+        try {
+          const fh = await window.showSaveFilePicker({
+            suggestedName: fileName,
+            types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }]
+          })
+          const w = await fh.createWritable(); await w.write(blob); await w.close()
+        } catch(e) {
+          if (e.name === 'AbortError') { setExporting(false); return }
+          const url = URL.createObjectURL(blob)
+          const a = document.createElement('a'); a.href = url; a.download = fileName; a.click(); URL.revokeObjectURL(url)
+        }
+      } else {
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a'); a.href = url; a.download = fileName; a.click(); URL.revokeObjectURL(url)
+      }
       notify('Backup esportato', 'ok')
     } catch(e) { notify('Errore: ' + e.message, 'err') }
     finally { setExporting(false) }
