@@ -299,9 +299,9 @@ export default function ProcedureList() {
         title="Procedure"
         subtitle={`${procedure.length} procedure trovate`}
         actions={
-          {profile?.is_admin !== false && <button className="btn btn-primary btn-sm" onClick={() => setShowForm(true)}>
+          profile?.is_admin !== false ? <button className="btn btn-primary btn-sm" onClick={() => setShowForm(true)}>
             <Plus size={14} /> Nuova procedura
-          </button>}
+          </button> : null
         }
       />
       <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
