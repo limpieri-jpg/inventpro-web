@@ -32,7 +32,7 @@ function ArticoloForm({ articolo, procId, onSave, onClose }) {
   const [form, setForm] = useState({
     desc_breve:'', desc_estesa:'', marca:'', modello:'', anno_prod:'', matricola:'',
     tipologia_siecic:'BENE MOBILE', sottocategoria:'Macchinari industriali',
-    unita_misura:'UN', qta:1, stato:'Buono',
+    unita_misura:'UN', qta:1, stato:'Buono', titolo_possesso:'piena_proprieta',
     val_mercato:0, val_giud:0, danni:'', note:'',
     ...articolo
   })
@@ -315,6 +315,11 @@ Rispondi SOLO con JSON valido (no markdown, no commenti):
                   <div className="form-group"><label className="form-label">Modello</label><input className="form-input" value={form.modello||''} onChange={e=>set('modello',e.target.value)}/></div>
                   <div className="form-group"><label className="form-label">Anno produzione</label><input className="form-input" value={form.anno_prod||''} onChange={e=>set('anno_prod',e.target.value)} placeholder="Es. 2018"/></div>
                   <div className="form-group"><label className="form-label">Matricola / S/N</label><input className="form-input" value={form.matricola||''} onChange={e=>set('matricola',e.target.value)}/></div>
+                  <div className="form-group"><label className="form-label">Titolo possesso</label>
+                    <select className="form-input" value={form.titolo_possesso||'piena_proprieta'} onChange={e=>set('titolo_possesso',e.target.value)}>
+                      {[['piena_proprieta','Piena proprietà'],['nuda_proprieta','Nuda proprietà'],['usufrutto','Usufrutto'],['rivendica','Rivendica'],['leasing','Leasing'],['abitazione','Abitazione'],['superficie','Superficie']].map(([v,l])=><option key={v} value={v}>{l}</option>)}
+                    </select>
+                  </div>
                   <div className="form-group"><label className="form-label">Stato</label>
                     <select className="form-input" value={form.stato||'Buono'} onChange={e=>set('stato',e.target.value)}>
                       {['Ottimo','Buono','Discreto','Deteriorato','Non funzionante'].map(s=><option key={s}>{s}</option>)}
