@@ -4,11 +4,31 @@ import { Topbar } from '../components/layout'
 import { supabase } from '../lib/supabase'
 import { Eye, EyeOff, Save, Key, Building, User, Plus, Trash2 } from 'lucide-react'
 
+const TRIBUNALI_IT = [
+  'Agrigento','Alba','Alessandria','Ancona','Aosta','Arezzo','Ariano Irpino','Ascoli Piceno',
+  'Asti','Avellino','Avezzano','Bari','Barletta','Bassano del Grappa','Belluno','Benevento',
+  'Bergamo','Biella','Bologna','Bolzano','Brescia','Brindisi','Busto Arsizio','Cagliari',
+  'Caltagirone','Caltanissetta','Campobasso','Casale Monferrato','Cassino','Castrovillari',
+  'Catania','Catanzaro','Chiavari','Chieti','Civitavecchia','Como','Cosenza','Cremona',
+  'Crotone','Cuneo','Enna','Fermo','Ferrara','Firenze','Foggia','Forlì','Frosinone',
+  'Genova','Gela','Grosseto','Imperia','Isernia',"L'Aquila",'La Spezia','Lamezia Terme',
+  'Lanciano','Larino','Latina','Lecce','Lecco','Livorno','Locri','Lodi','Lucca','Lucera',
+  'Macerata','Mantova','Marsala','Massa','Matera','Messina','Milano','Modena','Monza',
+  'Napoli','Napoli Nord','Nola','Novara','Nuoro','Oristano','Padova','Palermo','Paola',
+  'Parma','Pavia','Perugia','Pesaro','Pescara','Piacenza','Pisa','Pistoia','Pordenone',
+  'Potenza','Prato','Ragusa','Ravenna','Reggio Calabria','Reggio Emilia','Rieti','Rimini',
+  'Roma','Rossano','Rovereto','Rovigo','Salerno','Sassari','Savona','Sciacca','Siena',
+  'Siracusa','Sondrio','Spoleto','Taranto','Tempio Pausania','Teramo','Terni','Torino',
+  'Torre Annunziata','Trapani','Trento','Treviso','Trieste','Udine','Urbino','Varese',
+  'Venezia','Vercelli','Verona','Vibo Valentia','Vicenza','Viterbo'
+]
+
 export default function Impostazioni() {
   const { profile, notify, fetchProfile } = useStore()
   const [tab, setTab] = useState('profilo')
   const [profilo, setProfilo] = useState({})
   const [saving, setSaving] = useState(false)
+  const [tribSearch, setTribSearch] = useState('')
   const [studioNome, setStudioNome] = useState(localStorage.getItem('ip_studio_nome') || '')
   const [studioIndirizzo, setStudioIndirizzo] = useState(localStorage.getItem('ip_studio_indirizzo') || '')
   const [logoPreview, setLogoPreview] = useState(localStorage.getItem('ip_logo') || null)
@@ -131,6 +151,44 @@ export default function Impostazioni() {
                 <div className="form-group"><label className="form-label">CAP</label><input {...inp('stu_cap')} /></div>
                 <div className="form-group"><label className="form-label">Città</label><input {...inp('stu_citta')} /></div>
                 <div className="form-group"><label className="form-label">Provincia</label><input {...inp('stu_provincia')} maxLength={2} /></div>
+
+                <div className="form-section">Tribunali abilitati</div>
+                <div className="form-col-full">
+                  {/* Riepilogo selezionati */}
+                  {(profilo.tribunali||[]).length > 0 && (
+                    <div style={{marginBottom:10,padding:'8px 12px',background:'rgba(59,111,255,0.08)',border:'1px solid rgba(59,111,255,0.2)',borderRadius:8}}>
+                      <div style={{fontSize:11,fontWeight:600,color:'var(--accent)',marginBottom:6}}>
+                        {(profilo.tribunali||[]).length} tribunali selezionati:
+                      </div>
+                      <div style={{display:'flex',flexWrap:'wrap',gap:4}}>
+                        {(profilo.tribunali||[]).sort().map(t => (
+                          <span key={t} style={{fontSize:11,padding:'2px 8px',borderRadius:99,background:'rgba(59,111,255,0.15)',color:'var(--accent)',display:'flex',alignItems:'center',gap:4}}>
+                            {t}
+                            <span style={{cursor:'pointer',fontWeight:700,fontSize:13}}
+                              onClick={()=>set('tribunali',(profilo.tribunali||[]).filter(x=>x!==t))}>×</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <input className="form-input" placeholder="🔍 Cerca tribunale…" style={{marginBottom:8}}
+                    value={tribSearch} onChange={e=>setTribSearch(e.target.value)}/>
+                  <div style={{maxHeight:180,overflowY:'auto',border:'1px solid var(--border)',borderRadius:8,padding:8,background:'var(--bg)',display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:4}}>
+                    {TRIBUNALI_IT.filter(t => !tribSearch || t.toLowerCase().includes(tribSearch.toLowerCase())).map(t => {
+                      const sel = (profilo.tribunali||[]).includes(t)
+                      return (
+                        <label key={t} style={{display:'flex',alignItems:'center',gap:6,padding:'4px 6px',borderRadius:6,cursor:'pointer',background:sel?'rgba(59,111,255,0.1)':'transparent',fontSize:12}}>
+                          <input type="checkbox" checked={sel}
+                            onChange={e => set('tribunali', e.target.checked
+                              ? [...(profilo.tribunali||[]), t]
+                              : (profilo.tribunali||[]).filter(x=>x!==t)
+                            )}/>
+                          {t}
+                        </label>
+                      )
+                    })}
+                  </div>
+                </div>
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
                 <button className="btn btn-primary" onClick={saveProfilo} disabled={saving}>
