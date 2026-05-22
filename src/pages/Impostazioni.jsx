@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore'
 import { Topbar } from '../components/layout'
 import { supabase } from '../lib/supabase'
@@ -25,6 +26,7 @@ const TRIBUNALI_IT = [
 
 export default function Impostazioni() {
   const { profile, notify, fetchProfile } = useStore()
+  const navigate = useNavigate()
   const [tab, setTab] = useState('profilo')
   const [profilo, setProfilo] = useState({})
   const [saving, setSaving] = useState(false)
@@ -78,6 +80,7 @@ export default function Impostazioni() {
       if (error) throw error
       await fetchProfile(profile.id)
       notify('Profilo aggiornato', 'ok')
+      navigate('/')
     } catch (e) { notify('Errore: ' + e.message, 'err') }
     finally { setSaving(false) }
   }
