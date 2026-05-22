@@ -63,10 +63,13 @@ export default function Impostazioni() {
   }
 
 
+  const isAdmin = profile?.is_admin === true
   const TABS = [
     { id: 'profilo', label: 'Profilo utente', icon: User },
-    { id: 'api',     label: 'Chiave API AI',  icon: Key },
-    { id: 'studio',  label: 'Studio / Logo',  icon: Building },
+    ...(isAdmin ? [
+      { id: 'api',    label: 'Chiave API AI', icon: Key },
+      { id: 'studio', label: 'Studio / Logo', icon: Building },
+    ] : []),
   ]
 
   const salvaStudio = () => {
@@ -123,12 +126,14 @@ export default function Impostazioni() {
                 <div className="form-group"><label className="form-label">Email di studio</label><input type="email" className="form-input" value={profilo.email||''} disabled style={{opacity:0.5}} /></div>
                 <div className="form-group"><label className="form-label">PEC</label><input {...inp('pec', 'email')} placeholder="nome@pec.it" /></div>
 
+                {isAdmin && <>
                 <div className="form-section">Studio professionale</div>
                 <div className="form-group"><label className="form-label">Indirizzo studio</label><input {...inp('stu_indirizzo')} /></div>
                 <div className="form-group"><label className="form-label">N. civico</label><input {...inp('stu_civico')} /></div>
                 <div className="form-group"><label className="form-label">CAP</label><input {...inp('stu_cap')} /></div>
                 <div className="form-group"><label className="form-label">Città</label><input {...inp('stu_citta')} /></div>
                 <div className="form-group"><label className="form-label">Provincia</label><input {...inp('stu_provincia')} maxLength={2} /></div>
+                </>}
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
                 <button className="btn btn-primary" onClick={saveProfilo} disabled={saving}>
