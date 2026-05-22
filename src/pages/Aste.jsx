@@ -191,7 +191,17 @@ async function genAvviso(proc, lotti, opts, logoB64) {
   // ── Paragrafo AVVISA ──────────────────────────────────────────────────────
   let pAvvisa
   if (offertaIrrevocabile && (testoOfferta||'').trim()) {
-    pAvvisa = P([T(' ' + testoOfferta.trim())])
+    // Testo pre-asta + paragrafo con date vendita
+    const testoDate = isAMag
+      ? (isAsin
+          ? 'La vendita, con modalit\u00e0 di vendita \u201casincrona telematica\u201d, nonch\u00e9 \u201casta a tempo\u201d, sar\u00e0 avviata dal giorno ' + fmtDT(dataAsta, oraAsta) + ' (avvio gara ore ' + (oraAsta||'12:00') + ') al giorno ' + fmtDT(dataTermine, oraTermine) + ' (termine gara ore ' + (oraTermine||'12:00') + ') e sar\u00e0 accessibile sul sito di gara del Soggetto Specializzato alla Vendita Procedure Gestite e Servizi S.r.l. \u2013 PRO.GES.S. www.astemagazine.com, oltre che sul sito www.progess-italia.it, per i seguenti lotti:'
+          : 'La vendita, con modalit\u00e0 di vendita \u201csincrona telematica\u201d, si terr\u00e0 il giorno ' + fmtDT(dataAsta, oraAsta) + ' accessibile sul sito di gara del Soggetto Specializzato alla Vendita Procedure Gestite e Servizi S.r.l. \u2013 PRO.GES.S. www.astemagazine.com, oltre che sul sito www.progess-italia.it.')
+      : (isAsin
+          ? 'La vendita, con modalit\u00e0 di vendita \u201cASINCRONA TELEMATICA\u201d, si terr\u00e0 dal giorno ' + fmtDT(dataAsta, oraAsta) + ' al giorno ' + fmtDT(dataTermine, oraTermine) + ' tramite la piattaforma di gara \u201cProgess Italia\u201d autorizzata dal Ministero della Giustizia PGT n. 51 del 15/05/2019 \u2013 www.progess-italia.it.'
+          : isMista
+          ? 'La vendita, con modalit\u00e0 di vendita \u201cSINCRONA MISTA\u201d, si terr\u00e0 il giorno ' + fmtDT(dataAsta, oraAsta) + ' presso la sala d\u2019aste del Soggetto Specializzato alla Vendita \u201cPro.Ges.S. S.r.l.\u201d - Via Giuseppe Parini n.ro 29 - Lecco (Lc).'
+          : 'La vendita, con modalit\u00e0 di vendita \u201cSINCRONA TELEMATICA\u201d, si terr\u00e0 il giorno ' + fmtDT(dataAsta, oraAsta) + ' tramite la piattaforma di gara \u201cProgess Italia\u201d autorizzata dal Ministero della Giustizia PGT n. 51 del 15/05/2019 \u2013 www.progess-italia.it.')
+    pAvvisa = [P([T(' ' + testoOfferta.trim())]), BR(), P([T(testoDate)])]
   } else if (isAMag) {
     pAvvisa = P([
       T(isAsin && !isMista
@@ -522,7 +532,7 @@ async function genAvviso(proc, lotti, opts, logoB64) {
       P([T('- Vista l\u2019autorizzazione emessa dall\u2019Ill.mo Sig. Giudice Delegato '+(proc.giudice ? 'Dott. '+(proc.giudice||'') : '________________')+' a norma dell\u2019articolo '+(proc.tipo === 'liquidazione_giudiziale' ? '216 CCII' : '272 e 275 CCII')+' e recante l\u2019autorizzazione alla vendita di cui al presente Avviso di Vendita;')]),
       BR(),
       PCA([B('AVVISA')]),
-      pAvvisa,
+      ...(Array.isArray(pAvvisa) ? pAvvisa : [pAvvisa]),
       ...sezioneDescrizioneLotti,
       ...sezioneDataLuogo,
       ...sezioneOfferte,
