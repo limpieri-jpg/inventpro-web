@@ -564,18 +564,19 @@ export default function Inventario() {
         : `<div style="font-size:18px;font-weight:700;color:#1a3a6b">${studioNome}</div>`
       const makeQRUrl = (text) => `https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent((text || 'INV').substring(0, 100))}`
       const proc = currentProc
+      const fmtTipo = (t) => (t||'').replace(/_/g,' ').replace(/\b\w/g, l => l.toUpperCase())
       const titoloDoc = estimativo ? 'Report estimativo' : 'Report fotografico beni mobili'
       const coverTitle = estimativo ? 'REPORT ESTIMATIVO' : 'REPORT FOTOGRAFICO'
       const totVG = tutti.reduce((s, a) => s + (parseFloat(a.val_giud || 0) * parseFloat(a.qta || 1)), 0)
       const fmtEurLocal = (n) => { const parts = parseFloat(n || 0).toFixed(2).split('.'); parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.'); return '€ ' + parts[0] + ',' + parts[1]; }
-      const procQR = makeQRUrl([(proc.tipo || ''), (proc.nome || ''), (proc.numero || '')].join(' '))
+      const procQR = makeQRUrl([(proc.tipo || ''), (proc.nome || ''), (proc.num ? proc.num + (proc.anno ? '/' + proc.anno : '') : '')].join(' '))
 
       const frontespizio = '<div style="page-break-after:always;min-height:100vh;display:flex;flex-direction:column;padding:50px 60px;background:#fff;box-sizing:border-box">'
         + '<div style="text-align:center;margin-bottom:auto">'
         + '<div style="margin-bottom:24px">' + logoHtml + '</div>'
         + '<div style="font-size:24px;font-weight:700;color:#1a1a16;letter-spacing:.03em;margin-bottom:28px">' + coverTitle + '</div>'
-        + '<div style="font-size:17px;color:#333;margin-bottom:8px">' + (proc.tipo || '') + '</div>'
-        + '<div style="font-size:15px;color:#555;margin-bottom:8px">N\u00b0 ' + (proc.numero || '') + '</div>'
+        + '<div style="font-size:17px;color:#333;margin-bottom:8px">' + fmtTipo(proc.tipo) + '</div>'
+        + '<div style="font-size:15px;color:#555;margin-bottom:8px">N\u00b0 ' + (proc.num ? proc.num + (proc.anno ? '/' + proc.anno : '') : '') + '</div>'
         + '<div style="font-size:15px;color:#555">Tribunale di ' + (proc.tribunale || '') + '</div>'
         + (proc.nome ? '<div style="font-size:14px;font-weight:600;color:#333;margin-top:6px">' + proc.nome + '</div>' : '')
         + '</div>'
@@ -586,7 +587,23 @@ export default function Inventario() {
         + '<div style="margin-top:16px;border-top:1px solid #ddd;padding-top:8px;font-size:10px;color:#888">' + footerTxt + '</div>'
         + '</div></div>'
 
-      const artRows = tutti.map((a, i) => {
+      // artRows ora generato nel bodyHtml
+
+      const totBanner = estimativo ? '<div class="tot-banner-est"><b>Valore di Stima totale:</b> ' + fmtEurLocal(totVG) + '</div>' : ''
+      const printBtn = '<div class="print-bar no-print"><div style="flex:1"><div style="font-weight:700;font-size:14px;margin-bottom:3px">\uD83D\uDCCB ' + titoloDoc + '</div>'
+        + '<div style="font-size:11px;opacity:.9">\u2460 Clicca <b>Stampa/Salva PDF</b> &nbsp;\u2461 Destinazione: <b>Salva come PDF</b> &nbsp;\u2462 Disattiva <b>Intestazioni e pi\u00e8 di pagina</b> + attiva <b>Grafica di sfondo</b></div></div>'
+        + '<button onclick="window.print()" class="print-btn">\uD83D\uDDB8 Stampa / Salva PDF</button></div>'
+      const pageHdr = '<div class="page-hdr"><div>' + logoHtml + '</div>'
+        + '<div style="display:flex;align-items:center;gap:10px">'
+        + '<div class="page-hdr-info"><b>' + titoloDoc + '</b>' + fmtTipo(proc.tipo) + ' ' + (proc.nome || '') + '<br>n\u00b0 ' + (proc.num ? proc.num + (proc.anno ? '/' + proc.anno : '') : '') + ' - Tribunale di ' + (proc.tribunale || '') + '<br>'
+        + (proc.giudice ? 'Giudice: <em>' + proc.giudice + '</em><br>' : '')
+        + (proc.curatore ? 'Curatore: <em>' + proc.curatore + '</em>' : '') + '</div>'
+        + '<img src="' + procQR + '" style="width:60px;height:60px">'
+        + '</div></div>'
+      const css = '@page{size:A4 portrait;margin:28mm 12mm 22mm 12mm;-webkit-print-color-adjust:exact;print-color-adjust:exact}@page:first{margin-top:0}*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:11px;color:#222;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}@media print{html,body{margin:0;padding:0}.no-print{display:none!important}.page-header-print{display:block!important}.page-footer-print{display:block!important}}.print-bar{position:sticky;top:0;background:#1d4ed8;color:#fff;padding:10px 20px;display:flex;align-items:center;gap:16px;z-index:999}.print-btn{background:#fff;color:#1d4ed8;border:none;padding:8px 18px;border-radius:6px;font-weight:700;cursor:pointer;font-size:13px}.page-header-print{display:none;position:running(header);width:100%}.page-hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:8px 12mm;border-bottom:2px solid #2d6a7f;background:#fff}.page-hdr-info{text-align:right;font-size:10px;line-height:1.7;color:#333}.page-hdr-info b{font-size:12px;color:#000;display:block}.report-wrap{padding:8px 0 30px}@page{@top-center{content:element(header)}@bottom-center{content:element(footer)}}.card{border:1px solid #aaa;margin-bottom:12px;page-break-inside:avoid;break-inside:avoid}.card-hdr{background:#1a3a5c;color:#fff;display:flex;align-items:center;-webkit-print-color-adjust:exact;print-color-adjust:exact}.card-num{width:36px;min-height:36px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;background:rgba(255,255,255,.15)}.card-title{font-size:13px;font-weight:700;padding:8px 10px;flex:1}.card-body{width:100%;border-collapse:collapse;padding:8px 12px}.qr-cell{width:88px;vertical-align:top;padding:8px 6px 8px 12px}.meta-cell{vertical-align:top;padding:8px 12px 8px 14px}.meta-tbl{border-collapse:collapse}.lbl{font-weight:700;padding-right:6px;white-space:nowrap;line-height:1.8;vertical-align:top}.photos-wrap{padding:0 12px 12px}.photos-lbl{margin-bottom:6px}.photos-row{display:flex;flex-wrap:wrap;gap:6px}.photo{width:190px;height:142px;object-fit:cover;border:1px solid #ccc}.tot-banner-est{background:#8b1a1a;color:#fff;padding:14px 24px;margin-top:16px;font-size:16px;text-align:center;-webkit-print-color-adjust:exact;print-color-adjust:exact}.page-footer-print{display:none;position:running(footer);border-top:1px solid #ccc;padding:4px 12mm;font-size:9px;color:#666;background:#fff;display:flex;align-items:center;justify-content:space-between}.page-pair{page-break-after:always;break-after:page}.page-pair:last-child{page-break-after:auto;break-after:auto}'
+      const pageFooter = '<div class="page-footer"><span>' + footerTxt + '</span><span>Procedura: ' + (proc.nome || '') + ' n° ' + (proc.num ? proc.num + (proc.anno ? '/' + proc.anno : '') : '') + '</span></div>'
+      // Raggruppa articoli a 2 per pagina
+      const artList = tutti.map((a, i) => {
         const vg = parseFloat(a.val_giud || 0) * parseFloat(a.qta || 1)
         const artQR = makeQRUrl(a.codice_siecic || ('ART-' + (i + 1)))
         let metaLeft = ''
@@ -608,22 +625,22 @@ export default function Inventario() {
           + '<td class="meta-cell"><table class="meta-tbl">' + metaLeft + '</table></td>'
           + (metaRight ? '<td class="meta-cell"><table class="meta-tbl">' + metaRight + '</table></td>' : '')
           + '</tr></table>' + photosHtml + '</div>'
-      }).join('')
-
-      const totBanner = estimativo ? '<div class="tot-banner-est"><b>Valore di Stima totale:</b> ' + fmtEurLocal(totVG) + '</div>' : ''
-      const printBtn = '<div class="print-bar no-print"><div style="flex:1"><div style="font-weight:700;font-size:14px;margin-bottom:3px">\uD83D\uDCCB ' + titoloDoc + '</div>'
-        + '<div style="font-size:11px;opacity:.9">\u2460 Clicca <b>Stampa/Salva PDF</b> &nbsp;\u2461 Destinazione: <b>Salva come PDF</b> &nbsp;\u2462 Disattiva <b>Intestazioni e pi\u00e8 di pagina</b> + attiva <b>Grafica di sfondo</b></div></div>'
-        + '<button onclick="window.print()" class="print-btn">\uD83D\uDDB8 Stampa / Salva PDF</button></div>'
-      const pageHdr = '<div class="page-hdr"><div>' + logoHtml + '</div>'
+      })
+      // Raggruppa a 2 per pagina
+      const pages = []
+      for (let i = 0; i < artList.length; i += 2) {
+        pages.push('<div class="page-pair">' + artList[i] + (artList[i+1] || '') + '</div>')
+      }
+      const artRowsPaged = pages.join('')
+      const runningHeader = '<div class="page-header-print"><div class="page-hdr"><div>' + logoHtml + '</div>'
         + '<div style="display:flex;align-items:center;gap:10px">'
-        + '<div class="page-hdr-info"><b>' + titoloDoc + '</b>' + (proc.tipo || '') + ' ' + (proc.nome || '') + '<br>n\u00b0 ' + (proc.numero || '') + ' - Tribunale di ' + (proc.tribunale || '') + '<br>'
+        + '<div class="page-hdr-info"><b>' + titoloDoc + '</b>' + fmtTipo(proc.tipo) + ' ' + (proc.nome || '') + '<br>n\u00b0 ' + (proc.num ? proc.num + (proc.anno ? '/' + proc.anno : '') : '') + ' - Tribunale di ' + (proc.tribunale || '') + '<br>'
         + (proc.giudice ? 'Giudice: <em>' + proc.giudice + '</em><br>' : '')
         + (proc.curatore ? 'Curatore: <em>' + proc.curatore + '</em>' : '') + '</div>'
         + '<img src="' + procQR + '" style="width:60px;height:60px">'
-        + '</div></div>'
-      const css = '@page{size:A4 portrait;margin:0 0 20mm 0;-webkit-print-color-adjust:exact;print-color-adjust:exact}*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:11px;color:#222;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}@media print{html,body{margin:0;padding:0}.report-wrap{padding:12mm 12mm 16mm 12mm}}.print-bar{position:sticky;top:0;background:#1d4ed8;color:#fff;padding:10px 20px;display:flex;align-items:center;gap:16px;z-index:999}.print-btn{background:#fff;color:#1d4ed8;border:none;padding:8px 18px;border-radius:6px;font-weight:700;cursor:pointer;font-size:13px}.page-hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding-bottom:8px;border-bottom:2px solid #2d6a7f;margin-bottom:16px}.page-hdr-info{text-align:right;font-size:10px;line-height:1.7;color:#333}.page-hdr-info b{font-size:12px;color:#000;display:block}.card{border:1px solid #aaa;margin-bottom:16px;page-break-inside:avoid;break-inside:avoid}.card-hdr{background:#1a3a5c;color:#fff;display:flex;align-items:center;-webkit-print-color-adjust:exact;print-color-adjust:exact}.card-num{width:36px;min-height:36px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;background:rgba(255,255,255,.15)}.card-title{font-size:13px;font-weight:700;padding:8px 10px;flex:1}.card-body{width:100%;border-collapse:collapse;padding:8px 12px}.qr-cell{width:88px;vertical-align:top;padding:8px 6px 8px 12px}.meta-cell{vertical-align:top;padding:8px 12px 8px 14px}.meta-tbl{border-collapse:collapse}.lbl{font-weight:700;padding-right:6px;white-space:nowrap;line-height:1.8;vertical-align:top}.photos-wrap{padding:0 12px 12px}.photos-lbl{margin-bottom:6px}.photos-row{display:flex;flex-wrap:wrap;gap:6px}.photo{width:190px;height:142px;object-fit:cover;border:1px solid #ccc}.tot-banner-est{background:#8b1a1a;color:#fff;padding:14px 24px;margin-top:16px;font-size:16px;text-align:center;-webkit-print-color-adjust:exact;print-color-adjust:exact}.page-footer{position:fixed;bottom:0;left:0;right:0;border-top:1px solid #ccc;padding:5px 16px;font-size:9px;color:#666;text-align:center;background:#fff;display:flex;align-items:center;justify-content:space-between}@media print{.no-print{display:none!important}.page-footer{position:fixed;bottom:0}}'
-      const pageFooter = '<div class="page-footer"><span>' + footerTxt + '</span><span>Procedura: ' + (proc.nome || '') + ' n° ' + (proc.numero || '') + '</span></div>'
-      const bodyHtml = printBtn + frontespizio + '<div class="report-wrap" style="padding:16px 16px 30px">' + pageFooter + pageHdr + artRows + totBanner + '</div>'
+        + '</div></div></div>'
+      const runningFooter = '<div class="page-footer-print"><span>' + footerTxt + '</span><span>Procedura: ' + (proc.nome || '') + ' n\u00b0 ' + (proc.num ? proc.num + (proc.anno ? '/' + proc.anno : '') : '') + '</span></div>'
+      const bodyHtml = printBtn + runningHeader + runningFooter + frontespizio + '<div class="report-wrap">' + artRowsPaged + totBanner + '</div>'
       const html = '<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8"><title>' + titoloDoc + '</title><style>' + css + '</style></head><body>' + bodyHtml + '</body></html>'
       const win = window.open('', '_blank')
       if (win) { win.document.write(html); win.document.close() }
