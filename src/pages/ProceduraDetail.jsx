@@ -107,7 +107,7 @@ function ProcForm({ proc, onSave, onClose }) {
   )
 }
 
-function TabAnagrafica({ proc, onEdit }) {
+function TabAnagrafica({ proc, onEdit, isAdmin }) {
   const { notify } = useStore()
   const [exporting, setExporting] = useState(false)
   const [exportingFoto, setExportingFoto] = useState(false)
@@ -225,7 +225,7 @@ function TabAnagrafica({ proc, onEdit }) {
       <div className="card-header">
         <div className="card-title">Dati procedura</div>
         <div style={{display:'flex',gap:8}}>
-          <button className="btn btn-ghost btn-sm" onClick={onEdit}><Edit size={13} /> Modifica</button>
+          {isAdmin && <button className="btn btn-ghost btn-sm" onClick={onEdit}><Edit size={13} /> Modifica</button>}
         </div>
       </div>
       <div className="card-body">
@@ -1241,13 +1241,13 @@ function TabRelazioneStima({ proc }) {
   )
 }
 
-const TABS = [
+const TABS_ALL = [
   { id: 'anagrafica', label: 'Anagrafica', icon: FileText },
   { id: 'sedi', label: 'Sedi', icon: MapPin },
   { id: 'inventario', label: 'Inventario', icon: Package },
   { id: 'lotti', label: 'Lotti', icon: Layers },
-  { id: 'contratti', label: 'Contratti', icon: Download },
-  { id: 'relazione', label: 'Rel. di Stima', icon: FileText },
+  { id: 'contratti', label: 'Contratti', icon: Download, adminOnly: true },
+  { id: 'relazione', label: 'Rel. di Stima', icon: FileText, adminOnly: true },
 ]
 
 export default function ProceduraDetail() {
@@ -1258,6 +1258,8 @@ export default function ProceduraDetail() {
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState('anagrafica')
   const [showEdit, setShowEdit] = useState(false)
+  const isAdmin = profile?.is_admin
+  const TABS = TABS_ALL.filter(t => !t.adminOnly || isAdmin)
 
   const cambiaStato = async (nuovoStato) => {
     if (!confirm(`Impostare la procedura come "${nuovoStato}"?`)) return
@@ -1294,19 +1296,19 @@ export default function ProceduraDetail() {
         subtitle={`${proc.tipo} · ${proc.tribunale || ''} · ${proc.num ? proc.num+(proc.anno?'/'+proc.anno:'') : ''}`}
         actions={<div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <span className={`badge ${sb.cls}`}>{sb.label}</span>
-          {proc.status === 'attiva' && (
+          {isAdmin && proc.status === 'attiva' && (
             <button className="btn btn-ghost btn-sm" style={{color:'var(--accent-y)'}} onClick={()=>cambiaStato('sospesa')}>⏸ Sospendi</button>
           )}
-          {proc.status === 'sospesa' && (
+          {isAdmin && proc.status === 'sospesa' && (
             <button className="btn btn-ghost btn-sm" style={{color:'var(--accent-g)'}} onClick={()=>cambiaStato('attiva')}>▶ Riattiva</button>
           )}
-          {proc.status !== 'chiusa' && (
+          {isAdmin && proc.status !== 'chiusa' && (
             <button className="btn btn-ghost btn-sm" style={{color:'var(--text3)'}} onClick={()=>cambiaStato('chiusa')}>✓ Chiudi</button>
           )}
-          {proc.status === 'chiusa' && (
+          {isAdmin && proc.status === 'chiusa' && (
             <button className="btn btn-ghost btn-sm" style={{color:'var(--accent-g)'}} onClick={()=>cambiaStato('attiva')}>▶ Riapri</button>
           )}
-          <button className="btn btn-ghost btn-sm" style={{color:'var(--accent-r)'}} onClick={eliminaProcedura}><Trash2 size={13}/> Elimina</button>
+          {isAdmin && <button className="btn btn-ghost btn-sm" style={{color:'var(--accent-r)'}} onClick={eliminaProcedura}><Trash2 size={13}/> Elimina</button>}
           <button className="btn btn-ghost btn-sm" onClick={() => navigate('/procedure')}><ArrowLeft size={13} /> Procedure</button>
         </div>}
       />
@@ -1314,7 +1316,7 @@ export default function ProceduraDetail() {
         <div className="tabs">
           {TABS.map(t => <div key={t.id} className={`tab ${tab===t.id?'active':''}`} onClick={() => setTab(t.id)}><t.icon size={13} style={{ marginRight: 6, verticalAlign: 'middle' }} />{t.label}</div>)}
         </div>
-        {tab === 'anagrafica' && <TabAnagrafica proc={proc} onEdit={() => setShowEdit(true)} />}
+        {tab === 'anagrafica' && <TabAnagrafica proc={proc} onEdit={() => setShowEdit(true)} isAdmin={isAdmin} />}
         {tab === 'sedi' && <TabSedi procId={proc.id} />}
         {tab === 'inventario' && <TabInventarioPreview procId={proc.id} />}
         {tab === 'lotti' && <Empty icon="📋" title="Lotti" sub="Vai alla sezione Lotti per gestire i lotti di vendita" />}

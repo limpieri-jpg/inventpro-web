@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
+import { callAI } from '../lib/ai'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore'
 import { Topbar, Spinner, Modal, Empty } from '../components/layout'
 import { supabase } from '../lib/supabase'
 import { Plus, Edit, Trash2, FileText, Sparkles, Download } from 'lucide-react'
-import { getGenereTermini } from '../lib/genere'
 
 const TIPI_DOC = [
   { id: 'relazione',      label: 'Relazione particolareggiata', art: 'Art. 130 CCII', icon: '📋', sezioni: [
@@ -39,19 +39,13 @@ function DocumentoForm({ tipo, procId, documento, onSave, onClose }) {
   const [saving, setSaving] = useState(false)
   const [dataDoc, setDataDoc] = useState(documento?.data_doc || new Date().toISOString().substr(0, 10))
 
-  const apiKey = localStorage.getItem('ip_apikey') || ''
-
   const generaSezione = async (sez) => {
-    if (!apiKey) { notify('Inserisci la chiave API in Impostazioni', 'warn'); return }
     setLoading(l => ({ ...l, [sez.id]: true }))
     try {
       const proc = (await supabase.from('procedure').select('*').eq('id', procId).single()).data || {}
-      const genere = getGenereTermini(proc.cf_curatore || '')
-      const ruoloPro = genere.qualita(proc.tipo)
       const prompt = `Sei un esperto di diritto concorsuale italiano con ventennale esperienza nella redazione di atti giudiziali.
 ${[
   'STILE OBBLIGATORIO: italiano forense formale e tecnico-giuridico.',
-  `GENERE DEL PROFESSIONISTA: ${genere.sesso === 'F' ? 'FEMMINA — usa forme femminili: la sottoscritta, nominata, la Curatrice/Commissaria/Liquidatrice' : 'MASCHIO — usa forme maschili: il sottoscritto, nominato, il Curatore/Commissario/Liquidatore'}. Accordare SEMPRE tutti gli aggettivi e participi al genere corretto.`,
   'Usa: "si è proceduto a", "è stato accertato che", "si evidenzia che", "ai sensi di", "alla luce di".',
   'Frasi complete con subordinate. Niente telegrafismo.',
   'Cita norme pertinenti con articolo e fonte precisi (es. art. 130 CCII, art. 2392 c.c.).',
@@ -60,28 +54,12 @@ ${[
 ].join('\n')}
 
 PROCEDURA: ${proc.tipo || ''} "${proc.nome || ''}" n. ${proc.num || ''}/${proc.anno || ''}, Tribunale di ${proc.tribunale || ''}
-${ruoloPro.toUpperCase()}: ${proc.curatore || ''}
+CURATORE: ${proc.curatore || ''}
 SEZIONE DA REDIGERE: ${sez.label} (${tipo.art})
 ISTRUZIONI SPECIFICHE: ${sez.hint}
 ${sezioni[sez.id] ? 'BOZZA PRECEDENTE (migliora e arricchisci): ' + sezioni[sez.id].substring(0, 500) : ''}`
 
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true'
-        },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-5-20250929',
-          max_tokens: 1500,
-          messages: [{ role: 'user', content: prompt }]
-        })
-      })
-      const data = await res.json()
-      const testo = data.content?.[0]?.text || ''
-      if (!testo) throw new Error('Risposta AI vuota')
+      const testo = await callAI({ messages: [{ role: 'user', content: prompt }] })
       setSezioni(s => ({ ...s, [sez.id]: testo }))
       notify('Sezione generata', 'ok')
     } catch (e) { notify('Errore AI: ' + e.message, 'err') }
@@ -118,12 +96,6 @@ ${sezioni[sez.id] ? 'BOZZA PRECEDENTE (migliora e arricchisci): ' + sezioni[sez.
           <input type="date" className="form-input" value={dataDoc} onChange={e => setDataDoc(e.target.value)} style={{ width: 160 }} />
         </div>
       </div>
-
-      {!apiKey && (
-        <div className="alert alert-warn" style={{ marginBottom: 16 }}>
-          ⚠️ Nessuna chiave API configurata. Vai in Impostazioni per aggiungere la chiave Anthropic e abilitare la generazione AI.
-        </div>
-      )}
 
       {tipo.sezioni.map((sez, i) => (
         <div key={sez.id} style={{ marginBottom: 20, border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
@@ -166,7 +138,8 @@ ${sezioni[sez.id] ? 'BOZZA PRECEDENTE (migliora e arricchisci): ' + sezioni[sez.
 
 // ── Pagina principale ────────────────────────────────────────────────
 export default function Contratti() {
-  const { currentProc, notify } = useStore()
+  const { currentProc, notify, profile } = useStore()
+  const isAdmin = profile?.is_admin
   const navigate = useNavigate()
   const [documenti, setDocumenti] = useState([])
   const [loading, setLoading] = useState(true)
@@ -177,8 +150,9 @@ export default function Contratti() {
 
   useEffect(() => {
     if (!currentProc) { navigate('/procedure'); return }
+    if (!isAdmin) { navigate('/procedure'); return }
     loadDocumenti()
-  }, [currentProc])
+  }, [currentProc, isAdmin])
 
   const loadDocumenti = async () => {
     setLoading(true)

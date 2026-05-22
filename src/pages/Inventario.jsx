@@ -502,7 +502,8 @@ Rispondi SOLO con JSON valido (no markdown, no commenti):
 
 
 export default function Inventario() {
-  const { currentProc, notify } = useStore()
+  const { currentProc, notify, profile } = useStore()
+  const isAdmin = profile?.is_admin
   const navigate = useNavigate()
   const [articoli, setArticoli] = useState([])
   const [loading, setLoading] = useState(true)
@@ -701,13 +702,13 @@ export default function Inventario() {
         subtitle={currentProc.nome}
         actions={
           <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn btn-ghost btn-sm" onClick={() => setShowReportModal(true)}>📄 Report PDF</button>
+            {isAdmin && <button className="btn btn-ghost btn-sm" onClick={() => setShowReportModal(true)}>📄 Report PDF</button>}
             <button className="btn btn-ghost btn-sm" onClick={() => setShowFallcoModal(true)}>
               <FileDown size={14} /> Export FALLCO
             </button>
-            <button className="btn btn-primary btn-sm" onClick={() => { setEditArticolo(null); setShowForm(true) }}>
+            {isAdmin && <button className="btn btn-primary btn-sm" onClick={() => { setEditArticolo(null); setShowForm(true) }}>
               <Plus size={14} /> Nuovo articolo
-            </button>
+            </button>}
           </div>
         }
       />
@@ -747,7 +748,7 @@ export default function Inventario() {
                 </thead>
                 <tbody>
                   {paginated.map(a => (
-                    <tr key={a.id} onClick={() => { setEditArticolo(a); setShowForm(true) }}>
+                    <tr key={a.id} onClick={() => isAdmin && ( setEditArticolo(a), setShowForm(true) )} style={{cursor: isAdmin ? "pointer" : "default"}}>
                       <td onClick={e => e.stopPropagation()}>
                         {a.prima_foto_url
                           ? <img src={a.prima_foto_url} alt="" style={{ width: 36, height: 36, objectFit: 'cover', borderRadius: 4, border: '1px solid var(--border)' }} />
@@ -761,7 +762,7 @@ export default function Inventario() {
                       <td className="mono">{fmtEur(Number(a.val_giud || 0) * Number(a.qta || 1))}</td>
                       <td><span className={`badge ${a.stato === 'ottimo' || a.stato === 'buono' ? 'badge-green' : a.stato === 'discreto' ? 'badge-yellow' : 'badge-red'}`}>{a.stato || '—'}</span></td>
                       <td onClick={e => e.stopPropagation()}>
-                        <button className="btn btn-ghost btn-sm" style={{ color: 'var(--accent-r)', padding: '4px 8px' }} onClick={() => deleteArticolo(a.id)}><Trash2 size={13} /></button>
+                        {isAdmin && <button className="btn btn-ghost btn-sm" style={{ color: 'var(--accent-r)', padding: '4px 8px' }} onClick={() => deleteArticolo(a.id)}><Trash2 size={13} /></button>}
                       </td>
                     </tr>
                   ))}
