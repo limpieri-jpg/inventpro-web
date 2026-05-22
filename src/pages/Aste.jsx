@@ -203,7 +203,7 @@ async function genAvviso(proc, lotti, opts, logoB64) {
       T(isAsin && !isMista
         ? 'Del farsi luogo alla vendita dei beni di pertinenza della procedura in epigrafe, con modalit\u00e0 di vendita \u201cASINCRONA TELEMATICA\u201d, tramite la piattaforma di gara \u201cProgess Italia\u201d autorizzata dal Ministero della Giustizia PGT n. 51 del 15/05/2019 \u2013 www.progess-italia.it. La gara si terr\u00e0 dal giorno ' + fmtDT(dataAsta, oraAsta) + ' al giorno ' + fmtDT(dataTermine, oraTermine) + '.'
         : isMista
-        ? 'Del farsi luogo alla vendita dei beni di pertinenza della procedura in epigrafe, con modalit\u00e0 di vendita \u201cSINCRONA MISTA\u201d come meglio oltre descritti, nei lotti e con i prezzi base di seguito indicati, nonch\u00e9 con le seguenti modalit\u00e0 e condizioni, per il giorno ' + fmtDT(dataAsta, oraAsta) + ' presso la sala d\u2019aste del Soggetto Specializzato alla Vendita \u201cPro.Ges.S. S.r.l.\u201d \u2013 Via Giuseppe Parini n.ro 29 \u2013 Lecco (Lc).'
+        ? 'Del farsi luogo alla vendita dei beni'+(tipoBene===\'immobile\'?' immobili':' mobili')+' di pertinenza della procedura in epigrafe, con modalit\u00e0 di vendita \u201cSINCRONA MISTA\u201d, come meglio oltre descritti, nei lotti e con i prezzi base di seguito indicati, nonch\u00e9 con le seguenti modalit\u00e0 e condizioni, per il giorno ' + fmtDT(dataAsta, oraAsta) + ' presso la sala d\u2019aste del Soggetto Specializzato alla Vendita \u201cPro.Ges.S. S.r.l.\u201d - Via Giuseppe Parini n.ro 29 - Lecco (Lc).'
         : 'Del farsi luogo alla vendita dei beni di pertinenza della procedura in epigrafe, con modalit\u00e0 di vendita \u201cSINCRONA TELEMATICA\u201d, per il giorno ' + fmtDT(dataAsta, oraAsta) + ' tramite la piattaforma di gara \u201cProgess Italia\u201d autorizzata dal Ministero della Giustizia PGT n. 51 del 15/05/2019 \u2013 www.progess-italia.it.')
     ])
   }
@@ -389,6 +389,20 @@ async function genAvviso(proc, lotti, opts, logoB64) {
   }
 
   // ── Sezione: Saldo e diritti d'asta ──────────────────────────────────────
+  // Sezione Data e Luogo
+  const sezioneDataLuogo = isAMag ? [] : (!isAsin ? [
+    BR(),
+    PSC([B('DATA E LUOGO DELL\u2019ASTA')]),
+    P([T('La vendita \u00e8 fissata per il giorno '), B(fmtDT(dataAsta, oraAsta)),
+       T(isMista ? ' presso la sala d\u2019aste del Soggetto Specializzato alla Vendita \u2013 \u201cPro.Ges.S. S.r.l.\u201d con sede in Lecco (Lc) Via Giuseppe Parini n.ro 29, alla presenza '+g.delDella+' '+ruolo+'.'
+               : ' tramite la piattaforma della Societ\u00e0 Specializzata alla vendita Pro.Ges.S. \u2013 www.progess-italia.it.')]),
+  ] : [
+    BR(),
+    PSC([B('DATA E LUOGO DELL\u2019ASTA')]),
+    P([T('La vendita si svolger\u00e0 dal giorno '), B(fmtDT(dataAsta, oraAsta)), T(' al giorno '), B(fmtDT(dataTermine, oraTermine)),
+       T(' tramite la piattaforma della Societ\u00e0 Specializzata alla vendita Pro.Ges.S. \u2013 www.progess-italia.it.')]),
+  ])
+
   const sezioneSaldo = isAMag ? [
     BR(),
     PSC([B('TERMINE DELLA GARA E AGGIUDICAZIONE')]),
@@ -497,12 +511,19 @@ async function genAvviso(proc, lotti, opts, logoB64) {
       P([T(g.apertura+' ', {italics:true}), T(proc.curatore||'', {italics:true}),
          T(', nella sua qualit\u00e0 di '+ruolo+' della Procedura n. '+nrg+
            (proc.nome ? ' denominata \u201c'+proc.nome+'\u201d' : '')+
-           ' dichiarata dal Tribunale di '+(proc.tribunale||'')+
-           (proc.giudice ? ', Giudice Delegato '+(proc.giudice||'') : '')+',')]),
+           ', dichiarata dal Tribunale di '+(proc.tribunale||'')+
+           ' con sentenza del '+(proc.data_apertura ? fmtD(proc.data_apertura) : '________________')+
+           (proc.pec ? ' (PEC della procedura: '+proc.pec+')' : '')+
+           ',')]),
+      BR(),
+      // Visti — presenti nei modelli ufficiali CCII
+      P([T('- Visto il Programma di Liquidazione dell\u2019attivo della procedura gi\u00e0 predisposto ed approvato a norma degli artt. '+(proc.tipo === 'liquidazione_giudiziale' ? '213 CCII' : '272 e 213 C.C.I.I.')+';')]),
+      P([T('- Vista l\u2019autorizzazione emessa dall\u2019Ill.mo Sig. Giudice Delegato '+(proc.giudice ? 'Dott. '+(proc.giudice||'') : '________________')+' a norma dell\u2019articolo '+(proc.tipo === 'liquidazione_giudiziale' ? '216 CCII' : '272 e 275 CCII')+' e recante l\u2019autorizzazione alla vendita di cui al presente Avviso di Vendita;')]),
       BR(),
       PCA([B('AVVISA')]),
       pAvvisa,
       ...sezioneDescrizioneLotti,
+      ...sezioneDataLuogo,
       ...sezioneOfferte,
       ...sezioneSaldo,
       ...sezioneCondizioniAMag,
