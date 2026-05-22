@@ -259,39 +259,14 @@ export default function ProcedureList() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      // Leggi il profilo corrente direttamente da Supabase per avere dati freschi
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { setLoading(false); return }
-
-      const { data: prof } = await supabase
-        .from('profiles')
-        .select('id, is_admin')
-        .eq('id', user.id)
-        .single()
-
-      console.log('DEBUG profilo:', prof?.id, 'is_admin:', prof?.is_admin)
-
-      let q = supabase
-        .from('v_procedure_riepilogo')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      // Utenti non-admin vedono solo le procedure assegnate
-      if (prof && prof.is_admin === false) {
-        const { data: assegnate } = await supabase
-          .from('procedure_utenti')
-          .select('proc_id')
-          .eq('user_id', prof.id)
-        const ids = (assegnate || []).map(r => r.proc_id)
-        console.log('DEBUG procedure assegnate:', ids)
-        if (ids.length === 0) { setProcedure([]); setLoading(false); return }
-        q = q.in('id', ids)
-      }
-
-      if (statusFilter) q = q.eq('status', statusFilter)
-      if (search) q = q.ilike('nome', `%${search}%`)
-      const { data, error } = await q
+      // Usa RPC SECURITY DEFINER — gestisce il filtro per admin/utente lato DB
+      let { data, error } = await supabase.rpc('get_procedure_visibili')
       if (error) throw error
+
+      // Filtri client-side
+      if (statusFilter) data = (data||[]).filter(p => p.status === statusFilter)
+      if (search) data = (data||[]).filter(p => p.nome?.toLowerCase().includes(search.toLowerCase()))
+
       setProcedure(data || [])
     } catch (e) {
       notify('Errore caricamento: ' + e.message, 'err')
