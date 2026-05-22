@@ -246,7 +246,7 @@ function ProcForm({ proc, onSave, onClose }) {
 }
 
 export default function ProcedureList() {
-  const { setCurrentProc, notify } = useStore()
+  const { setCurrentProc, notify, profile } = useStore()
   const navigate = useNavigate()
   const [procedure, setProcedure] = useState([])
   const [loading, setLoading] = useState(true)
@@ -257,12 +257,25 @@ export default function ProcedureList() {
   const PER_PAGE = 20
 
   const load = useCallback(async () => {
+    if (!profile) return  // aspetta che il profile sia caricato
     setLoading(true)
     try {
       let q = supabase
         .from('v_procedure_riepilogo')
         .select('*')
         .order('created_at', { ascending: false })
+
+      // Utenti non-admin vedono solo le procedure assegnate
+      if (profile.is_admin === false) {
+        const { data: assegnate } = await supabase
+          .from('procedure_utenti')
+          .select('proc_id')
+          .eq('user_id', profile.id)
+        const ids = (assegnate || []).map(r => r.proc_id)
+        if (ids.length === 0) { setProcedure([]); setLoading(false); return }
+        q = q.in('id', ids)
+      }
+
       if (statusFilter) q = q.eq('status', statusFilter)
       if (search) q = q.ilike('nome', `%${search}%`)
       const { data, error } = await q
@@ -273,7 +286,7 @@ export default function ProcedureList() {
     } finally {
       setLoading(false)
     }
-  }, [search, statusFilter])
+  }, [search, statusFilter, profile])
 
   useEffect(() => { load() }, [load])
 
@@ -286,9 +299,9 @@ export default function ProcedureList() {
         title="Procedure"
         subtitle={`${procedure.length} procedure trovate`}
         actions={
-          <button className="btn btn-primary btn-sm" onClick={() => setShowForm(true)}>
+          {profile?.is_admin !== false && <button className="btn btn-primary btn-sm" onClick={() => setShowForm(true)}>
             <Plus size={14} /> Nuova procedura
-          </button>
+          </button>}
         }
       />
       <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
