@@ -203,7 +203,7 @@ async function genAvviso(proc, lotti, opts, logoB64) {
       T(isAsin && !isMista
         ? 'Del farsi luogo alla vendita dei beni di pertinenza della procedura in epigrafe, con modalit\u00e0 di vendita \u201cASINCRONA TELEMATICA\u201d, tramite la piattaforma di gara \u201cProgess Italia\u201d autorizzata dal Ministero della Giustizia PGT n. 51 del 15/05/2019 \u2013 www.progess-italia.it. La gara si terr\u00e0 dal giorno ' + fmtDT(dataAsta, oraAsta) + ' al giorno ' + fmtDT(dataTermine, oraTermine) + '.'
         : isMista
-        ? 'Del farsi luogo alla vendita dei beni'+(tipoBene===\'immobile\'?' immobili':' mobili')+' di pertinenza della procedura in epigrafe, con modalit\u00e0 di vendita \u201cSINCRONA MISTA\u201d, come meglio oltre descritti, nei lotti e con i prezzi base di seguito indicati, nonch\u00e9 con le seguenti modalit\u00e0 e condizioni, per il giorno ' + fmtDT(dataAsta, oraAsta) + ' presso la sala d\u2019aste del Soggetto Specializzato alla Vendita \u201cPro.Ges.S. S.r.l.\u201d - Via Giuseppe Parini n.ro 29 - Lecco (Lc).'
+        ? `Del farsi luogo alla vendita dei beni${tipoBene==='immobile'?' immobili':' mobili'} di pertinenza della procedura in epigrafe, con modalit\u00e0 di vendita \u201cSINCRONA MISTA\u201d, come meglio oltre descritti, nei lotti e con i prezzi base di seguito indicati, nonch\u00e9 con le seguenti modalit\u00e0 e condizioni, per il giorno ` + fmtDT(dataAsta, oraAsta) + ` presso la sala d\u2019aste del Soggetto Specializzato alla Vendita \u201cPro.Ges.S. S.r.l.\u201d - Via Giuseppe Parini n.ro 29 - Lecco (Lc).`
         : 'Del farsi luogo alla vendita dei beni di pertinenza della procedura in epigrafe, con modalit\u00e0 di vendita \u201cSINCRONA TELEMATICA\u201d, per il giorno ' + fmtDT(dataAsta, oraAsta) + ' tramite la piattaforma di gara \u201cProgess Italia\u201d autorizzata dal Ministero della Giustizia PGT n. 51 del 15/05/2019 \u2013 www.progess-italia.it.')
     ])
   }
@@ -390,12 +390,13 @@ async function genAvviso(proc, lotti, opts, logoB64) {
 
   // ── Sezione: Saldo e diritti d'asta ──────────────────────────────────────
   // Sezione Data e Luogo
+  const txtDataLuogo = isMista
+    ? ' presso la sala d\u2019aste del Soggetto Specializzato alla Vendita \u2013 \u201cPro.Ges.S. S.r.l.\u201d con sede in Lecco (Lc) Via Giuseppe Parini n.ro 29, alla presenza '+g.delDella+' '+ruolo+'.'
+    : ' tramite la piattaforma della Societ\u00e0 Specializzata alla vendita Pro.Ges.S. \u2013 www.progess-italia.it.'
   const sezioneDataLuogo = isAMag ? [] : (!isAsin ? [
     BR(),
     PSC([B('DATA E LUOGO DELL\u2019ASTA')]),
-    P([T('La vendita \u00e8 fissata per il giorno '), B(fmtDT(dataAsta, oraAsta)),
-       T(isMista ? ' presso la sala d\u2019aste del Soggetto Specializzato alla Vendita \u2013 \u201cPro.Ges.S. S.r.l.\u201d con sede in Lecco (Lc) Via Giuseppe Parini n.ro 29, alla presenza '+g.delDella+' '+ruolo+'.'
-               : ' tramite la piattaforma della Societ\u00e0 Specializzata alla vendita Pro.Ges.S. \u2013 www.progess-italia.it.')]),
+    P([T('La vendita \u00e8 fissata per il giorno '), B(fmtDT(dataAsta, oraAsta)), T(txtDataLuogo)]),
   ] : [
     BR(),
     PSC([B('DATA E LUOGO DELL\u2019ASTA')]),
