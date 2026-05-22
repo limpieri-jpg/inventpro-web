@@ -18,7 +18,7 @@ const NAV = [
   { section: 'Sistema' },
   { label: 'Impostazioni', icon: Settings,         path: '/impostazioni' },
   { label: 'Utenti',       icon: Users,            path: '/admin',       adminOnly: true },
-  { label: 'Migrazione',   icon: Database,         path: '/migrazione',  adminOnly: true },
+  { label: 'Backup',       icon: Database,         path: '/backup',      adminOnly: true },
 ]
 
 export function Sidebar() {
