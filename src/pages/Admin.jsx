@@ -222,17 +222,21 @@ function TabUtenti({ profile }) {
   const eliminaUtente = async (user) => {
     if (!confirm(`Eliminare definitivamente ${user.nome} ${user.cognome}?\nL'utente perderà l'accesso e tutti i suoi dati saranno rimossi.`)) return
     try {
-      // Elimina profilo (le procedure_utenti vengono eliminate in cascade)
-      await supabase.from('profiles').delete().eq('id', user.id)
-      // Elimina utente auth tramite Admin API
       const { data: { session } } = await supabase.auth.getSession()
-      await fetch(`https://gsmhhmyxpqwmssfdeslf.supabase.co/auth/v1/admin/users/${user.id}`, {
-        method: 'DELETE',
-        headers: {
-          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${session?.access_token}`
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-user`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({ user_id: user.id })
         }
-      })
+      )
+      const data = await res.json()
+      if (!data.ok) throw new Error(data.error)
       setUsers(prev => prev.filter(u => u.id !== user.id))
       notify('Utente eliminato', 'ok')
     } catch(e) { notify('Errore: ' + e.message, 'err') }
