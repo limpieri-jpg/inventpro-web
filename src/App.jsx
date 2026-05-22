@@ -17,15 +17,13 @@ import Admin from './pages/Admin'
 import Backup from './pages/Backup'
 import Documenti from './pages/Documenti'
 
-// ── Banner cambio password primo accesso ──────────────────────────────────────
+// ── Modal cambio password primo accesso ───────────────────────────────────────
 function PasswordChangeBanner() {
   const { profile, notify, fetchProfile } = useStore()
-  const [show, setShow]           = useState(false)
-  const [dismissed, setDismissed] = useState(false)
-  const [showForm, setShowForm]   = useState(false)
-  const [pwd, setPwd]             = useState('')
-  const [pwd2, setPwd2]           = useState('')
-  const [saving, setSaving]       = useState(false)
+  const [show, setShow]     = useState(false)
+  const [pwd, setPwd]       = useState('')
+  const [pwd2, setPwd2]     = useState('')
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     if (profile && profile.is_admin === false && !profile.password_changed) {
@@ -35,7 +33,7 @@ function PasswordChangeBanner() {
     }
   }, [profile])
 
-  if (!profile || !show || dismissed) return null
+  if (!profile || !show) return null
 
   const handleChange = async () => {
     if (!pwd || pwd.length < 6) { notify('Password minimo 6 caratteri', 'warn'); return }
@@ -44,7 +42,6 @@ function PasswordChangeBanner() {
     try {
       const { error } = await supabase.auth.updateUser({ password: pwd })
       if (error) throw error
-      // Segna password_changed = true nel profilo
       await supabase.from('profiles').update({ password_changed: true }).eq('id', profile.id)
       await fetchProfile(profile.id)
       notify('Password aggiornata con successo!', 'ok', 5000)
@@ -55,47 +52,29 @@ function PasswordChangeBanner() {
 
   return (
     <div style={{
-      position: 'fixed', top: 0, left: 0, right: 0, zIndex: 500,
-      background: 'linear-gradient(135deg, #1a2a4a, #0f1117)',
-      borderBottom: '2px solid var(--accent-y)',
-      padding: showForm ? '0' : '12px 24px',
-      boxShadow: '0 4px 20px rgba(0,0,0,0.5)'
+      position: 'fixed', inset: 0, zIndex: 500,
+      background: 'rgba(0,0,0,0.75)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: 24,
     }}>
-      {!showForm ? (
-        /* Banner compatto */
-        <div style={{display:'flex',alignItems:'center',gap:16,flexWrap:'wrap'}}>
-          <div style={{fontSize:20}}>🔑</div>
-          <div style={{flex:1,minWidth:200}}>
-            <div style={{fontSize:13,fontWeight:600,color:'var(--accent-y)'}}>
-              Stai usando la password temporanea
-            </div>
-            <div style={{fontSize:12,color:'var(--text2)',marginTop:2}}>
-              Per la sicurezza del tuo account, imposta una password personale.
-            </div>
-          </div>
-          <div style={{display:'flex',gap:8,flexShrink:0}}>
-            <button className="btn btn-primary btn-sm" onClick={() => setShowForm(true)}>
-              Cambia password ora
-            </button>
-            <button className="btn btn-ghost btn-sm" onClick={() => setDismissed(true)}
-              style={{fontSize:11,color:'var(--text3)'}}>
-              Ricordamelo dopo
-            </button>
+      <div style={{
+        background: 'var(--bg2)', border: '1px solid var(--border)',
+        borderRadius: 20, width: '100%', maxWidth: 400,
+        padding: 32, boxShadow: '0 8px 40px rgba(0,0,0,0.6)',
+        display: 'flex', flexDirection: 'column', gap: 16,
+      }}>
+        {/* Icona e titolo */}
+        <div style={{textAlign:'center'}}>
+          <div style={{fontSize:48,marginBottom:12}}>🔐</div>
+          <div style={{fontSize:18,fontWeight:700,marginBottom:6}}>Imposta la tua password</div>
+          <div style={{fontSize:13,color:'var(--text2)',lineHeight:1.6}}>
+            Stai usando la password temporanea.<br/>
+            Per la sicurezza del tuo account, scegli una password personale.
           </div>
         </div>
-      ) : (
-        /* Form cambio password */
-        <div style={{
-          maxWidth: 420, margin: '0 auto', padding: '24px 20px',
-          display: 'flex', flexDirection: 'column', gap: 14
-        }}>
-          <div style={{textAlign:'center',marginBottom:4}}>
-            <div style={{fontSize:24,marginBottom:8}}>🔐</div>
-            <div style={{fontSize:15,fontWeight:700}}>Imposta la tua password</div>
-            <div style={{fontSize:12,color:'var(--text2)',marginTop:4}}>
-              Scegli una password sicura di almeno 6 caratteri
-            </div>
-          </div>
+
+        {/* Form */}
+        <div style={{display:'flex',flexDirection:'column',gap:12}}>
           <div>
             <label className="form-label">Nuova password</label>
             <input className="form-input" type="password" value={pwd}
@@ -108,18 +87,24 @@ function PasswordChangeBanner() {
               onChange={e=>setPwd2(e.target.value)} placeholder="Ripeti la password"
               onKeyDown={e=>e.key==='Enter'&&handleChange()}/>
           </div>
-          <div style={{display:'flex',gap:10,marginTop:4}}>
-            <button className="btn btn-ghost" style={{flex:1}}
-              onClick={() => { setShowForm(false); setDismissed(true) }}>
-              Ricordamelo dopo
-            </button>
-            <button className="btn btn-primary" style={{flex:2}}
-              onClick={handleChange} disabled={saving}>
-              {saving ? 'Salvataggio…' : 'Salva password'}
-            </button>
-          </div>
         </div>
-      )}
+
+        {/* Bottoni */}
+        <div style={{display:'flex',flexDirection:'column',gap:8,marginTop:4}}>
+          <button className="btn btn-primary" onClick={handleChange} disabled={saving}
+            style={{width:'100%',padding:'12px',fontSize:14}}>
+            {saving ? 'Salvataggio…' : '✓ Salva nuova password'}
+          </button>
+          <button className="btn btn-ghost" onClick={() => setShow(false)}
+            style={{width:'100%',fontSize:12,color:'var(--text3)'}}>
+            Ricordamelo al prossimo accesso
+          </button>
+        </div>
+
+        <div style={{fontSize:11,color:'var(--text3)',textAlign:'center'}}>
+          Questo avviso apparirà ad ogni accesso finché non cambi la password.
+        </div>
+      </div>
     </div>
   )
 }
