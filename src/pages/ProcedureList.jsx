@@ -257,20 +257,29 @@ export default function ProcedureList() {
   const PER_PAGE = 20
 
   const load = useCallback(async () => {
-    if (!profile) return  // aspetta che il profile sia caricato
     setLoading(true)
     try {
+      // Leggi il profilo corrente direttamente da Supabase per avere dati freschi
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { setLoading(false); return }
+
+      const { data: prof } = await supabase
+        .from('profiles')
+        .select('id, is_admin')
+        .eq('id', user.id)
+        .single()
+
       let q = supabase
         .from('v_procedure_riepilogo')
         .select('*')
         .order('created_at', { ascending: false })
 
       // Utenti non-admin vedono solo le procedure assegnate
-      if (profile.is_admin === false) {
+      if (prof && prof.is_admin === false) {
         const { data: assegnate } = await supabase
           .from('procedure_utenti')
           .select('proc_id')
-          .eq('user_id', profile.id)
+          .eq('user_id', prof.id)
         const ids = (assegnate || []).map(r => r.proc_id)
         if (ids.length === 0) { setProcedure([]); setLoading(false); return }
         q = q.in('id', ids)
@@ -286,7 +295,7 @@ export default function ProcedureList() {
     } finally {
       setLoading(false)
     }
-  }, [search, statusFilter, profile])
+  }, [search, statusFilter])
 
   useEffect(() => { load() }, [load])
 
