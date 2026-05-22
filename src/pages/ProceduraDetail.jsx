@@ -1253,7 +1253,7 @@ const TABS_ALL = [
 export default function ProceduraDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { setCurrentProc, notify } = useStore()
+  const { setCurrentProc, notify, profile } = useStore()
   const [proc, setProc] = useState(null)
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState('anagrafica')
