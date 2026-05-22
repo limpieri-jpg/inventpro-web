@@ -600,47 +600,52 @@ export default function Inventario() {
         + (proc.curatore ? 'Curatore: <em>' + proc.curatore + '</em>' : '') + '</div>'
         + '<img src="' + procQR + '" style="width:60px;height:60px">'
         + '</div></div>'
-      const css = '@page{size:A4 portrait;margin:28mm 12mm 22mm 12mm;-webkit-print-color-adjust:exact;print-color-adjust:exact}@page:first{margin-top:0}*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:11px;color:#222;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}@media print{html,body{margin:0;padding:0}.no-print{display:none!important}.page-header-print{display:block!important}.page-footer-print{display:block!important}}.print-bar{position:sticky;top:0;background:#1d4ed8;color:#fff;padding:10px 20px;display:flex;align-items:center;gap:16px;z-index:999}.print-btn{background:#fff;color:#1d4ed8;border:none;padding:8px 18px;border-radius:6px;font-weight:700;cursor:pointer;font-size:13px}.page-header-print{display:none;position:running(header);width:100%}.page-hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:8px 12mm;border-bottom:2px solid #2d6a7f;background:#fff}.page-hdr-info{text-align:right;font-size:10px;line-height:1.7;color:#333}.page-hdr-info b{font-size:12px;color:#000;display:block}.report-wrap{padding:8px 0 30px}@page{@top-center{content:element(header)}@bottom-center{content:element(footer)}}.card{border:1px solid #aaa;margin-bottom:12px;page-break-inside:avoid;break-inside:avoid}.card-hdr{background:#1a3a5c;color:#fff;display:flex;align-items:center;-webkit-print-color-adjust:exact;print-color-adjust:exact}.card-num{width:36px;min-height:36px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;background:rgba(255,255,255,.15)}.card-title{font-size:13px;font-weight:700;padding:8px 10px;flex:1}.card-body{width:100%;border-collapse:collapse;padding:8px 12px}.qr-cell{width:88px;vertical-align:top;padding:8px 6px 8px 12px}.meta-cell{vertical-align:top;padding:8px 12px 8px 14px}.meta-tbl{border-collapse:collapse}.lbl{font-weight:700;padding-right:6px;white-space:nowrap;line-height:1.8;vertical-align:top}.photos-wrap{padding:0 12px 12px}.photos-lbl{margin-bottom:6px}.photos-row{display:flex;flex-wrap:wrap;gap:6px}.photo{width:190px;height:142px;object-fit:cover;border:1px solid #ccc}.tot-banner-est{background:#8b1a1a;color:#fff;padding:14px 24px;margin-top:16px;font-size:16px;text-align:center;-webkit-print-color-adjust:exact;print-color-adjust:exact}.page-footer-print{display:none;position:running(footer);border-top:1px solid #ccc;padding:4px 12mm;font-size:9px;color:#666;background:#fff;display:flex;align-items:center;justify-content:space-between}.page-pair{page-break-after:always;break-after:page}.page-pair:last-child{page-break-after:auto;break-after:auto}'
-      const pageFooter = '<div class="page-footer"><span>' + footerTxt + '</span><span>Procedura: ' + (proc.nome || '') + ' n° ' + (proc.num ? proc.num + (proc.anno ? '/' + proc.anno : '') : '') + '</span></div>'
-      // Raggruppa articoli a 2 per pagina
-      const artList = tutti.map((a, i) => {
+      const css = '@page{size:A4 portrait;margin:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:11px;color:#222;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-bar{position:sticky;top:0;background:#1d4ed8;color:#fff;padding:10px 20px;display:flex;align-items:center;gap:16px;z-index:999}.print-btn{background:#fff;color:#1d4ed8;border:none;padding:8px 18px;border-radius:6px;font-weight:700;cursor:pointer;font-size:13px}.page{width:210mm;min-height:297mm;padding:0;page-break-after:always;break-after:page;display:flex;flex-direction:column}.page:last-child{page-break-after:auto;break-after:auto}.page-inner{flex:1;padding:10mm 12mm 8mm}.page-hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding-bottom:6px;border-bottom:2px solid #2d6a7f;margin-bottom:12px}.page-hdr-info{text-align:right;font-size:9px;line-height:1.7;color:#333}.page-hdr-info b{font-size:11px;color:#000;display:block}.page-ftr{border-top:1px solid #ccc;padding:4px 12mm;font-size:9px;color:#666;display:flex;justify-content:space-between;background:#fff}.card{border:1px solid #aaa;margin-bottom:12px;page-break-inside:avoid;break-inside:avoid}.card-hdr{background:#1a3a5c;color:#fff;display:flex;align-items:center;-webkit-print-color-adjust:exact;print-color-adjust:exact}.card-num{width:36px;min-height:36px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;background:rgba(255,255,255,.15)}.card-title{font-size:12px;font-weight:700;padding:8px 10px;flex:1}.card-body{width:100%;border-collapse:collapse;padding:6px 12px}.qr-cell{width:80px;vertical-align:top;padding:8px 4px 8px 8px}.meta-cell{vertical-align:top;padding:6px 10px 6px 10px}.meta-tbl{border-collapse:collapse}.lbl{font-weight:700;padding-right:6px;white-space:nowrap;line-height:1.8;vertical-align:top}.photos-wrap{padding:0 12px 10px}.photos-lbl{margin-bottom:4px}.photos-row{display:flex;flex-wrap:wrap;gap:6px}.photo{width:185px;height:138px;object-fit:cover;border:1px solid #ccc}.tot-banner-est{background:#8b1a1a;color:#fff;padding:14px 24px;margin-top:16px;font-size:16px;text-align:center;-webkit-print-color-adjust:exact;print-color-adjust:exact}@media print{.no-print{display:none!important}}'
+
+      // Header ripetuto su ogni pagina
+      const hdrHtml = '<div class="page-hdr"><div>' + logoHtml + '</div>'
+        + '<div style="display:flex;align-items:center;gap:10px">'
+        + '<div class="page-hdr-info"><b>' + titoloDoc + '</b>' + fmtTipo(proc.tipo) + ' ' + (proc.nome || '') + '<br>n\u00b0 ' + (proc.num ? proc.num + (proc.anno ? '/' + proc.anno : '') : '') + ' - Tribunale di ' + (proc.tribunale || '') + '<br>'
+        + (proc.giudice ? 'Giudice: <em>' + proc.giudice + '</em><br>' : '')
+        + (proc.curatore ? 'Curatore: <em>' + proc.curatore + '</em>' : '') + '</div>'
+        + '<img src="' + procQR + '" style="width:56px;height:56px">'
+        + '</div></div>'
+
+      const ftrHtml = '<div class="page-ftr"><span>' + footerTxt + '</span><span>Procedura: ' + (proc.nome || '') + ' n\u00b0 ' + (proc.num || '') + '</span></div>'
+
+      // Costruisce articoli in pagine da 2
+      const artCards = tutti.map((a, i) => {
         const vg = parseFloat(a.val_giud || 0) * parseFloat(a.qta || 1)
         const artQR = makeQRUrl(a.codice_siecic || ('ART-' + (i + 1)))
         let metaLeft = ''
         metaLeft += '<tr><td class="lbl">Quantit\u00e0:</td><td>' + (a.qta || 1) + ' ' + (a.unita_misura || 'UN') + '</td></tr>'
         if (a.desc_breve || a.desc_estesa) metaLeft += '<tr><td class="lbl" style="vertical-align:top">Descrizione:</td><td>' + (a.desc_breve || '') + (a.desc_estesa ? '<br><span style="color:#555">' + a.desc_estesa + '</span>' : '') + '</td></tr>'
         let metaRight = ''
-        if (a.anno_prod) metaRight += '<tr><td class="lbl">Anno:</td><td>' + a.anno_prod + '</td></tr>'
         if (a.stato) metaRight += '<tr><td class="lbl">Stato:</td><td>' + a.stato + '</td></tr>'
         if (a.marca) metaRight += '<tr><td class="lbl">Marca:</td><td>' + a.marca + '</td></tr>'
         if (a.modello) metaRight += '<tr><td class="lbl">Modello:</td><td>' + a.modello + '</td></tr>'
         if (a.matricola) metaRight += '<tr><td class="lbl">Matricola:</td><td>' + a.matricola + '</td></tr>'
+        if (a.anno_prod) metaRight += '<tr><td class="lbl">Anno:</td><td>' + a.anno_prod + '</td></tr>'
         if (a.note) metaRight += '<tr><td class="lbl" style="vertical-align:top">Note:</td><td>' + a.note + '</td></tr>'
-        const valoreHdr = estimativo ? '<div style="margin-left:auto;font-size:12px;font-weight:700;padding:0 14px;white-space:nowrap">Valore di Stima: ' + fmtEurLocal(vg) + '</div>' : ''
+        const valoreHdr = estimativo ? '<div style="margin-left:auto;font-size:11px;font-weight:700;padding:0 10px;white-space:nowrap">Stima: ' + fmtEurLocal(vg) + '</div>' : ''
         let photosHtml = ''
         if (a.prima_foto_url) photosHtml = '<div class="photos-wrap"><div class="photos-lbl"><b>Fotografie:</b></div><div class="photos-row"><img src="' + a.prima_foto_url + '" class="photo"></div></div>'
         return '<div class="card"><div class="card-hdr"><div class="card-num">' + (i + 1) + '</div><div class="card-title">' + (a.desc_breve || 'Articolo ' + (i + 1)) + '</div>' + valoreHdr + '</div>'
           + '<table class="card-body"><tr>'
-          + '<td class="qr-cell"><img src="' + artQR + '" style="width:66px;height:66px"></td>'
+          + '<td class="qr-cell"><img src="' + artQR + '" style="width:62px;height:62px"></td>'
           + '<td class="meta-cell"><table class="meta-tbl">' + metaLeft + '</table></td>'
           + (metaRight ? '<td class="meta-cell"><table class="meta-tbl">' + metaRight + '</table></td>' : '')
           + '</tr></table>' + photosHtml + '</div>'
       })
-      // Raggruppa a 2 per pagina
-      const pages = []
-      for (let i = 0; i < artList.length; i += 2) {
-        pages.push('<div class="page-pair">' + artList[i] + (artList[i+1] || '') + '</div>')
+
+      // Raggruppa 2 articoli per pagina
+      const contentPages = []
+      for (let i = 0; i < artCards.length; i += 2) {
+        const isLast = i + 2 >= artCards.length
+        contentPages.push('<div class="page"><div class="page-inner">' + hdrHtml + artCards[i] + (artCards[i+1] || '') + (isLast && totBanner ? totBanner : '') + '</div>' + ftrHtml + '</div>')
       }
-      const artRowsPaged = pages.join('')
-      const runningHeader = '<div class="page-header-print"><div class="page-hdr"><div>' + logoHtml + '</div>'
-        + '<div style="display:flex;align-items:center;gap:10px">'
-        + '<div class="page-hdr-info"><b>' + titoloDoc + '</b>' + fmtTipo(proc.tipo) + ' ' + (proc.nome || '') + '<br>n\u00b0 ' + (proc.num ? proc.num + (proc.anno ? '/' + proc.anno : '') : '') + ' - Tribunale di ' + (proc.tribunale || '') + '<br>'
-        + (proc.giudice ? 'Giudice: <em>' + proc.giudice + '</em><br>' : '')
-        + (proc.curatore ? 'Curatore: <em>' + proc.curatore + '</em>' : '') + '</div>'
-        + '<img src="' + procQR + '" style="width:60px;height:60px">'
-        + '</div></div></div>'
-      const runningFooter = '<div class="page-footer-print"><span>' + footerTxt + '</span><span>Procedura: ' + (proc.nome || '') + ' n\u00b0 ' + (proc.num ? proc.num + (proc.anno ? '/' + proc.anno : '') : '') + '</span></div>'
-      const bodyHtml = printBtn + runningHeader + runningFooter + frontespizio + '<div class="report-wrap">' + artRowsPaged + totBanner + '</div>'
+
+      const bodyHtml = printBtn + frontespizio + contentPages.join('')
       const html = '<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8"><title>' + titoloDoc + '</title><style>' + css + '</style></head><body>' + bodyHtml + '</body></html>'
       const win = window.open('', '_blank')
       if (win) { win.document.write(html); win.document.close() }
