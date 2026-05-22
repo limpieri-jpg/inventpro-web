@@ -49,7 +49,7 @@ function ArticoloForm({ articolo, procId, onSave, onClose }) {
   useEffect(() => {
     const id = articolo?.id
     if (!id) return
-    supabase.from('foto').select('*').eq('articolo_id', id).order('sort_order')
+    supabase.from('foto').select('*').eq('articolo_id', id).order('created_at', { ascending: true })
       .then(({data}) => { if (data) setPhotos(data) })
   }, [articolo?.id])
 
@@ -527,7 +527,7 @@ export default function Inventario() {
     if (!currentProc) return
     setLoading(true)
     try {
-      let q = supabase.from('v_articoli_con_foto').select('*').eq('proc_id', currentProc.id).order('sort_order')
+      let q = supabase.from('v_articoli_con_foto').select('*').eq('proc_id', currentProc.id).order('created_at', { ascending: true })
       if (search) q = q.or(`desc_breve.ilike.%${search}%,marca.ilike.%${search}%`)
       if (catFilter) q = q.eq('categoria', catFilter)
       const { data, error } = await q
@@ -546,7 +546,7 @@ export default function Inventario() {
 
   const genReport = async (estimativo) => {
     try {
-      const { data: tutti, error } = await supabase.from('v_articoli_con_foto').select('*').eq('proc_id', currentProc.id).order('sort_order')
+      const { data: tutti, error } = await supabase.from('v_articoli_con_foto').select('*').eq('proc_id', currentProc.id).order('created_at', { ascending: true })
       if (error) throw error
       if (!tutti.length) { notify('Nessun articolo da esportare', 'warn'); return }
 
@@ -630,7 +630,7 @@ export default function Inventario() {
   const exportFallco = async () => {
     setExportingFallco(true)
     try {
-      const { data: tutti, error } = await supabase.from('v_articoli_con_foto').select('*').eq('proc_id', currentProc.id).order('sort_order')
+      const { data: tutti, error } = await supabase.from('v_articoli_con_foto').select('*').eq('proc_id', currentProc.id).order('created_at', { ascending: true })
       if (error) throw error
       const fmtData = (d) => {
         if (!d) return ''
