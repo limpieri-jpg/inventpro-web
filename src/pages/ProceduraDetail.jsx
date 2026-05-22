@@ -117,7 +117,8 @@ function TabAnagrafica({ proc, onEdit }) {
     ['Tipo procedura', proc.tipo], ['N. R.G.', proc.num && proc.anno ? proc.num+'/'+proc.anno : proc.num],
     ['Tribunale', proc.tribunale], ['Giudice Delegato', proc.giudice], ['Curatore', proc.curatore],
     ['Commissionario', proc.commissionario], ['Data apertura', fmtDate(proc.data_apertura)],
-    ['N. sentenza', proc.sentenza_num], ['Codice Fiscale', proc.cf], ['P.IVA', proc.piva], ['PEC', proc.pec], ['Stato', proc.status],
+    ['N. sentenza', proc.sentenza_num], ['Codice Fiscale', proc.cf], ['P.IVA', proc.piva], ['Stato', proc.status],
+    ['PEC', proc.pec],
   ]
 
   // ── Backup JSON completo ─────────────────────────────────────────────────
@@ -230,9 +231,10 @@ function TabAnagrafica({ proc, onEdit }) {
       <div className="card-body">
         <div className="detail-grid">
           {fields.map(([label, value]) => (
-            <div key={label} className="detail-row">
+            <div key={label} className="detail-row"
+              style={label === 'PEC' ? {gridColumn:'1 / -1'} : {}}>
               <div className="detail-label">{label}</div>
-              <div className="detail-value">{value || '—'}</div>
+              <div className="detail-value" style={{wordBreak:'break-all'}}>{value || '—'}</div>
             </div>
           ))}
         </div>
