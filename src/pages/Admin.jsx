@@ -121,6 +121,34 @@ function UserForm({ user, onSave, onClose }) {
             </label>
           )}
         </div>
+
+        {/* Tribunali abilitati */}
+        <div className="form-section" style={{gridColumn:'1/-1'}}>Tribunali abilitati</div>
+        <div className="form-col-full">
+          <div style={{fontSize:11,color:'var(--text3)',marginBottom:8}}>
+            Seleziona i tribunali per cui questo utente è abilitato. Usato per filtrare le comunicazioni.
+          </div>
+          <div style={{maxHeight:200,overflowY:'auto',border:'1px solid var(--border)',borderRadius:8,padding:8,background:'var(--bg)',display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:4}}>
+            {TRIBUNALI_IT.map(t => {
+              const sel = (form.tribunali||[]).includes(t)
+              return (
+                <label key={t} style={{display:'flex',alignItems:'center',gap:6,padding:'4px 6px',borderRadius:6,cursor:'pointer',background:sel?'rgba(59,111,255,0.1)':'transparent',fontSize:12}}>
+                  <input type="checkbox" checked={sel}
+                    onChange={e => set('tribunali', e.target.checked
+                      ? [...(form.tribunali||[]), t]
+                      : (form.tribunali||[]).filter(x=>x!==t)
+                    )}/>
+                  {t}
+                </label>
+              )
+            })}
+          </div>
+          {(form.tribunali||[]).length > 0 && (
+            <div style={{marginTop:6,fontSize:11,color:'var(--accent)'}}>
+              {(form.tribunali||[]).length} tribunali selezionati
+            </div>
+          )}
+        </div>
       </div>
       <div style={{display:'flex',justifyContent:'flex-end',gap:10,marginTop:8}}>
         <button className="btn btn-ghost" onClick={onClose}>Annulla</button>
