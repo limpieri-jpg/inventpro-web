@@ -269,6 +269,8 @@ export default function ProcedureList() {
         .eq('id', user.id)
         .single()
 
+      console.log('DEBUG profilo:', prof?.id, 'is_admin:', prof?.is_admin)
+
       let q = supabase
         .from('v_procedure_riepilogo')
         .select('*')
@@ -281,6 +283,7 @@ export default function ProcedureList() {
           .select('proc_id')
           .eq('user_id', prof.id)
         const ids = (assegnate || []).map(r => r.proc_id)
+        console.log('DEBUG procedure assegnate:', ids)
         if (ids.length === 0) { setProcedure([]); setLoading(false); return }
         q = q.in('id', ids)
       }

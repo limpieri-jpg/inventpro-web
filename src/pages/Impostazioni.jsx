@@ -63,10 +63,9 @@ export default function Impostazioni() {
   }
 
 
-  const isAdmin = profile?.is_admin === true
   const TABS = [
     { id: 'profilo', label: 'Profilo utente', icon: User },
-    ...(isAdmin ? [
+    ...(profile?.is_admin ? [
       { id: 'api',    label: 'Chiave API AI', icon: Key },
       { id: 'studio', label: 'Studio / Logo', icon: Building },
     ] : []),
@@ -126,7 +125,7 @@ export default function Impostazioni() {
                 <div className="form-group"><label className="form-label">Email di studio</label><input type="email" className="form-input" value={profilo.email||''} disabled style={{opacity:0.5}} /></div>
                 <div className="form-group"><label className="form-label">PEC</label><input {...inp('pec', 'email')} placeholder="nome@pec.it" /></div>
 
-                {isAdmin && <>
+                {profile?.is_admin && <>
                 <div className="form-section">Studio professionale</div>
                 <div className="form-group"><label className="form-label">Indirizzo studio</label><input {...inp('stu_indirizzo')} /></div>
                 <div className="form-group"><label className="form-label">N. civico</label><input {...inp('stu_civico')} /></div>
