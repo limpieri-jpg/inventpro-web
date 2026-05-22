@@ -125,11 +125,30 @@ function UserForm({ user, onSave, onClose }) {
         {/* Tribunali abilitati */}
         <div className="form-section" style={{gridColumn:'1/-1'}}>Tribunali abilitati</div>
         <div className="form-col-full">
-          <div style={{fontSize:11,color:'var(--text3)',marginBottom:8}}>
-            Seleziona i tribunali per cui questo utente è abilitato. Usato per filtrare le comunicazioni.
-          </div>
+          {/* Riepilogo selezionati */}
+          {(form.tribunali||[]).length > 0 && (
+            <div style={{marginBottom:10,padding:'8px 12px',background:'rgba(59,111,255,0.08)',border:'1px solid rgba(59,111,255,0.2)',borderRadius:8}}>
+              <div style={{fontSize:11,fontWeight:600,color:'var(--accent)',marginBottom:6}}>
+                {(form.tribunali||[]).length} tribunali selezionati:
+              </div>
+              <div style={{display:'flex',flexWrap:'wrap',gap:4}}>
+                {(form.tribunali||[]).sort().map(t => (
+                  <span key={t} style={{fontSize:11,padding:'2px 8px',borderRadius:99,background:'rgba(59,111,255,0.15)',color:'var(--accent)',display:'flex',alignItems:'center',gap:4}}>
+                    {t}
+                    <span style={{cursor:'pointer',fontWeight:700,fontSize:13}} onClick={()=>set('tribunali',(form.tribunali||[]).filter(x=>x!==t))}>×</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Campo ricerca */}
+          <input className="form-input" placeholder="🔍 Cerca tribunale…" style={{marginBottom:8}}
+            value={form._tribSearch||''} onChange={e=>set('_tribSearch',e.target.value)}/>
+
+          {/* Lista filtrata */}
           <div style={{maxHeight:200,overflowY:'auto',border:'1px solid var(--border)',borderRadius:8,padding:8,background:'var(--bg)',display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:4}}>
-            {TRIBUNALI_IT.map(t => {
+            {TRIBUNALI_IT.filter(t => !form._tribSearch || t.toLowerCase().includes((form._tribSearch||'').toLowerCase())).map(t => {
               const sel = (form.tribunali||[]).includes(t)
               return (
                 <label key={t} style={{display:'flex',alignItems:'center',gap:6,padding:'4px 6px',borderRadius:6,cursor:'pointer',background:sel?'rgba(59,111,255,0.1)':'transparent',fontSize:12}}>
@@ -143,11 +162,9 @@ function UserForm({ user, onSave, onClose }) {
               )
             })}
           </div>
-          {(form.tribunali||[]).length > 0 && (
-            <div style={{marginTop:6,fontSize:11,color:'var(--accent)'}}>
-              {(form.tribunali||[]).length} tribunali selezionati
-            </div>
-          )}
+          <div style={{marginTop:6,fontSize:11,color:'var(--text3)'}}>
+            {(form.tribunali||[]).length === 0 ? 'Nessun tribunale selezionato' : ''}
+          </div>
         </div>
       </div>
       <div style={{display:'flex',justifyContent:'flex-end',gap:10,marginTop:8}}>
