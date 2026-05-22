@@ -27,8 +27,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    supabase.from('v_procedure_riepilogo').select('*')
-      .order('created_at', { ascending: false })
+    supabase.rpc('get_procedure_visibili')
       .then(({ data, error }) => {
         if (error) notify('Errore caricamento: ' + error.message, 'err')
         setProcedure(data || [])
@@ -50,9 +49,9 @@ export default function Dashboard() {
         title={`${saluto}, ${profile?.nome || 'Utente'} 👋`}
         subtitle="Panoramica generale delle procedure"
         actions={
-          <button className="btn btn-primary btn-sm" onClick={() => navigate('/procedure')}>
+          profile?.is_admin ? <button className="btn btn-primary btn-sm" onClick={() => navigate('/procedure')}>
             <Plus size={14} /> Nuova procedura
-          </button>
+          </button> : null
         }
       />
       <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
