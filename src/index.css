@@ -239,6 +239,35 @@ td.mono { font-family: 'DM Mono', monospace; font-size: 12px; }
     display: none !important;
   }
 
+  /* Safe area iOS — evita sovrapposizione con barra di stato */
+  .app-topbar {
+    padding-top: max(12px, env(safe-area-inset-top)) !important;
+    padding-left: max(12px, env(safe-area-inset-left)) !important;
+    padding-right: max(12px, env(safe-area-inset-right)) !important;
+    height: auto !important;
+    min-height: 56px;
+  }
+
+  /* Bottom nav safe area iOS */
+  .bottom-nav {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    height: calc(64px + env(safe-area-inset-bottom, 0px));
+  }
+
+  main {
+    padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Nascondi testo sui bottoni — solo icone su mobile */
+  .hide-mobile {
+    display: none !important;
+  }
+
+  /* Detail grid: Curatore e Commissionario su riga intera */
+  .detail-grid {
+    grid-template-columns: 1fr !important;
+  }
+
   /* Bottom nav visibile */
   .bottom-nav {
     display: flex !important;

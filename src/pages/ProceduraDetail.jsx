@@ -232,9 +232,9 @@ function TabAnagrafica({ proc, onEdit, isAdmin }) {
         <div className="detail-grid">
           {fields.map(([label, value]) => (
             <div key={label} className="detail-row"
-              style={label === 'PEC' ? {gridColumn:'1 / -1'} : {}}>
+              style={label === 'PEC' || label === 'Curatore' || label === 'Commissionario' ? {gridColumn:'1 / -1'} : {}}>
               <div className="detail-label">{label}</div>
-              <div className="detail-value" style={{wordBreak:'break-all'}}>{value || '—'}</div>
+              <div className="detail-value" style={{wordBreak:'break-word'}}>{value || '—'}</div>
             </div>
           ))}
         </div>
@@ -1294,22 +1294,22 @@ export default function ProceduraDetail() {
       <Topbar
         title={proc.nome}
         subtitle={`${proc.tipo} · ${proc.tribunale || ''} · ${proc.num ? proc.num+(proc.anno?'/'+proc.anno:'') : ''}`}
-        actions={<div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        actions={<div style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
           <span className={`badge ${sb.cls}`}>{sb.label}</span>
           {isAdmin && proc.status === 'attiva' && (
-            <button className="btn btn-ghost btn-sm" style={{color:'var(--accent-y)'}} onClick={()=>cambiaStato('sospesa')}>⏸ Sospendi</button>
+            <button className="btn btn-ghost btn-sm" style={{color:'var(--accent-y)'}} onClick={()=>cambiaStato('sospesa')}>⏸ <span className="hide-mobile">Sospendi</span></button>
           )}
           {isAdmin && proc.status === 'sospesa' && (
-            <button className="btn btn-ghost btn-sm" style={{color:'var(--accent-g)'}} onClick={()=>cambiaStato('attiva')}>▶ Riattiva</button>
+            <button className="btn btn-ghost btn-sm" style={{color:'var(--accent-g)'}} onClick={()=>cambiaStato('attiva')}>▶ <span className="hide-mobile">Riattiva</span></button>
           )}
           {isAdmin && proc.status !== 'chiusa' && (
-            <button className="btn btn-ghost btn-sm" style={{color:'var(--text3)'}} onClick={()=>cambiaStato('chiusa')}>✓ Chiudi</button>
+            <button className="btn btn-ghost btn-sm" style={{color:'var(--text3)'}} onClick={()=>cambiaStato('chiusa')}>✓ <span className="hide-mobile">Chiudi</span></button>
           )}
           {isAdmin && proc.status === 'chiusa' && (
-            <button className="btn btn-ghost btn-sm" style={{color:'var(--accent-g)'}} onClick={()=>cambiaStato('attiva')}>▶ Riapri</button>
+            <button className="btn btn-ghost btn-sm" style={{color:'var(--accent-g)'}} onClick={()=>cambiaStato('attiva')}>▶ <span className="hide-mobile">Riapri</span></button>
           )}
-          {isAdmin && <button className="btn btn-ghost btn-sm" style={{color:'var(--accent-r)'}} onClick={eliminaProcedura}><Trash2 size={13}/> Elimina</button>}
-          <button className="btn btn-ghost btn-sm" onClick={() => navigate('/procedure')}><ArrowLeft size={13} /> Procedure</button>
+          {isAdmin && <button className="btn btn-ghost btn-sm" style={{color:'var(--accent-r)'}} onClick={eliminaProcedura}><Trash2 size={13}/></button>}
+          <button className="btn btn-ghost btn-sm" onClick={() => navigate('/procedure')}><ArrowLeft size={13} /></button>
         </div>}
       />
       <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
