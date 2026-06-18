@@ -9,7 +9,7 @@
 import { supabase } from './supabase'
 
 const EDGE_URL = import.meta.env.VITE_SUPABASE_URL + '/functions/v1/super-processor'
-const MODEL    = 'claude-sonnet-4-20250514'
+const MODEL    = 'claude-sonnet-4-5'
 
 /**
  * Chiama il modello AI tramite Edge Function.
