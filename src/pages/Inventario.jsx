@@ -510,6 +510,45 @@ Rispondi SOLO con JSON valido (no markdown, no commenti):
 }
 
 
+
+// Mappa codici SIECIC per tipologia
+const CODICI_SIECIC = {
+  'BENE MOBILE': {
+    'Macchinari industriali': '010101',
+    'Attrezzature': '010102',
+    'Impianti': '010103',
+    'Arredi e mobili': '010201',
+    'Apparecchiature elettroniche': '010301',
+    'Strumenti e utensili': '010401',
+    'Automezzi': '020101',
+    'Motocicli': '020201',
+    'default': '010101'
+  },
+  'BENE MOBILE REGISTRATO': {
+    'Autovetture': '020101',
+    'Autoveicoli': '020102',
+    'Motocicli': '020201',
+    'Natanti': '020301',
+    'Aeromobili': '020401',
+    'default': '020101'
+  },
+  'BENE IMMOBILE': {
+    'Fabbricati': '030101',
+    'Terreni': '030201',
+    'default': '030101'
+  },
+  'CREDITO': { 'default': '040101' },
+  'PARTECIPAZIONE': { 'default': '050101' },
+  'BENE IMMATERIALE': { 'default': '060101' },
+  "AZIENDA/RAMO D'AZIENDA": { 'default': '070101' },
+  'ALTRO': { 'default': '090101' }
+}
+
+const getCodSiecic = (tipologia, sottocategoria) => {
+  const map = CODICI_SIECIC[tipologia] || CODICI_SIECIC['ALTRO']
+  return map[sottocategoria] || map['default'] || '010101'
+}
+
 export default function Inventario() {
   const { currentProc, notify, profile } = useStore()
   const isAdmin = profile?.is_admin
@@ -523,6 +562,7 @@ export default function Inventario() {
   const [page, setPage] = useState(0)
   const [showFallcoModal, setShowFallcoModal] = useState(false)
   const [showReportModal, setShowReportModal] = useState(false)
+  const [genSiecic, setGenSiecic] = useState(false)
   const [dataDeposito, setDataDeposito] = useState('')
   const [exportingFallco, setExportingFallco] = useState(false)
   const PER_PAGE = 25
@@ -551,6 +591,26 @@ export default function Inventario() {
     await supabase.from('articoli').delete().eq('id', id)
     loadArticoli()
     notify('Articolo eliminato', 'ok')
+  }
+
+  const generaCodiciSiecic = async () => {
+    setGenSiecic(true)
+    try {
+      const { data: arts } = await supabase.from('articoli')
+        .select('id, tipologia_siecic, sottocategoria, codice_siecic')
+        .eq('proc_id', currentProc.id)
+        .is('codice_siecic', null)
+      if (!arts?.length) { notify('Tutti gli articoli hanno già il codice SIECIC', 'ok'); setGenSiecic(false); return }
+      let ok = 0
+      for (const a of arts) {
+        const cod = getCodSiecic(a.tipologia_siecic, a.sottocategoria)
+        await supabase.from('articoli').update({ codice_siecic: cod }).eq('id', a.id)
+        ok++
+      }
+      notify(`✅ Codici SIECIC assegnati a ${ok} articoli`, 'ok', 5000)
+      load()
+    } catch(e) { notify('Errore: ' + e.message, 'err') }
+    finally { setGenSiecic(false) }
   }
 
   const genReport = async (estimativo) => {
@@ -744,6 +804,9 @@ export default function Inventario() {
         actions={
           <div style={{ display: 'flex', gap: 8 }}>
             {isAdmin && <button className="btn btn-ghost btn-sm" onClick={() => setShowReportModal(true)}>📄 Report PDF</button>}
+            {isAdmin && <button className="btn btn-ghost btn-sm" onClick={generaCodiciSiecic} disabled={genSiecic} title="Genera codici SIECIC mancanti">
+              {genSiecic ? '⏳' : '🔢'} SIECIC
+            </button>}
             <button className="btn btn-ghost btn-sm" onClick={() => setShowFallcoModal(true)}>
               <FileDown size={14} /> Export FALLCO
             </button>
