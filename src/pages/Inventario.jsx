@@ -31,7 +31,7 @@ function ArticoloForm({ articolo, procId, onSave, onClose }) {
   const [tab, setTab] = useState('dati')
   const [form, setForm] = useState({
     desc_breve:'', desc_estesa:'', marca:'', modello:'', anno_prod:'', matricola:'',
-    tipologia_siecic:'BENE MOBILE', sottocategoria:'Macchinari industriali',
+    tipologia_siecic:'BENE MOBILE', sottocategoria:'Macchinari industriali', codice_siecic:'',
     unita_misura:'UN', qta:1, stato:'Buono', titolo_possesso:'piena_proprieta',
     val_mercato:0, val_giud:0, danni:'', note:'',
     ...articolo
@@ -134,6 +134,7 @@ Rispondi SOLO con JSON valido (no markdown, no commenti):
   "danni": "descrizione dettagliata di TUTTI i danni, difetti, usure, graffi, ammaccature, rotture, ossidazioni, macchie o anomalie visibili nelle foto. Sii specifico su tipo e posizione del danno. Scrivi \"Nessun danno rilevato\" solo se il bene è visibilmente integro",
   "val_mercato": numero intero euro (valore mercato realistico per bene usato),
   "val_giud": numero intero euro (vendita giudiziaria, tipicamente 60-75% del mercato),
+  "codice_siecic": "codice classificazione SIECIC a 4-6 cifre appropriato per la tipologia del bene",
   "targa": "se veicolo, stringa vuota altrimenti",
   "telaio": "VIN se veicolo, stringa vuota altrimenti",
   "km": "chilometraggio se veicolo, stringa vuota altrimenti",
@@ -148,6 +149,7 @@ Rispondi SOLO con JSON valido (no markdown, no commenti):
       setForm(f => ({
         ...f,
         tipologia_siecic: json.tipologia_siecic || f.tipologia_siecic,
+        codice_siecic:   json.codice_siecic   || f.codice_siecic   || '',
         sottocategoria:   json.sottocategoria   || f.sottocategoria,
         desc_breve:  f.desc_breve  || json.desc_breve  || '',
         desc_estesa: f.desc_estesa || json.desc_estesa || '',
@@ -275,7 +277,9 @@ Rispondi SOLO con JSON valido (no markdown, no commenti):
                 {/* ── CLASSIFICAZIONE ── */}
                 <div className="form-section" style={{gridColumn:'1/-1'}}>Classificazione</div>
                 <div className="form-group">
-                  <label className="form-label">Tipologia SIECIC</label>
+                  <label className="form-label">Codice SIECIC</label></div>
+                  <div className="form-group"><input className="form-input" value={form.codice_siecic||''} onChange={e=>set('codice_siecic',e.target.value)} placeholder="Es. 010101"/></div>
+                  <div className="form-group"><label className="form-label">Tipologia SIECIC</label>
                   <select className="form-input" value={form.tipologia_siecic||'BENE MOBILE'} onChange={e=>{set('tipologia_siecic',e.target.value);set('sottocategoria',SOTTOCATEGORIE[e.target.value]?.[0]||'')}}>
                     {TIPOLOGIE_SIECIC.map(t=><option key={t}>{t}</option>)}
                   </select>
