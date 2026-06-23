@@ -554,6 +554,14 @@ export default function Inventario() {
       const { data: tutti, error } = await supabase.from('v_articoli_con_foto').select('*').eq('proc_id', currentProc.id).order('created_at', { ascending: true })
       if (error) throw error
       if (!tutti.length) { notify('Nessun articolo da esportare', 'warn'); return }
+      // Carica tutte le foto per ogni articolo
+      const { data: tutteFoto } = await supabase.from('foto').select('articolo_id, url, sort_order').eq('proc_id', currentProc.id).order('sort_order')
+      const fotoPerArticolo = {}
+      for (const f of (tutteFoto || [])) {
+        if (!fotoPerArticolo[f.articolo_id]) fotoPerArticolo[f.articolo_id] = []
+        fotoPerArticolo[f.articolo_id].push(f.url)
+      }
+
 
       const studioLogo = localStorage.getItem('ip_logo') || ''
       const studioNome = localStorage.getItem('ip_studio_nome') || 'Pro.Ges.S. Srl'
@@ -630,7 +638,8 @@ export default function Inventario() {
         if (a.note) metaRight += '<tr><td class="lbl" style="vertical-align:top">Note:</td><td>' + a.note + '</td></tr>'
         const valoreHdr = estimativo ? '<div style="margin-left:auto;font-size:11px;font-weight:700;padding:0 10px;white-space:nowrap">Stima: ' + fmtEurLocal(vg) + '</div>' : ''
         let photosHtml = ''
-        if (a.prima_foto_url) photosHtml = '<div class="photos-wrap"><div class="photos-lbl"><b>Fotografie:</b></div><div class="photos-row"><img src="' + a.prima_foto_url + '" class="photo"></div></div>'
+        const artFotos = fotoPerArticolo[a.id] || (a.prima_foto_url ? [a.prima_foto_url] : [])
+        if (artFotos.length > 0) photosHtml = '<div class="photos-wrap"><div class="photos-lbl"><b>Fotografie:</b></div><div class="photos-row">' + artFotos.map(url => '<img src="' + url + '" class="photo">').join('') + '</div></div>'
         return '<div class="card"><div class="card-hdr"><div class="card-num">' + (i + 1) + '</div><div class="card-title">' + (a.desc_breve || 'Articolo ' + (i + 1)) + '</div>' + valoreHdr + '</div>'
           + '<table class="card-body"><tr>'
           + '<td class="qr-cell"><img src="' + artQR + '" style="width:62px;height:62px"></td>'
