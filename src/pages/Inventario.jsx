@@ -675,10 +675,10 @@ export default function Inventario() {
       }
       const righe = tutti.map(a => ({
         'Descrizione': a.desc_breve || '',
-        'Tipologia': mapTipologia(a.siecic_tipologia),
+        'Tipologia': mapTipologia(a.tipologia_siecic),
         'Società/Socio': a.societa || '0',
-        'Titolo': a.titolo || 'piena_proprietà',
-        'Quota %': (a.titolo === 'piena_proprietà' || !a.titolo) ? '100' : (a.quota_pct || ''),
+        'Titolo': a.titolo_possesso || 'piena_proprieta',
+        'Quota %': (a.titolo_possesso === 'piena_proprieta' || !a.titolo_possesso) ? '100' : (a.quota_pct || ''),
         'Codifica SIECIC': a.codice_siecic || '',
         'Società/Socio_1': '', 'Titolo_1': '', 'Quota %_1': '',
         'Società/Socio_2': '', 'Titolo_2': '', 'Quota %_2': '',
