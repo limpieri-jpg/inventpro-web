@@ -134,7 +134,7 @@ Rispondi SOLO con JSON valido (no markdown, no commenti):
   "danni": "descrizione dettagliata di TUTTI i danni, difetti, usure, graffi, ammaccature, rotture, ossidazioni, macchie o anomalie visibili nelle foto. Sii specifico su tipo e posizione del danno. Scrivi \"Nessun danno rilevato\" solo se il bene è visibilmente integro",
   "val_mercato": numero intero euro (valore mercato realistico per bene usato),
   "val_giud": numero intero euro (vendita giudiziaria, tipicamente 60-75% del mercato),
-  "codice_siecic": "codice classificazione SIECIC a 4-6 cifre appropriato per la tipologia del bene",
+  "codice_siecic": "scegli il codice SIECIC più preciso dalla tabella ufficiale D.G.S.I.A. v2.6.1 per procedure concorsuali. TABELLA: 101.999=macch.legno, 102.999=macch.metalli, 103.999=macch.saldatura, 104.999=macch.plastica, 105.999=macch.termotecnica, 106.999=macch.agricoltura, 108.999=macch.alimentare, 110.999=macch.poligrafica, 111.999=macch.ceramica/vetro, 112.999=macch.chimica, 113.1=diagnostici, 113.999=elettromedicali, 114.999=macch.imballaggio, 115.999=ottica/fotocinema, 116.999=macch.tessile, 117.A10=quadri elettrici, 117.999=macch.edilizia, 201.999=materie prime, 202.2=banchi lavoro, 202.5=strumenti misura, 202.999=attrezzature/utensili, 303.2=carrelli diesel, 303.3=carrelli elettrici, 303.4=carri ponte, 303.999=sollevamento, 401.4=autocarri>80Ql, 401.5=autocarri 0-35Ql, 401.6=autocarri 35-80Ql, 401.8=autovetture benzina, 401.9=autovetture diesel, 401.10=ciclomotori, 401.12=motociclette, 401.14=rimorchi, 401.16=trattori stradali, 401.17=camper, 401.999=veicoli altro, 402.1=barca vela, 402.2=imbarcazione motore, 402.4=fuoribordo, 402.999=natanti altro, 500.5=fotocopiatrici, 500.9=PC tavolo/server, 500.10=notebook/laptop, 500.12=plotter, 500.14=sistemi telefonici, 500.15=stampanti inkjet, 500.17=stampanti laser, 500.21=cellulari, 500.999=attrezzature ufficio, 600.1=attrezzature cucina, 600.2=banchi frigoriferi, 600.4=celle frigorifere, 600.5=macchine caffe, 600.6=registratori cassa, 600.7=vetrine espositive, 600.999=commercio/ristorazione, 701.1=mobili casa, 701.999=mobili casa altro, 702.1=cassettiere, 702.12=scaffalature, 702.13=schedari, 702.14=scrivanie con appendice, 702.15=scrivanie, 702.16=sedie ufficio, 702.18=tavoli porta PC, 702.19=tavoli riunione, 702.4=librerie, 702.6=mobiletti metallo, 702.8=mobili ufficio, 702.9=pareti attrezzate, 702.999=arredi ufficio varie, 7=titoli/azioni/partecipazioni, 18=marchio, 19=brevetto, 23=credito unitario, 24=credito periodico, 0=azienda/compendio, 26=bene generico, 30=bene immobile",
   "targa": "se veicolo, stringa vuota altrimenti",
   "telaio": "VIN se veicolo, stringa vuota altrimenti",
   "km": "chilometraggio se veicolo, stringa vuota altrimenti",
@@ -511,42 +511,78 @@ Rispondi SOLO con JSON valido (no markdown, no commenti):
 
 
 
-// Mappa codici SIECIC per tipologia
+// Mappa codici SIECIC ufficiali Ministero della Giustizia - D.G.S.I.A.
+// Specifiche di interoperabilità PCT Esecuzioni Civili v2.6.1
 const CODICI_SIECIC = {
   'BENE MOBILE': {
-    'Macchinari industriali': '010101',
-    'Attrezzature': '010102',
-    'Impianti': '010103',
-    'Arredi e mobili': '010201',
-    'Apparecchiature elettroniche': '010301',
-    'Strumenti e utensili': '010401',
-    'Automezzi': '020101',
-    'Motocicli': '020201',
-    'default': '010101'
+    // Macchinari
+    'Macchinari industriali': '117',      // Macchinari, impianti ed attrezzature per l'edilizia (generico macchinari)
+    'Attrezzature':           '202',      // Attrezzature ed utensili
+    'Impianti':               '117.A10', // Quadri elettrici / impianti generici
+    // Arredi
+    'Arredi':                 '702',      // Arredi da ufficio e varie
+    // Informatica / Elettronica
+    'Informatica':            '500.9',   // Personal computer da tavolo
+    'Elettronica':            '500',     // Macchine ed attrezzature per l'ufficio
+    // Veicoli (mobili non registrati — es. carrelli, muletti non targati)
+    'Veicoli':                '301',     // Macchine operatrici targate (generico)
+    // Materie prime / merci
+    'Materie prime':          '201',     // Materie prime e prodotti
+    // Altro
+    'Altro':                  '702.999', // Varie
+    'default':                '702.999'
   },
   'BENE MOBILE REGISTRATO': {
-    'Autovetture': '020101',
-    'Autoveicoli': '020102',
-    'Motocicli': '020201',
-    'Natanti': '020301',
-    'Aeromobili': '020401',
-    'default': '020101'
+    'Autovettura':  '401.8',   // Autovetture a benzina (generico autovettura)
+    'Autocarro':    '401.4',   // Autocarri > 80 Ql (generico autocarro)
+    'Motoveicolo':  '401.12',  // Motociclette
+    'Natante':      '402.2',   // Imbarcazione a motore
+    'Aeromobile':   '13',      // Aereomobile (codice esecuzioni individuali)
+    'Altro':        '401.999',
+    'default':      '401.999'
   },
   'BENE IMMOBILE': {
-    'Fabbricati': '030101',
-    'Terreni': '030201',
-    'default': '030101'
+    'Fabbricato civile':       '30',  // immobile (codice generico PCT)
+    'Fabbricato industriale':  '30',
+    'Terreno':                 '30',
+    'Altro':                   '30',
+    'default':                 '30'
   },
-  'CREDITO': { 'default': '040101' },
-  'PARTECIPAZIONE': { 'default': '050101' },
-  'BENE IMMATERIALE': { 'default': '060101' },
-  "AZIENDA/RAMO D'AZIENDA": { 'default': '070101' },
-  'ALTRO': { 'default': '090101' }
+  'CREDITO': {
+    'Credito commerciale':    '23',  // Credito unitario
+    'Credito tributario':     '23',
+    'Credito da revocatoria': '24',  // Credito periodico
+    'Altro':                  '23',
+    'default':                '23'
+  },
+  'PARTECIPAZIONE': {
+    'Quota SRL': '7',   // Titoli (Azioni, BOT, CCT etc)
+    'Azioni':    '7',
+    'Altro':     '7',
+    'default':   '7'
+  },
+  'BENE IMMATERIALE': {
+    'Marchio':     '18',  // Marchio
+    'Brevetto':    '19',  // Brevetto
+    'Software':    '500.9',
+    'Avviamento':  '26',  // Bene generico
+    'Altro':       '26',
+    'default':     '26'
+  },
+  "AZIENDA/RAMO D'AZIENDA": {
+    "Azienda intera":   '0',  // Compendio pignorato
+    "Ramo d'azienda":   '0',
+    'default':          '0'
+  },
+  'ALTRO': {
+    'Altro':   '26',  // Bene generico
+    'default': '26'
+  }
 }
 
 const getCodSiecic = (tipologia, sottocategoria) => {
   const map = CODICI_SIECIC[tipologia] || CODICI_SIECIC['ALTRO']
-  return map[sottocategoria] || map['default'] || '010101'
+  return map[sottocategoria] || map['default'] || '26'
 }
 
 export default function Inventario() {
@@ -597,18 +633,43 @@ export default function Inventario() {
     setGenSiecic(true)
     try {
       const { data: arts } = await supabase.from('articoli')
-        .select('id, tipologia_siecic, sottocategoria, codice_siecic')
+        .select('id, tipologia_siecic, sottocategoria, desc_breve, codice_siecic')
         .eq('proc_id', currentProc.id)
-        .is('codice_siecic', null)
-      if (!arts?.length) { notify('Tutti gli articoli hanno già il codice SIECIC', 'ok'); setGenSiecic(false); return }
+      if (!arts?.length) { notify('Nessun articolo trovato', 'ok'); setGenSiecic(false); return }
+
+      const SIECIC_SYSTEM = `Sei un esperto di procedure concorsuali italiane. Devi assegnare il codice SIECIC corretto (Ministero della Giustizia D.G.S.I.A. v2.6.1) per beni di procedure concorsuali.
+
+CODICI DISPONIBILI (usa SOLO questi):
+101.999: Macchine legno altro | 102.999: Macchine metalli altro | 103.999: Macchine saldatura altro | 104.999: Macchine plastica/gomma altro | 105.999: Macchine termotecnica altro | 106.999: Macchine agricoltura altro | 108.999: Macchine alimentare altro | 110.999: Macchine poligrafica altro | 111.999: Macchine ceramica/vetro altro | 112.999: Macchine chimica/farmaceutica altro | 113.1: Diagnostici analisi cliniche | 113.999: Elettromedicali altro | 114.999: Macchine imballaggio altro | 115.999: Ottica/fotocinema altro | 116.999: Macchine tessile altro | 117.A10: Quadri elettrici | 117.999: Macchine edilizia altro | 201.999: Materie prime altro | 202.999: Attrezzature utensili altro | 202.2: Banchi da lavoro | 202.5: Strumenti di misura | 303.2: Carrelli elevatori diesel | 303.3: Carrelli elevatori elettrici | 303.4: Carri ponte | 303.999: Apparecchi sollevamento altro | 401.4: Autocarri >80Ql | 401.5: Autocarri 0-35Ql | 401.6: Autocarri 35-80Ql | 401.8: Autovetture benzina | 401.9: Autovetture diesel | 401.10: Ciclomotori | 401.12: Motociclette | 401.14: Rimorchi | 401.16: Trattori stradali | 401.17: Camper | 401.999: Veicoli altro | 402.1: Barca a vela | 402.2: Imbarcazione motore | 402.4: Fuoribordo | 402.999: Natanti altro | 500.9: PC da tavolo/server | 500.10: Notebook/laptop | 500.12: Plotter | 500.14: Sistemi telefonici | 500.15: Stampanti inkjet | 500.17: Stampanti laser | 500.5: Fotocopiatrici | 500.21: Cellulari | 500.999: Attrezzature ufficio altro | 600.1: Attrezzature cucina/mensa | 600.2: Banchi frigoriferi | 600.4: Celle frigorifere | 600.5: Macchine caffe | 600.6: Registratori di cassa | 600.7: Vetrine espositive | 600.999: Commercio/ristorazione altro | 701.1: Mobili casa | 701.999: Mobili casa altro | 702.1: Cassettiere | 702.12: Scaffalature/scansie | 702.13: Schedari | 702.14: Scrivanie con appendice | 702.15: Scrivanie | 702.16: Sedie ufficio | 702.18: Tavoli porta PC | 702.19: Tavoli riunione | 702.4: Librerie | 702.6: Mobiletti metallo | 702.8: Mobili ufficio | 702.9: Pareti attrezzate | 702.999: Arredi ufficio altro | 7: Titoli/Azioni/Partecipazioni | 18: Marchio | 19: Brevetto | 23: Credito unitario | 24: Credito periodico | 0: Azienda/Compendio | 26: Bene generico | 30: Bene immobile
+
+Rispondi SOLO con il codice, nessun altro testo.`
+
       let ok = 0
       for (const a of arts) {
-        const cod = getCodSiecic(a.tipologia_siecic, a.sottocategoria)
-        await supabase.from('articoli').update({ codice_siecic: cod }).eq('id', a.id)
-        ok++
+        try {
+          const userMsg = `Tipologia: ${a.tipologia_siecic}\nSottocategoria: ${a.sottocategoria}\nDescrizione: ${a.desc_breve || '(non disponibile)'}\n\nCodice SIECIC?`
+          const res = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              model: 'claude-sonnet-4-6',
+              max_tokens: 20,
+              system: SIECIC_SYSTEM,
+              messages: [{ role: 'user', content: userMsg }]
+            })
+          })
+          const json = await res.json()
+          const cod = json.content?.[0]?.text?.trim() || getCodSiecic(a.tipologia_siecic, a.sottocategoria)
+          await supabase.from('articoli').update({ codice_siecic: cod }).eq('id', a.id)
+          ok++
+        } catch {
+          const cod = getCodSiecic(a.tipologia_siecic, a.sottocategoria)
+          await supabase.from('articoli').update({ codice_siecic: cod }).eq('id', a.id)
+          ok++
+        }
       }
       notify(`✅ Codici SIECIC assegnati a ${ok} articoli`, 'ok', 5000)
-      load()
+      loadArticoli()
     } catch(e) { notify('Errore: ' + e.message, 'err') }
     finally { setGenSiecic(false) }
   }
